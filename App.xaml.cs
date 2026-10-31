@@ -85,7 +85,9 @@ public partial class App : Application
         Task.Run(SampleLoop);
         new DispatcherTimer(TimeSpan.FromSeconds(15), DispatcherPriority.Background, (_, _) => CheckReminders(), Dispatcher);
         Dispatcher.BeginInvoke(CheckReminders, DispatcherPriority.ApplicationIdle); // catch up right after start
-        if (Settings.ExplorerMenu) Settings.ExplorerMenu = true; // re-point the menu at this exe, in case it moved
+        // Re-point the registry at this exe, in case the folder moved.
+        if (Settings.ExplorerMenu) Settings.ExplorerMenu = true;
+        if (Settings.AutoStart) Settings.AutoStart = true;
 
         if (CliArg(e.Args) is { } dir) OpenCli(dir);
         else if (!e.Args.Contains("--tray")) ShowMain();
