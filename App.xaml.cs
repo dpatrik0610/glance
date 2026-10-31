@@ -136,10 +136,10 @@ public partial class App : Application
         return dir.EndsWith(':') ? dir + "\\" : dir;
     }
 
-    void OpenCli(string dir)
+    internal void OpenCli(string dir, string? command = null, string? name = null)
     {
         ShowMain();
-        ((CliPage)main!.ShowTab("CLI")).Open(dir);
+        ((CliPage)main!.ShowTab("CLI")).Open(dir, command, name);
     }
 
     IntPtr WndProc(IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled)
@@ -263,7 +263,7 @@ public partial class App : Application
     void Quit()
     {
         if (CliPage.Running > 0 && MessageBox.Show(
-                $"{CliPage.Running} terminal{(CliPage.Running == 1 ? " is" : "s are")} open. Exiting stops them and anything running in them.",
+                $"{CliPage.Running} terminal{(CliPage.Running == 1 ? " is" : "s are")} open. They reopen next time, but anything running in them stops.",
                 "Glance", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
         Db.Info("exit");
         if (saveTimer?.IsEnabled == true) Settings.Save();

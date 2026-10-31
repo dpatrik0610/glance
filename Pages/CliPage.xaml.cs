@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -28,6 +29,8 @@ public class CliTab : Bindable
     public int Id { get; } = ++nextId;
     public TermPTY Pty { get; } = new();
     public required string Dir { get; init; }
+    /// Where the shell is now, from the prompt's OSC 9;9 mark; what a restart reopens in.
+    public string Cwd { get; set; } = "";
     public string? Command { get; init; }
     public string Name { get => name; set => Set(ref name, value); }
     public bool Editing { get => editing; set => Set(ref editing, value); }
@@ -62,11 +65,23 @@ public partial class CliPage : UserControl
     public static int Running { get; private set; }
 
     record Msg(string T, int Id, string? D, int Cols, int Rows, string? Uri);
+    record Saved(string Dir, string? Command, string Name, string Color);
+    static readonly string SessionFile = Path.Combine(Settings.Dir, "cli-tabs.json");
+
+    // Runs after the profile: wraps whatever prompt it set (Starship or not) to report the folder as OSC 9;9,
+    // the Windows Terminal convention. Original prompt first, so it still sees the last command's $?.
+    const string CwdHook = """
+        $global:GlancePrompt = $function:prompt
+        function global:prompt { $p = & $global:GlancePrompt; [Console]::Write("`e]9;9;`"$($PWD.ProviderPath)`"`e\"); $p }
+        """;
+
+    [GeneratedRegex(@"\x1b\]9;9;""?([^""\x07\x1b]+)""?(?:\x07|\x1b\\)")]
+    internal static partial Regex CwdMark();
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     readonly ObservableCollection<CliTab> tabs = [];
     readonly List<object> queued = []; // messages sent before the page loaded
-    bool ready;
+    bool ready, restoring, ending;
 
     public CliPage()
     {
@@ -76,9 +91,33 @@ public partial class CliPage : UserControl
         ClaudeButton.Visibility = OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;
         IsVisibleChanged += (_, _) => FocusTerm();
         new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, (_, _) => Reap(), Dispatcher);
-        Application.Current.Exit += (_, _) => { foreach (var t in tabs) Kill(t); };
+        Application.Current.Exit += (_, _) => { Save(); foreach (var t in tabs) Kill(t); };
+        // Windows may kill the shells before Glance at shutdown; don't let Reap save that as "no tabs".
+        Application.Current.SessionEnding += (_, _) => { Save(); ending = true; };
         TabSelected(this, null!);
         InitWeb();
+        Restore();
+    }
+
+    // Tabs come back after an exit or reboot: same names, colors and commands, in the folder each shell was last in.
+    void Restore()
+    {
+        try
+        {
+            if (!File.Exists(SessionFile)) return;
+            restoring = true;
+            foreach (var t in JsonSerializer.Deserialize<Saved[]>(File.ReadAllText(SessionFile)) ?? []) Open(t.Dir, t.Command, t.Name, t.Color);
+            if (tabs.Count > 0) TabList.SelectedIndex = 0;
+        }
+        catch (Exception e) when (e is IOException or JsonException) { Db.Warn($"cli restore: {e.Message}"); }
+        finally { restoring = false; }
+    }
+
+    void Save()
+    {
+        if (restoring || ending) return;
+        try { Settings.WriteAtomic(SessionFile, JsonSerializer.Serialize(tabs.Select(t => new Saved(t.Cwd, t.Command, t.Name, t.Color)))); }
+        catch (IOException e) { Db.Warn($"cli save: {e.Message}"); }
     }
 
     async void InitWeb()
@@ -138,7 +177,8 @@ public partial class CliPage : UserControl
         if (t.Starting) { t.Pty.Resize(cols, rows); return; }
         t.Starting = true;
         t.Pty.TerminalOutput += (_, e) => Output(t, e.Data);
-        var command = t.Command is null ? "pwsh.exe -NoLogo" : $"pwsh.exe -NoLogo -NoExit -Command {t.Command}";
+        var script = t.Command is null ? CwdHook : CwdHook + "\n" + t.Command;
+        var command = $"pwsh.exe -NoLogo -NoExit -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}";
         new Thread(() => // Start blocks for the shell's lifetime, pumping its output
         {
             try { t.Pty.Start(command, cols, rows, false, null, t.Dir); }
@@ -148,6 +188,12 @@ public partial class CliPage : UserControl
 
     void Output(CliTab t, string data)
     {
+        // ponytail: a mark split across two output chunks is missed; the next prompt catches up.
+        if (data.Contains("\x1b]9;9;") && CwdMark().Matches(data) is { Count: > 0 } marks && marks[^1].Groups[1].Value is var cwd && cwd != t.Cwd)
+        {
+            t.Cwd = cwd;
+            Dispatcher.BeginInvoke(Save);
+        }
         lock (t.Pending)
         {
             t.Pending.Append(data);
@@ -178,11 +224,13 @@ public partial class CliPage : UserControl
             Command = command,
             Name = name ?? LeafOf(dir),
             Color = color ?? Palette[tabs.Count % Palette.Length],
+            Cwd = dir,
         };
         Post(new { t = "open", id = tab.Id });
         tabs.Add(tab);
         Running = tabs.Count;
         TabList.SelectedItem = tab;
+        Save();
         return tab;
     }
 
@@ -194,6 +242,7 @@ public partial class CliPage : UserControl
         tabs.Remove(t);
         Running = tabs.Count;
         if (tabs.Count > 0) TabList.SelectedIndex = Math.Min(i, tabs.Count - 1);
+        Save();
     }
 
     // Whole tree: a dev server started from the shell goes with it.
@@ -236,7 +285,7 @@ public partial class CliPage : UserControl
     void Duplicate(object sender, RoutedEventArgs e)
     {
         var t = TabOf(sender);
-        Open(t.Dir, t.Command, t.Name, t.Color);
+        Open(t.Cwd, t.Command, t.Name, t.Color);
     }
 
     // Double-click a tab to rename; single click puts the cursor back in its terminal.
@@ -268,6 +317,7 @@ public partial class CliPage : UserControl
         var t = TabOf(sender);
         if (t.Name.Trim().Length == 0) t.Name = LeafOf(t.Dir);
         t.Editing = false;
+        Save();
     }
 
     // Swatches sit inside the menu header, whose DataContext is the color; the tab is the menu's.
@@ -278,6 +328,7 @@ public partial class CliPage : UserControl
         if (d is not System.Windows.Controls.ContextMenu { DataContext: CliTab t } menu) return;
         t.Color = (string)((Button)sender).Tag;
         menu.IsOpen = false;
+        Save();
         TabSelected(this, null!);
     }
 

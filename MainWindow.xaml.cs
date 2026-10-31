@@ -28,6 +28,8 @@ public partial class MainWindow : Window
         new("Password", "Tools", "\uE8D7", () => new PasswordPage()),
         new("CLI", "Dev", "\uE756", () => new CliPage()),
         new("Ports", "Dev", "\uE943", () => new DevPage()),
+        new("Git", "Dev", "\uF003", () => new GitPage()),
+        new("Docker", "Dev", "\uF158", () => new DockerPage()),
     ];
 
     // Pinned at the bottom of the sidebar, icon only.

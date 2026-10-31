@@ -46,8 +46,18 @@ static class SelfTest
                 Check(D(Due.Format(rounded, now)) == rounded, $"round-trip {Due.Format(rounded, now)}");
             }
 
-Check(App.CliArg(["--cli", "C:\""]) == @"C:\" && App.CliArg(["--cli", @"F:\Coding"]) == @"F:\Coding", "explorer drive-root quirk");
+            Check(App.CliArg(["--cli", "C:\""]) == @"C:\" && App.CliArg(["--cli", @"F:\Coding"]) == @"F:\Coding", "explorer drive-root quirk");
             Check(App.CliArg(["--tray"]) is null, "no --cli");
+
+            var st = Git.ParseStatus("# branch.oid abc\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +2 -1\n1 .M N... a\n? new.txt\n");
+            Check(st == ("main", 2, 1, true, 2), "git porcelain v2");
+            Check(Git.ParseStatus("# branch.head dev\n") == ("dev", 0, 0, false, 0), "git: no upstream, clean");
+            Check(Git.WebUrl("git@github.com:me/glance.git") == "https://github.com/me/glance", "git ssh remote");
+            Check(Git.WebUrl("https://me:tok@github.com/me/glance.git") == "https://github.com/me/glance", "git https remote drops token");
+            Check(Git.WebUrl("F:/repos/x") is null, "git local remote");
+
+            var mark = Pages.CliPage.CwdMark().Match("x\x1b]9;9;\"F:\\Coding\\glance\"\x1b\\qantanas");
+            Check(mark.Success && mark.Groups[1].Value == @"F:\Coding\glance", "cli cwd mark");
 
             var cfg = new Settings { GpuTempLimit = 85, DiskFreeLimit = 0 };
             var alerts = new Alerts();

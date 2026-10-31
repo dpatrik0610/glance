@@ -1,0 +1,93 @@
+<UserControl x:Class="Glance.Pages.GitPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="Act" TargetType="Button" BasedOn="{StaticResource Ghost}">
+            <Setter Property="FontFamily" Value="{StaticResource Icons}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="7,4" />
+            <Setter Property="Foreground" Value="{StaticResource Sub}" />
+        </Style>
+    </UserControl.Resources>
+    <Border Style="{StaticResource Card}">
+        <DockPanel>
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <Button DockPanel.Dock="Right" Content="↻ Refresh" Click="Refresh" />
+                <TextBlock Text="Repositories" Style="{StaticResource H}" VerticalAlignment="Center" />
+                <TextBlock x:Name="Count" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,1,0,0"
+                           ToolTip="Repos in your CLI quick folders and their direct subfolders" />
+            </DockPanel>
+            <Grid DockPanel.Dock="Top" Margin="0,0,10,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="1.4*" />
+                    <ColumnDefinition Width="90" />
+                    <ColumnDefinition Width="90" />
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="96" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Repo" Style="{StaticResource Label}" />
+                <TextBlock Grid.Column="1" Text="Branch" Style="{StaticResource Label}" />
+                <TextBlock Grid.Column="2" Text="Remote" Style="{StaticResource Label}" ToolTip="Ahead/behind its upstream, as of the last fetch" />
+                <TextBlock Grid.Column="3" Text="Changes" Style="{StaticResource Label}" />
+                <TextBlock Grid.Column="4" Text="Last commit" Style="{StaticResource Label}" />
+            </Grid>
+            <Grid>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="Repos">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2,10,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="1.4*" />
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="3*" />
+                                        <ColumnDefinition Width="96" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding Path}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Branch}" FontFamily="{StaticResource Mono}" FontSize="12.5"
+                                               Foreground="{StaticResource Accent}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Sync}" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Label}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding OutOfSync}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Grid.Column="3" Text="{Binding ChangesText}" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Label}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Dirty}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource Amber}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Grid.Column="4" Text="{Binding Last}" Style="{StaticResource Label}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Subject}" />
+                                    <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button Style="{StaticResource Act}" Content="&#xE774;" ToolTip="{Binding Web}" Click="OpenWeb"
+                                                Visibility="{Binding HasWeb, Converter={StaticResource Vis}}" />
+                                        <Button Style="{StaticResource Act}" Content="&#xE756;" ToolTip="Open a terminal here" Click="OpenCli" />
+                                        <Button Style="{StaticResource Act}" Content="&#xED25;" ToolTip="Open in Explorer" Click="OpenFolder" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <TextBlock x:Name="Empty" Style="{StaticResource Label}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Text="Loading…" />
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>
