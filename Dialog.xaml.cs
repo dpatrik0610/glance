@@ -37,7 +37,6 @@ public partial class Dialog : Window
         }
         else d.WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
-        d.Glow.Color = c;
         d.EdgeStop.Color = Color.FromArgb(0xCC, c.R, c.G, c.B);
         d.WashStop.Color = Color.FromArgb(0x30, c.R, c.G, c.B);
         d.Dot.Fill = new SolidColorBrush(c);

@@ -4,7 +4,7 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
         Topmost="True" ShowInTaskbar="False" Width="468" SizeToContent="Height"
         FontFamily="Bahnschrift, Segoe UI" TextOptions.TextFormattingMode="Display">
-    <!-- Same glass as the alert toasts (AlertWindow); 24px margin leaves room for the glow -->
+    <!-- Same glass as the alert toasts (AlertWindow), without their colored glow; 24px margin leaves room for the shadow -->
     <Grid x:Name="Root" Margin="24" Opacity="0" RenderTransformOrigin="0.5,0.5">
         <Grid.RenderTransform>
             <ScaleTransform x:Name="Zoom" ScaleX="0.96" ScaleY="0.96" />
@@ -12,7 +12,7 @@
 
         <Border CornerRadius="18" Background="#F20C0C10" MouseLeftButtonDown="Drag">
             <Border.Effect>
-                <DropShadowEffect x:Name="Glow" BlurRadius="34" ShadowDepth="0" Opacity="0.5" />
+                <DropShadowEffect BlurRadius="30" ShadowDepth="4" Opacity="0.45" Color="Black" />
             </Border.Effect>
         </Border>
         <Border CornerRadius="18" BorderThickness="1" IsHitTestVisible="False">
