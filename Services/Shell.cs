@@ -6,6 +6,10 @@ public static class Shell
 {
     public record Result(int Code, string Out, string Err);
 
+    /// Installed, as a shell would find it.
+    public static bool OnPath(string exe) => (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries)
+        .Any(dir => System.IO.File.Exists(System.IO.Path.Combine(dir, exe)));
+
     /// Runs a console tool hidden and captures its output. Throws Win32Exception if the exe isn't installed.
     public static async Task<Result> Run(string exe, params string[] args)
     {

@@ -12,12 +12,13 @@ namespace Glance;
 
 public partial class MainWindow : Window
 {
-    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create);
+    /// Needs: an exe that must be on PATH, or the tab is left out (checked at startup).
+    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null);
 
     // Add a page here; sidebar, Ctrl+N shortcuts and lazy creation follow. Keep tabs of a group together:
     // groups appear in first-seen order. Icons: Segoe Fluent Icons code points.
-    static readonly Tab[] Tabs =
-    [
+    static readonly Tab[] Tabs = new Tab[]
+    {
         new("System", "Monitor", "\uE7F4", () => new SystemPage()),
         new("Network", "Monitor", "\uE839", () => new NetworkPage()),
         new("History", "Monitor", "\uE81C", () => new HistoryPage()),
@@ -28,9 +29,9 @@ public partial class MainWindow : Window
         new("Password", "Tools", "\uE8D7", () => new PasswordPage()),
         new("CLI", "Dev", "\uE756", () => new CliPage()),
         new("Ports", "Dev", "\uE943", () => new DevPage()),
-        new("Git", "Dev", "\uF003", () => new GitPage()),
-        new("Docker", "Dev", "\uF158", () => new DockerPage()),
-    ];
+        new("Git", "Dev", "\uF003", () => new GitPage(), "git.exe"),
+        new("Docker", "Dev", "\uF158", () => new DockerPage(), "docker.exe"),
+    }.Where(t => t.Needs is null || Shell.OnPath(t.Needs)).ToArray();
 
     // Pinned at the bottom of the sidebar, icon only.
     static readonly Tab SettingsTab = new("Settings", "", "\uE713", () => new SettingsPage());

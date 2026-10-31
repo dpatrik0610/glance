@@ -55,6 +55,7 @@ static class SelfTest
             Check(Git.WebUrl("git@github.com:me/glance.git") == "https://github.com/me/glance", "git ssh remote");
             Check(Git.WebUrl("https://me:tok@github.com/me/glance.git") == "https://github.com/me/glance", "git https remote drops token");
             Check(Git.WebUrl("F:/repos/x") is null, "git local remote");
+            Check(Shell.OnPath("cmd.exe") && !Shell.OnPath("no-such-tool.exe"), "tool detection hides Git/Docker tabs");
 
             var mark = Pages.CliPage.CwdMark().Match("x\x1b]9;9;\"F:\\Coding\\glance\"\x1b\\qantanas");
             Check(mark.Success && mark.Groups[1].Value == @"F:\Coding\glance", "cli cwd mark");

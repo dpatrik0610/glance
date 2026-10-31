@@ -88,7 +88,7 @@ public partial class CliPage : UserControl
         InitializeComponent();
         TabList.ItemsSource = tabs;
         Folders.ItemsSource = App.Settings.CliFolders;
-        ClaudeButton.Visibility = OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;
+        ClaudeButton.Visibility = Shell.OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;
         IsVisibleChanged += (_, _) => FocusTerm();
         new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, (_, _) => Reap(), Dispatcher);
         Application.Current.Exit += (_, _) => { Save(); foreach (var t in tabs) Kill(t); };
@@ -366,10 +366,6 @@ public partial class CliPage : UserControl
 
     void ToggleFolders(object sender, RoutedEventArgs e) =>
         FolderPanel.Visibility = FoldersToggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-
-    /// Installed, as the shell would find it.
-    static bool OnPath(string exe) => (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries)
-        .Any(dir => File.Exists(Path.Combine(dir, exe)));
 
     static string LeafOf(string dir) => Path.GetFileName(dir.TrimEnd('\\')) is { Length: > 0 } leaf ? leaf : dir;
 
