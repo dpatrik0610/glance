@@ -32,6 +32,8 @@ public class CliTab : Bindable
     /// Where the shell is now, from the prompt's OSC 9;9 mark; what a restart reopens in.
     public string Cwd { get; set; } = "";
     public string? Command { get; init; }
+    /// A restored Claude tab: picks its last conversation in this folder back up.
+    public bool Resume { get; set; }
     public string Name { get => name; set => Set(ref name, value); }
     public bool Editing { get => editing; set => Set(ref editing, value); }
     public string Color { get => color; set { if (Set(ref color, value)) { Raise(nameof(Brush)); Raise(nameof(Tint)); } } }
@@ -63,6 +65,8 @@ public partial class CliPage : UserControl
 
     /// Open terminals, for the exit prompt.
     public static int Running { get; private set; }
+
+    public const string Claude = "claude";
 
     record Msg(string T, int Id, string? D, int Cols, int Rows, string? Uri);
     record Saved(string Dir, string? Command, string Name, string Color);
@@ -106,7 +110,8 @@ public partial class CliPage : UserControl
         {
             if (!File.Exists(SessionFile)) return;
             restoring = true;
-            foreach (var t in JsonSerializer.Deserialize<Saved[]>(File.ReadAllText(SessionFile)) ?? []) Open(t.Dir, t.Command, t.Name, t.Color);
+            foreach (var t in JsonSerializer.Deserialize<Saved[]>(File.ReadAllText(SessionFile)) ?? [])
+                Open(t.Dir, t.Command, t.Name, t.Color).Resume = t.Command == Claude;
             if (tabs.Count > 0) TabList.SelectedIndex = 0;
         }
         catch (Exception e) when (e is IOException or JsonException) { Db.Warn($"cli restore: {e.Message}"); }
@@ -160,6 +165,11 @@ public partial class CliPage : UserControl
             queued.Clear();
             return;
         }
+        if (m.T == "palette") // Ctrl+K inside a terminal
+        {
+            ((MainWindow)Window.GetWindow(this)).OpenPalette();
+            return;
+        }
         if (m.T == "link")
         {
             if (Uri.TryCreate(m.Uri, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
@@ -177,7 +187,9 @@ public partial class CliPage : UserControl
         if (t.Starting) { t.Pty.Resize(cols, rows); return; }
         t.Starting = true;
         t.Pty.TerminalOutput += (_, e) => Output(t, e.Data);
-        var script = t.Command is null ? CwdHook : CwdHook + "\n" + t.Command;
+        // --continue fails when the folder has no conversation yet; start a fresh one then.
+        var run = t.Resume ? $"{Claude} --continue || {Claude}" : t.Command;
+        var script = run is null ? CwdHook : CwdHook + "\n" + run;
         var command = $"pwsh.exe -NoLogo -NoExit -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}";
         new Thread(() => // Start blocks for the shell's lifetime, pumping its output
         {
@@ -276,7 +288,7 @@ public partial class CliPage : UserControl
 
     void NewShell(object sender, RoutedEventArgs e) => Open(Current?.Dir);
 
-    void NewClaude(object sender, RoutedEventArgs e) => Open(Current?.Dir, "claude", "Claude", Palette[0]);
+    void NewClaude(object sender, RoutedEventArgs e) => Open(Current?.Dir, Claude, "Claude", Palette[0]);
 
     static CliTab TabOf(object sender) => (CliTab)((FrameworkElement)sender).DataContext;
 
@@ -344,7 +356,7 @@ public partial class CliPage : UserControl
 
     void FolderNewTab(object sender, RoutedEventArgs e) => Open(FolderOf(sender));
 
-    void FolderClaude(object sender, RoutedEventArgs e) => Open(FolderOf(sender), "claude", "Claude", Palette[0]);
+    void FolderClaude(object sender, RoutedEventArgs e) => Open(FolderOf(sender), Claude, "Claude", Palette[0]);
 
     void FolderExplorer(object sender, RoutedEventArgs e) => Process.Start("explorer.exe", $"\"{FolderOf(sender)}\"");
 

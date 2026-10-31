@@ -60,6 +60,13 @@ static class SelfTest
             var mark = Pages.CliPage.CwdMark().Match("x\x1b]9;9;\"F:\\Coding\\glance\"\x1b\\qantanas");
             Check(mark.Success && mark.Groups[1].Value == @"F:\Coding\glance", "cli cwd mark");
 
+            Task<string?> Nop() => Task.FromResult<string?>(null);
+            Cmd[] cmds = [new("Network", "Page", "", Nop), new("Copy public IP", "Network", "", Nop), new("glance", "Repo", "", Nop, @"F:\Coding\glance"),
+                new("todo", "Note", "", Nop, "buy milk", true)];
+            Check(MainWindow.Match(cmds, "").Count == 3, "palette: notes only on search");
+            Check(MainWindow.Match(cmds, "net").Select(c => c.Title).SequenceEqual(["Network", "Copy public IP"]), "palette: title prefix first");
+            Check(MainWindow.Match(cmds, "coding gla").Single().Title == "glance" && MainWindow.Match(cmds, "milk").Single().Title == "todo", "palette: all words, extra text");
+
             var cfg = new Settings { GpuTempLimit = 85, DiskFreeLimit = 0 };
             var alerts = new Alerts();
             var fired = 0;

@@ -22,7 +22,7 @@
 <script>
 // Glance's CLI renderer. One xterm per tab; the host (CliPage.xaml.cs) owns the shells and talks over postMessage.
 // host → page: {t:'open'|'show'|'close', id} {t:'out', id, d} {t:'focus'}
-// page → host: {t:'in', id, d} {t:'size', id, cols, rows} {t:'link', uri}
+// page → host: {t:'in', id, d} {t:'size', id, cols, rows} {t:'link', uri} {t:'palette'}
 const host = window.chrome.webview;
 const send = m => host.postMessage(m);
 
@@ -67,6 +67,7 @@ function open(id) {
             return false;
         }
         if (k === 'v') return false; // skip xterm; the browser's own paste event reaches it
+        if (k === 'k' && !e.shiftKey) { e.preventDefault(); send({ t: 'palette' }); return false; } // Glance's command palette
         return true;
     });
     // Right-click: copy the selection, or paste.

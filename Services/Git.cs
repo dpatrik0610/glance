@@ -20,12 +20,14 @@ public static class Git
     /// Repos in the CLI quick folders, up to two levels down (F:\Coding\group\repo). Newest commit first.
     public static async Task<List<Repo>> Repos()
     {
-        var found = App.Settings.CliFolders.Where(Directory.Exists)
-            .SelectMany(root => Find(root, 2).Select(dir => (dir, name: NameOf(root, dir))))
-            .DistinctBy(f => f.dir, StringComparer.OrdinalIgnoreCase);
-        var repos = await Task.WhenAll(found.Select(f => Read(f.dir, f.name)));
+        var repos = await Task.WhenAll(Folders().Select(f => Read(f.Dir, f.Name)));
         return repos.OfType<Repo>().OrderByDescending(r => r.When).ToList();
     }
+
+    /// Just where the repos are: a folder scan, no git calls.
+    public static List<(string Dir, string Name)> Folders() => App.Settings.CliFolders.Where(Directory.Exists)
+        .SelectMany(root => Find(root, 2).Select(dir => (dir, NameOf(root, dir))))
+        .DistinctBy(f => f.dir, StringComparer.OrdinalIgnoreCase).ToList();
 
     // "dndreforged/dndhelper" under F:\Coding; a quick folder that is itself a repo shows its own name.
     static string NameOf(string root, string dir) =>

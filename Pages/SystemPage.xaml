@@ -126,24 +126,45 @@
                             <ColumnDefinition />
                             <ColumnDefinition Width="80" />
                             <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="34" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Top processes" Style="{StaticResource H}" />
-                        <TextBlock Grid.Column="1" Text="CPU" Style="{StaticResource Label}" HorizontalAlignment="Right" />
-                        <TextBlock Grid.Column="2" Text="Memory" Style="{StaticResource Label}" HorizontalAlignment="Right" />
+                        <!-- Click a column to sort by it -->
+                        <TextBlock x:Name="ByCpu" Grid.Column="1" Text="CPU ↓" Style="{StaticResource Label}" HorizontalAlignment="Right"
+                                   Cursor="Hand" Background="Transparent" Foreground="{StaticResource Text}" MouseLeftButtonUp="SortCpu" />
+                        <TextBlock x:Name="ByMem" Grid.Column="2" Text="Memory" Style="{StaticResource Label}" HorizontalAlignment="Right"
+                                   Cursor="Hand" Background="Transparent" MouseLeftButtonUp="SortMemory" />
                     </Grid>
+                    <!-- Holds still while the mouse is over it, so the end button stays put -->
                     <ItemsControl x:Name="Procs">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="0,3">
+                                <Grid x:Name="Row" Background="Transparent" MinHeight="24">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition />
                                         <ColumnDefinition Width="80" />
                                         <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="34" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="1" Text="{Binding CpuText}" HorizontalAlignment="Right" />
-                                    <TextBlock Grid.Column="2" Text="{Binding MemText}" Style="{StaticResource Label}" HorizontalAlignment="Right" />
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock x:Name="Count" Text="{Binding Count, StringFormat='  ×{0}'}" Style="{StaticResource Label}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding CpuText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{Binding MemText}" Style="{StaticResource Label}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    <Button x:Name="End" Grid.Column="3" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="{StaticResource Icons}"
+                                            FontSize="10" Padding="6,3" HorizontalAlignment="Right" Foreground="{StaticResource Red}" Opacity="0"
+                                            ToolTip="End process" Click="EndProcess"
+                                            Visibility="{Binding CanKill, Converter={StaticResource Vis}}" />
                                 </Grid>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Count}" Value="1">
+                                        <Setter TargetName="Count" Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="End" Property="Opacity" Value="1" />
+                                    </Trigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

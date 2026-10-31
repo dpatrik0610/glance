@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Glance.Services;
@@ -47,10 +48,44 @@ public partial class SystemPage : UserControl
         UpSpark.Push((float)s.NetUp);
 
         Drives.ItemsSource = s.Drives;
-        Procs.ItemsSource = s.Procs;
+        last = s.Procs;
+        ShowProcs();
         CpuName.Text = s.CpuName;
         GpuName.Text = s.GpuName;
         Uptime.Text = TimeSpan.FromMilliseconds(Environment.TickCount64).ToString(@"d\d\ hh\h\ mm\m");
+    }
+
+    Proc[] last = [];
+    bool byMemory;
+
+    void ShowProcs()
+    {
+        if (Procs.IsMouseOver) return; // hold still under the cursor
+        Procs.ItemsSource = (byMemory ? last.OrderByDescending(p => p.MemMb) : last.OrderByDescending(p => p.Cpu).ThenByDescending(p => p.MemMb)).Take(7).ToArray();
+    }
+
+    void SortCpu(object sender, MouseButtonEventArgs e) => Sort(false);
+
+    void SortMemory(object sender, MouseButtonEventArgs e) => Sort(true);
+
+    void Sort(bool memory)
+    {
+        byMemory = memory;
+        ByCpu.Text = memory ? "CPU" : "CPU ↓";
+        ByMem.Text = memory ? "Memory ↓" : "Memory";
+        (ByCpu.Foreground, ByMem.Foreground) = memory ? ((Brush)FindResource("Sub"), (Brush)FindResource("Text")) : ((Brush)FindResource("Text"), (Brush)FindResource("Sub"));
+        ShowProcs();
+    }
+
+    void EndProcess(object sender, RoutedEventArgs e)
+    {
+        var p = (Proc)((FrameworkElement)sender).DataContext;
+        var what = p.Count == 1 ? p.Name : $"all {p.Count} {p.Name} processes";
+        if (MessageBox.Show($"End {what}? Unsaved work in it is lost.", "Glance", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
+        if (HardwareMonitor.Kill(p.Name) is { } error) MessageBox.Show(error, "Glance", MessageBoxButton.OK, MessageBoxImage.Information);
+        last = last.Where(x => x.Name != p.Name).ToArray();
+        Procs.ItemsSource = null; // drop the stale row now, even under the cursor
+        Dispatcher.BeginInvoke(ShowProcs, DispatcherPriority.Input);
     }
 
     static string Pct(float? v) => v is { } x ? $"{x:0}%" : "—";

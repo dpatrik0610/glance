@@ -12,8 +12,10 @@ public record Drive(string Name, double UsedGb, double TotalGb)
     public string Text => $"{UsedGb:0} / {TotalGb:0} GB";
 }
 
-public record Proc(string Name, double Cpu, double MemMb)
+/// All processes sharing a name (chrome × 34), summed.
+public record Proc(string Name, double Cpu, double MemMb, int Count)
 {
+    public bool CanKill => HardwareMonitor.CanKill(Name);
     public string CpuText => $"{Cpu:0.0}%";
     public string MemText => MemMb >= 1024 ? $"{MemMb / 1024:0.0} GB" : $"{MemMb:0} MB";
 }
@@ -125,9 +127,17 @@ public sealed class HardwareMonitor
     Proc[] Procs()
     {
         var now = clock.Elapsed;
-        var budgetMs = (now - lastProcAt).TotalMilliseconds * Environment.ProcessorCount;
         var cur = new Dictionary<int, TimeSpan>(lastCpu.Count);
-        var byName = new Dictionary<string, (double cpu, long mem)>();
+        var procs = Group(lastCpu, cur, (now - lastProcAt).TotalMilliseconds);
+        (lastCpu, lastProcAt) = (cur, now);
+        return procs;
+    }
+
+    /// CPU % of each name since `prev` was filled (0 for processes it hasn't seen) and working set; records this pass's CPU times in `cur`.
+    static Proc[] Group(Dictionary<int, TimeSpan> prev, Dictionary<int, TimeSpan> cur, double elapsedMs)
+    {
+        var budgetMs = elapsedMs * Environment.ProcessorCount;
+        var byName = new Dictionary<string, (double cpu, long mem, int count)>();
         foreach (var p in Process.GetProcesses())
         {
             using (p)
@@ -136,15 +146,56 @@ public sealed class HardwareMonitor
                 {
                     var t = p.TotalProcessorTime;
                     cur[p.Id] = t;
-                    var c = lastCpu.TryGetValue(p.Id, out var prev) ? (t - prev).TotalMilliseconds / budgetMs * 100 : 0;
+                    var c = prev.TryGetValue(p.Id, out var before) ? (t - before).TotalMilliseconds / budgetMs * 100 : 0;
                     byName.TryGetValue(p.ProcessName, out var a);
-                    byName[p.ProcessName] = (a.cpu + c, a.mem + p.WorkingSet64);
+                    byName[p.ProcessName] = (a.cpu + c, a.mem + p.WorkingSet64, a.count + 1);
                 }
                 catch (Exception e) when (e is Win32Exception or InvalidOperationException) { } // protected or exited
             }
         }
-        (lastCpu, lastProcAt) = (cur, now);
-        return byName.OrderByDescending(kv => kv.Value.cpu).ThenByDescending(kv => kv.Value.mem).Take(7)
-            .Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0)).ToArray();
+        return byName.Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0, kv.Value.count)).ToArray();
+    }
+
+    /// The heaviest process right now, for naming the culprit in an alert. CPU needs a second look a second later.
+    public static async Task<Proc?> Top(bool byMemory)
+    {
+        var first = new Dictionary<int, TimeSpan>();
+        var procs = Group([], first, 1);
+        if (!byMemory)
+        {
+            var sw = Stopwatch.StartNew();
+            await Task.Delay(1000);
+            procs = Group(first, [], sw.Elapsed.TotalMilliseconds);
+        }
+        return procs.Where(p => p.Name is not ("Idle" or "Glance")).MaxBy(p => byMemory ? p.MemMb : p.Cpu);
+    }
+
+    // Ending these crashes or logs out Windows (or is Glance itself); Task Manager warns about the same set.
+    static readonly HashSet<string> Critical = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "System", "Idle", "Registry", "Secure System", "Memory Compression", "smss", "csrss", "wininit", "winlogon",
+        "services", "lsass", "LsaIso", "svchost", "dwm", "fontdrvhost", "sihost", "Glance",
+    };
+
+    public static bool CanKill(string name) => !Critical.Contains(name);
+
+    /// Ends every process with this name in the user's session. Returns what went wrong, or null.
+    public static string? Kill(string name)
+    {
+        if (!CanKill(name)) return $"{name} is part of Windows.";
+        var session = Process.GetCurrentProcess().SessionId;
+        var denied = 0;
+        foreach (var p in Process.GetProcessesByName(name))
+        {
+            using (p)
+            {
+                try { if (p.SessionId == session) p.Kill(); }
+                catch (Win32Exception) { denied++; } // elevated or protected
+                catch (InvalidOperationException) { } // already gone
+            }
+        }
+        Db.Info($"kill {name} denied={denied}");
+        return denied == 0 ? null : $"{denied} {name} process{(denied == 1 ? "" : "es")} refused to end"
+            + (Native.IsAdmin ? "." : ". Restart Glance as admin to end elevated processes.");
     }
 }

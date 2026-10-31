@@ -68,8 +68,8 @@ public partial class SettingsPage : UserControl
         HotkeyStatus.Text = App.HotkeyStatus;
     }
 
-    void TestAlert(object sender, RoutedEventArgs e) =>
-        App.ShowAlert(new Alert("GPU · Temperature", s.GpuTempLimit + 3, s.GpuTempLimit, "°C", true, false));
+    async void TestAlert(object sender, RoutedEventArgs e) =>
+        App.ShowAlert(new Alert("CPU · Temperature", s.CpuTempLimit + 3, s.CpuTempLimit, "°C", true, false, Blame.Cpu), await HardwareMonitor.Top(false));
 
     void CityKey(object sender, KeyEventArgs e)
     {

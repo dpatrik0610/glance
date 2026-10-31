@@ -79,7 +79,11 @@ public partial class App : Application
         SettingsChanged += RegisterHotkey;
 
         Sampled += s => Dispatcher.BeginInvoke(() => tray.Update(s));
-        alerts.Fired += a => Dispatcher.BeginInvoke(() => ShowAlert(a));
+        alerts.Fired += a => Task.Run(async () =>
+        {
+            var who = a.Blame == Blame.None ? null : await HardwareMonitor.Top(a.Blame == Blame.Memory);
+            _ = Dispatcher.BeginInvoke(() => ShowAlert(a, who));
+        });
 
         Listen();
         Task.Run(SampleLoop);
@@ -163,11 +167,12 @@ public partial class App : Application
         if (HotkeyStatus != "Active.") Db.Warn($"hotkey {Settings.Hotkey}: {HotkeyStatus}");
     }
 
-    public static void ShowAlert(Alert a)
+    public static void ShowAlert(Alert a, Proc? who = null)
     {
-        Db.Warn($"alert {a.Label} {a.Value:0}{a.Unit} (limit {a.Limit:0})");
+        var blame = who is null ? "" : " · " + (a.Blame == Blame.Memory ? $"{who.Name} {who.MemText}" : $"{who.Name} {who.Cpu:0}%");
+        Db.Warn($"alert {a.Label} {a.Value:0}{a.Unit} (limit {a.Limit:0}){blame}");
         var color = a.Critical ? Color.FromRgb(0xFF, 0x4D, 0x5E) : Color.FromRgb(0xFF, 0x6A, 0x3D);
-        AlertWindow.Show(new Toast(a.Label, a.Value.ToString("0"), a.Unit, "Limit", $"{(a.Above ? "≥" : "≤")} {a.Limit:0}{a.Unit}", color, false),
+        AlertWindow.Show(new Toast(a.Label + blame, a.Value.ToString("0"), a.Unit, "Limit", $"{(a.Above ? "≥" : "≤")} {a.Limit:0}{a.Unit}", color, false),
             ((App)Current).ShowMain);
     }
 

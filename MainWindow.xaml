@@ -11,6 +11,7 @@
         <WindowChrome CaptionHeight="0" GlassFrameThickness="-1" ResizeBorderThickness="6" UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
     <Border x:Name="Panel" Background="#C8161618">
+      <Grid>
         <Grid Margin="14">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -31,8 +32,11 @@
                     <TextBlock Text="/" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" Margin="10,0" />
                     <TextBlock x:Name="PageTitle" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" />
                 </StackPanel>
-                <Button Style="{StaticResource Ghost}" HorizontalAlignment="Right" Content="✕" FontSize="13"
-                        ToolTip="Hide to tray (Esc)" Click="HideClick" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource Ghost}" Content="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
+                            ToolTip="Search everything (Ctrl+K)" Click="PaletteClick" />
+                    <Button Style="{StaticResource Ghost}" Content="✕" FontSize="13" ToolTip="Hide to tray (Esc)" Click="HideClick" />
+                </StackPanel>
             </Grid>
 
             <!-- Sidebar: grouped tabs (scroll when they don't fit), Settings pinned below as an icon -->
@@ -86,5 +90,46 @@
 
             <ContentControl x:Name="Page" Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" Focusable="False" />
         </Grid>
+
+        <!-- Ctrl+K command palette: one search over pages, actions, repos, containers, notes and clipboard -->
+        <Grid x:Name="PaletteLayer" Visibility="Collapsed" Background="#8C000000" MouseLeftButtonDown="PaletteBackdrop">
+            <Border Width="640" VerticalAlignment="Top" Margin="16,84,16,16" CornerRadius="20" Padding="10"
+                    Background="#F51A1A1E" BorderBrush="{StaticResource Line}" BorderThickness="1">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="40" ShadowDepth="0" Opacity="0.6" />
+                </Border.Effect>
+                <DockPanel>
+                    <!-- The TextBox applies its Padding twice (border + text host), so the box look lives on this Border instead -->
+                    <Border DockPanel.Dock="Top" CornerRadius="14" Background="{StaticResource Track}" Padding="16,0,8,0">
+                        <DockPanel>
+                            <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="15" Foreground="{StaticResource Accent}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox x:Name="Query" FontSize="16" Padding="2,11" Background="Transparent"
+                                     Tag="Search pages, repos, containers, notes, clipboard…" TextChanged="QueryChanged" PreviewKeyDown="QueryKey" />
+                        </DockPanel>
+                    </Border>
+                    <DockPanel DockPanel.Dock="Bottom" Margin="8,8,8,2">
+                        <TextBlock DockPanel.Dock="Right" Text="↑↓  ·  Enter  ·  Esc" Style="{StaticResource Label}" FontSize="11.5" Opacity="0.7" />
+                        <TextBlock x:Name="PaletteStatus" Style="{StaticResource Label}" FontSize="11.5" Foreground="{StaticResource Accent}" />
+                    </DockPanel>
+                    <ListBox x:Name="Results" Style="{StaticResource Sidebar}" MaxHeight="430" Margin="0,8,0,0"
+                             PreviewMouseLeftButtonUp="ResultClicked">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel>
+                                    <TextBlock Text="{Binding Icon}" FontFamily="{StaticResource Icons}" FontSize="15" Width="28" VerticalAlignment="Center"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" FontSize="12" Opacity="0.65" Margin="12,0,0,0" VerticalAlignment="Center"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                    <TextBlock Text="{Binding Title}" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
+      </Grid>
     </Border>
 </Window>
