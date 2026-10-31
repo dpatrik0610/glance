@@ -1,0 +1,114 @@
+<UserControl x:Class="Glance.Pages.NotesPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260" />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <!-- Note list -->
+        <Border Style="{StaticResource Card}">
+            <DockPanel>
+                <UniformGrid DockPanel.Dock="Top" Columns="2" Margin="0,0,0,12">
+                    <Button Margin="0,0,4,0" Click="NewText" ToolTip="New text note">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE70B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Note" />
+                        </StackPanel>
+                    </Button>
+                    <Button Margin="4,0,0,0" Click="NewChecklist" ToolTip="New checklist">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE9D5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Checklist" />
+                        </StackPanel>
+                    </Button>
+                </UniformGrid>
+                <ListBox x:Name="List" Style="{StaticResource Sidebar}" SelectionChanged="Selected">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel Width="190">
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontFamily="{StaticResource Icons}" FontSize="15"
+                                           Margin="0,2,12,0" VerticalAlignment="Top"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <StackPanel>
+                                    <TextBlock Text="{Binding DisplayTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                    <TextBlock Text="{Binding Summary}" FontSize="11.5" Opacity="0.75" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Editor (DataContext = selected note) -->
+        <Border x:Name="Editor" Grid.Column="1" Style="{StaticResource Card}">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Icons}"
+                            ToolTip="Delete note" Click="DeleteNote" />
+                    <TextBox x:Name="TitleBox" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Tag="Title"
+                             FontSize="20" FontWeight="SemiBold" Background="Transparent" Padding="0,4" />
+                </DockPanel>
+
+                <Grid>
+                    <TextBox x:Name="TextEditor" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" Tag="Write something…"
+                             AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap" FontSize="14" Padding="14,12"
+                             VerticalScrollBarVisibility="Auto" />
+
+                    <DockPanel x:Name="ChecklistEditor">
+                        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                            <Button DockPanel.Dock="Right" Content="Clear done" Margin="10,0,0,0" Click="ClearDone" />
+                            <TextBox x:Name="NewItem" Tag="Add an item and press Enter" KeyDown="NewItemKey" />
+                        </DockPanel>
+                        <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Label}" FontSize="11" Margin="2,10,0,0"
+                                   Text="Due: tomorrow 9 · fri 14:00 · in 30m · 18:00 · 11.03 — then 🔔 to get a reminder" />
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,1,8,1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Style="{StaticResource Check}" IsChecked="{Binding Done}" VerticalAlignment="Center" Margin="2,0,4,0" />
+                                            <TextBox x:Name="ItemText" Grid.Column="1" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                                     Background="Transparent" Padding="6,5" />
+                                            <TextBox x:Name="DueBox" Grid.Column="2" Width="140" Text="{Binding DueText}" Tag="due…"
+                                                     FontSize="12" Padding="10,4" Margin="6,0,0,0" VerticalAlignment="Center"
+                                                     ToolTip="tomorrow 9 · fri 14:00 · in 30m · 18:00 · 11.03 (Enter to set, empty to clear)"
+                                                     PreviewKeyDown="CommitOnEnter" />
+                                            <ToggleButton Grid.Column="3" Style="{StaticResource IconToggle}" Content="&#xEA8F;"
+                                                          IsChecked="{Binding Remind}" ToolTip="Remind me when it's due" Margin="2,0,0,0" />
+                                            <Button Grid.Column="4" Style="{StaticResource Ghost}" Content="✕" FontSize="11"
+                                                    ToolTip="Delete item" Click="DeleteItem" />
+                                        </Grid>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding Done}" Value="True">
+                                                <Setter TargetName="ItemText" Property="Opacity" Value="0.4" />
+                                                <Setter TargetName="DueBox" Property="Opacity" Value="0.4" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsOverdue}" Value="True">
+                                                <Setter TargetName="DueBox" Property="Foreground" Value="{StaticResource Red}" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <TextBlock x:Name="Empty" Grid.Column="1" Style="{StaticResource Label}" FontSize="14"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Text="No notes yet. Create one on the left." />
+    </Grid>
+</UserControl>

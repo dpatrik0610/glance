@@ -1,0 +1,151 @@
+using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Text.RegularExpressions;
+
+namespace Glance.Services;
+
+public record Field(string Label, string[] Values);
+public record Adapter(string Name, string Detail, Field[] Fields);
+public record PublicIp(string Ip, string Where);
+
+public static partial class Net
+{
+    static readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(10) };
+    static readonly HttpClient bulk = new() { Timeout = TimeSpan.FromSeconds(30) };
+
+    record IpInfo(string Ip, string? City, string? Country, string? Org);
+
+    /// ipinfo.io: free, no key. Org comes as "AS35311 PR-TELECOM Zrt."; the AS number is noise here.
+    public static async Task<PublicIp> PublicIp()
+    {
+        var i = await http.GetFromJsonAsync<IpInfo>("https://ipinfo.io/json") ?? throw new HttpRequestException("empty response");
+        string[] parts = [AsNumber().Replace(i.Org ?? "", ""), string.Join(", ", new[] { i.City, i.Country }.Where(s => !string.IsNullOrEmpty(s)))];
+        return new(i.Ip, string.Join(" · ", parts.Where(p => p.Length > 0)));
+    }
+
+    [GeneratedRegex(@"^AS\d+\s+")] private static partial Regex AsNumber();
+
+    /// Adapters that are up and have an address (skips the filter drivers Windows lists per NIC); the one with a gateway first.
+    public static Adapter[] Adapters() => NetworkInterface.GetAllNetworkInterfaces()
+        .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+        .Select(n => (n, ip: n.GetIPProperties()))
+        .Where(x => x.ip.UnicastAddresses.Count > 0)
+        .OrderByDescending(x => x.ip.GatewayAddresses.Count > 0)
+        .Select(x =>
+        {
+            var (n, ip) = x;
+            var addrs = ip.UnicastAddresses.Select(a => a.Address).ToArray();
+            var mac = n.GetPhysicalAddress().GetAddressBytes();
+            Field?[] fields =
+            [
+                Ips("IPv4", addrs.Where(a => a.AddressFamily == AddressFamily.InterNetwork)),
+                Ips("IPv6", addrs.Where(a => a.AddressFamily == AddressFamily.InterNetworkV6 && !a.IsIPv6LinkLocal)),
+                Ips("Gateway", ip.GatewayAddresses.Select(g => g.Address)),
+                Ips("DNS", ip.DnsAddresses.Where(a => !a.IsIPv6SiteLocal)), // fec0:: entries are Windows' unused defaults
+                mac.Length == 6 ? new("MAC", [string.Join(":", mac.Select(b => b.ToString("X2")))]) : null,
+            ];
+            var speed = n.Speed >= 1e9 ? $"{n.Speed / 1e9:0.#} Gbps" : $"{n.Speed / 1e6:0} Mbps";
+            return new Adapter(n.Name, $"{n.Description} · {speed}", fields.OfType<Field>().ToArray());
+        }).ToArray();
+
+    static Field? Ips(string label, IEnumerable<IPAddress> ips)
+    {
+        var values = ips.Select(i => i.ToString()).Distinct().ToArray();
+        return values.Length > 0 ? new(label, values) : null;
+    }
+
+    /// Adapters with a way out: their byte counters are this PC's internet traffic.
+    public static NetworkInterface[] Online() => NetworkInterface.GetAllNetworkInterfaces()
+        .Where(n => n.OperationalStatus == OperationalStatus.Up && n.GetIPProperties().GatewayAddresses.Count > 0).ToArray();
+
+    public static IPAddress? Gateway(NetworkInterface[] online) => online
+        .SelectMany(n => n.GetIPProperties().GatewayAddresses)
+        .Select(g => g.Address).FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork);
+
+    /// Round trip in ms, null = lost.
+    public static async Task<long?> Ping(IPAddress? host)
+    {
+        if (host is null) return null;
+        using var p = new Ping();
+        try
+        {
+            var r = await p.SendPingAsync(host, 1000);
+            return r.Status == IPStatus.Success ? r.RoundtripTime : null;
+        }
+        catch (PingException) { return null; }
+    }
+
+    // ---- Speed test against Cloudflare's endpoints (what speed.cloudflare.com itself uses) ----
+
+    const string Speed = "https://speed.cloudflare.com/";
+
+    /// Mbps over ~6 s with 4 parallel streams (one TCP stream rarely fills a fast line).
+    /// The first second is TCP ramp-up and isn't counted. Reports the running figure as it goes.
+    public static async Task<double> SpeedTest(bool upload, Action<double> progress)
+    {
+        long bytes = 0;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(7));
+        var workers = Enumerable.Range(0, 4).Select(_ => Task.Run(() => Transfer(upload, n => Interlocked.Add(ref bytes, n), stop.Token))).ToArray();
+        await Task.Delay(1000);
+        var (from, at) = (Interlocked.Read(ref bytes), Stopwatch.GetTimestamp());
+        double mbps = 0;
+        while (!stop.IsCancellationRequested && workers.Any(w => !w.IsCompleted))
+        {
+            await Task.Delay(250);
+            mbps = (Interlocked.Read(ref bytes) - from) * 8 / Stopwatch.GetElapsedTime(at).TotalSeconds / 1e6;
+            progress(mbps);
+        }
+        await Task.WhenAll(workers); // a real failure (offline, blocked) surfaces here
+        return mbps;
+    }
+
+    static async Task Transfer(bool upload, Action<int> add, CancellationToken stop)
+    {
+        var buf = new byte[64 << 10];
+        try
+        {
+            while (true)
+            {
+                if (upload)
+                {
+                    using var r = await bulk.PostAsync(Speed + "__up", new Payload(buf, add, stop), stop);
+                    r.EnsureSuccessStatusCode();
+                }
+                else
+                {
+                    using var r = await bulk.GetAsync(Speed + "__down?bytes=25000000", HttpCompletionOption.ResponseHeadersRead, stop);
+                    r.EnsureSuccessStatusCode();
+                    await using var s = await r.Content.ReadAsStreamAsync(stop);
+                    for (int n; (n = await s.ReadAsync(buf, stop)) > 0;) add(n);
+                }
+            }
+        }
+        catch (Exception) when (stop.IsCancellationRequested) { } // time's up mid-transfer
+    }
+
+    /// 8 MB of zeros, counted as it's written so a cut-off upload still counts what went out.
+    sealed class Payload(byte[] chunk, Action<int> sent, CancellationToken stop) : HttpContent
+    {
+        const int Chunks = 128;
+
+        protected override async Task SerializeToStreamAsync(Stream s, TransportContext? context)
+        {
+            for (var i = 0; i < Chunks; i++)
+            {
+                await s.WriteAsync(chunk, stop);
+                sent(chunk.Length);
+            }
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = (long)Chunks * chunk.Length;
+            return true;
+        }
+    }
+}

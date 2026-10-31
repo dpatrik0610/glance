@@ -1,0 +1,41 @@
+<UserControl x:Class="Glance.Pages.HistoryPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="clr-namespace:Glance">
+    <DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="6,0,6,6">
+            <StackPanel x:Name="RangeChips" Orientation="Horizontal" DockPanel.Dock="Right" />
+            <TextBlock x:Name="Status" Style="{StaticResource Label}" VerticalAlignment="Center" />
+        </DockPanel>
+        <ItemsControl x:Name="Charts">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource Card}">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding Stats}" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Title}" Style="{StaticResource H}" />
+                            </DockPanel>
+                            <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                                <TextBlock DockPanel.Dock="Right" Text="now" Style="{StaticResource Label}" FontSize="11" />
+                                <TextBlock Text="{Binding From}" Style="{StaticResource Label}" FontSize="11" />
+                            </DockPanel>
+                            <Grid>
+                                <UniformGrid Rows="2">
+                                    <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
+                                    <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1" />
+                                </UniformGrid>
+                                <g:Spark Series="{Binding Series}" Color="{Binding Color}" Max="{Binding Max}" />
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </DockPanel>
+</UserControl>

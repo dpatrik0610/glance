@@ -1,0 +1,107 @@
+<UserControl x:Class="Glance.Pages.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="RowLabel" TargetType="TextBlock">
+            <Setter Property="Width" Value="170" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="SliderRow" TargetType="DockPanel">
+            <Setter Property="Margin" Value="0,0,0,14" />
+        </Style>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <WrapPanel Orientation="Horizontal">
+            <StackPanel Width="490">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Appearance" Style="{StaticResource H}" Margin="0,0,0,14" />
+                        <DockPanel x:Name="OpacityRow" Style="{StaticResource SliderRow}">
+                            <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" Style="{StaticResource Label}" />
+                            <TextBlock Text="Opacity" Style="{StaticResource RowLabel}" />
+                            <Slider Minimum="0.1" Maximum="1" />
+                        </DockPanel>
+                        <CheckBox x:Name="BlurBox" Style="{StaticResource Switch}" Content="Blur background" Margin="0,0,0,12" Click="Toggled" />
+                        <CheckBox x:Name="TopBox" Style="{StaticResource Switch}" Content="Always on top" Click="Toggled" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="General" Style="{StaticResource H}" Margin="0,0,0,14" />
+                        <DockPanel Margin="0,0,0,4">
+                            <Button DockPanel.Dock="Right" Content="Apply" Margin="10,0,0,0" Click="SetHotkey" />
+                            <TextBlock Text="Show / hide hotkey" Style="{StaticResource RowLabel}" />
+                            <TextBox x:Name="HotkeyBox" />
+                        </DockPanel>
+                        <TextBlock x:Name="HotkeyStatus" Style="{StaticResource Label}" Margin="170,0,0,14" />
+                        <DockPanel x:Name="RefreshRow" Style="{StaticResource SliderRow}">
+                            <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" Style="{StaticResource Label}" />
+                            <TextBlock Text="Live refresh rate" Style="{StaticResource RowLabel}" />
+                            <Slider Minimum="250" Maximum="5000" IsSnapToTickEnabled="True" TickFrequency="250" />
+                        </DockPanel>
+                        <CheckBox x:Name="AutoBox" Style="{StaticResource Switch}" Content="Start with Windows (in tray)" Click="Toggled" />
+                        <CheckBox x:Name="MenuBox" Style="{StaticResource Switch}" Content="&quot;Open CLI&quot; in Explorer right-click" Click="Toggled" Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Weather" Style="{StaticResource H}" Margin="0,0,0,14" />
+                        <DockPanel Margin="0,0,0,6">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Set" Margin="10,0,0,0" Click="SetCity" />
+                            <TextBlock Text="Hometown" Style="{StaticResource RowLabel}" />
+                            <TextBox x:Name="CityBox" KeyDown="CityKey" />
+                        </DockPanel>
+                        <TextBlock x:Name="CityStatus" Style="{StaticResource Label}" Margin="170,0,0,12" />
+                        <CheckBox x:Name="FBox" Style="{StaticResource Switch}" Content="Fahrenheit / mph" Click="Toggled" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Width="490">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,14">
+                            <Button DockPanel.Dock="Right" Content="Test" Click="TestAlert" />
+                            <TextBlock Text="Alerts" Style="{StaticResource H}" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <CheckBox x:Name="AlertsBox" Style="{StaticResource Switch}" Content="Enabled" Margin="0,0,0,14" Click="Toggled" />
+                        <DockPanel x:Name="CpuLimitRow" Style="{StaticResource SliderRow}">
+                            <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" Style="{StaticResource Label}" />
+                            <TextBlock Text="CPU temperature ≥" Style="{StaticResource RowLabel}" />
+                            <Slider Minimum="50" Maximum="105" IsSnapToTickEnabled="True" TickFrequency="1" />
+                        </DockPanel>
+                        <DockPanel x:Name="GpuLimitRow" Style="{StaticResource SliderRow}">
+                            <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" Style="{StaticResource Label}" />
+                            <TextBlock Text="GPU temperature ≥" Style="{StaticResource RowLabel}" />
+                            <Slider Minimum="50" Maximum="105" IsSnapToTickEnabled="True" TickFrequency="1" />
+                        </DockPanel>
+                        <DockPanel x:Name="RamLimitRow" Style="{StaticResource SliderRow}">
+                            <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" Style="{StaticResource Label}" />
+                            <TextBlock Text="Memory usage ≥" Style="{StaticResource RowLabel}" />
+                            <Slider Minimum="50" Maximum="99" IsSnapToTickEnabled="True" TickFrequency="1" />
+                        </DockPanel>
+                        <DockPanel x:Name="DiskLimitRow" Style="{StaticResource SliderRow}" Margin="0">
+                            <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" Style="{StaticResource Label}" />
+                            <TextBlock Text="Drive free space ≤" Style="{StaticResource RowLabel}" />
+                            <Slider Minimum="1" Maximum="30" IsSnapToTickEnabled="True" TickFrequency="1" />
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Logging" Style="{StaticResource H}" Margin="0,0,0,14" />
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Apply" Margin="10,0,0,0" Click="SetMongo" />
+                            <TextBlock Text="MongoDB" Style="{StaticResource RowLabel}" />
+                            <TextBox x:Name="MongoBox" />
+                        </DockPanel>
+                        <TextBlock Text="db glance · logs + metrics (1/min) · kept 30 days" Style="{StaticResource Label}" Margin="170,6,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </WrapPanel>
+    </ScrollViewer>
+</UserControl>

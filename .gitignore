@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+*.user
+# Code-signing keys/certs never go in the repo (tools/trust.ps1 makes them locally)
+*.pfx
+*.cer
+*.p12

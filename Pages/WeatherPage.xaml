@@ -1,0 +1,114 @@
+<UserControl x:Class="Glance.Pages.WeatherPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <TextBlock x:Name="Status" Style="{StaticResource Label}" FontSize="14"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+        <Grid x:Name="Body" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Now -->
+            <Border Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock x:Name="Place" Style="{StaticResource Label}" FontSize="14" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <TextBlock x:Name="NowGlyph" FontSize="54" Foreground="{StaticResource Amber}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                            <TextBlock x:Name="NowTemp" FontSize="64" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock x:Name="NowText" FontSize="16" />
+                        <TextBlock x:Name="HiLo" Style="{StaticResource Label}" Margin="0,2,0,0" />
+                    </StackPanel>
+                    <UniformGrid Grid.Column="1" Columns="2" VerticalAlignment="Center" Width="300">
+                        <StackPanel Margin="0,6"><TextBlock Text="Feels like" Style="{StaticResource Label}" /><TextBlock x:Name="Feels" FontSize="18" /></StackPanel>
+                        <StackPanel Margin="0,6"><TextBlock Text="Humidity" Style="{StaticResource Label}" /><TextBlock x:Name="Humidity" FontSize="18" /></StackPanel>
+                        <StackPanel Margin="0,6"><TextBlock Text="Wind" Style="{StaticResource Label}" /><TextBlock x:Name="Wind" FontSize="18" /></StackPanel>
+                        <StackPanel Margin="0,6"><TextBlock Text="UV index" Style="{StaticResource Label}" /><TextBlock x:Name="Uv" FontSize="18" /></StackPanel>
+                        <StackPanel Margin="0,6"><TextBlock Text="Sunrise" Style="{StaticResource Label}" /><TextBlock x:Name="Sunrise" FontSize="18" /></StackPanel>
+                        <StackPanel Margin="0,6"><TextBlock Text="Sunset" Style="{StaticResource Label}" /><TextBlock x:Name="Sunset" FontSize="18" /></StackPanel>
+                    </UniformGrid>
+                </Grid>
+            </Border>
+
+            <!-- 7 days -->
+            <Border Grid.Column="1" Grid.RowSpan="2" Style="{StaticResource Card}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="7 days" Style="{StaticResource H}" Margin="0,0,0,10" />
+                    <ItemsControl x:Name="Days">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,7">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="28" />
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="34" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Day}" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Glyph}" Foreground="{StaticResource Amber}" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Rain}" Foreground="#5AA9FF" FontSize="12" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Text="{Binding Min}" Style="{StaticResource Label}" HorizontalAlignment="Right" Margin="0,0,8,0" />
+                                    <Grid Grid.Column="4" Height="5" VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="{Binding Before}" />
+                                            <ColumnDefinition Width="{Binding Bar}" MinWidth="5" />
+                                            <ColumnDefinition Width="{Binding After}" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.ColumnSpan="3" CornerRadius="2.5" Background="{StaticResource Track}" />
+                                        <Border Grid.Column="1" CornerRadius="2.5" Background="{StaticResource Accent}" />
+                                    </Grid>
+                                    <TextBlock Grid.Column="5" Text="{Binding Max}" HorizontalAlignment="Right" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </Border>
+
+            <!-- Next 24 hours -->
+            <Border Grid.Row="1" Style="{StaticResource Card}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Next 24 hours" Style="{StaticResource H}" Margin="0,0,0,10" />
+                    <ItemsControl x:Name="Hours">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="2,0">
+                                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Hour}" Style="{StaticResource Label}" FontSize="11" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Rain}" Foreground="#5AA9FF" FontSize="10" HorizontalAlignment="Center" />
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="{Binding Space}" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="{Binding Fill}" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="1" Text="{Binding Temp}" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Border Grid.Row="2" CornerRadius="6" Background="{Binding Brush}" MinHeight="6" />
+                                    </Grid>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

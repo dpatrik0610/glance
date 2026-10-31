@@ -1,0 +1,75 @@
+<Window x:Class="Glance.AlertWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False" Focusable="False"
+        Width="420" Height="168" FontFamily="Bahnschrift, Segoe UI" TextOptions.TextFormattingMode="Display">
+    <!-- 24px margin leaves room for the glow -->
+    <Grid x:Name="Root" Margin="24" Opacity="0" Cursor="Hand" MouseLeftButtonUp="Clicked">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="Slide" X="56" />
+        </Grid.RenderTransform>
+
+        <!-- Glass body + colored glow -->
+        <Border CornerRadius="16" Background="#F20C0C10">
+            <Border.Effect>
+                <DropShadowEffect x:Name="Glow" BlurRadius="30" ShadowDepth="0" Opacity="0.5" />
+            </Border.Effect>
+        </Border>
+        <!-- Edge: lit from the top-left in the alert color, fading out -->
+        <Border CornerRadius="16" BorderThickness="1">
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop x:Name="EdgeStop" Offset="0" />
+                    <GradientStop Color="#12FFFFFF" Offset="0.5" />
+                    <GradientStop Color="#08FFFFFF" Offset="1" />
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+            <Border.Background>
+                <RadialGradientBrush Center="0,0" GradientOrigin="0,0" RadiusX="0.9" RadiusY="1.4">
+                    <GradientStop x:Name="WashStop" Offset="0" />
+                    <GradientStop Color="#00000000" Offset="1" />
+                </RadialGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <Grid Margin="20,16,20,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="✕" FontSize="10" Foreground="#7A7A82"
+                        Padding="6,0" Margin="6,-2,-8,0" ToolTip="Dismiss" Click="CloseClicked" />
+                <TextBlock x:Name="Time" DockPanel.Dock="Right" FontSize="11" Foreground="#7A7A82" />
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="Dot" Width="6" Height="6" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock x:Name="Label" FontSize="11" Foreground="#C8C8CE" VerticalAlignment="Center" />
+                </StackPanel>
+            </DockPanel>
+
+            <DockPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,2,0,0">
+                <StackPanel DockPanel.Dock="Right" VerticalAlignment="Bottom" Margin="12,0,0,8">
+                    <TextBlock x:Name="SideTitle" FontSize="9" Foreground="#6A6A72" HorizontalAlignment="Right" />
+                    <TextBlock x:Name="SideText" FontSize="14" Foreground="#9C9CA3" HorizontalAlignment="Right" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="Value" FontSize="46" FontWeight="Light" Foreground="White" />
+                    <TextBlock x:Name="Unit" FontSize="18" FontWeight="Light" Foreground="#9C9CA3" VerticalAlignment="Bottom" Margin="4,0,0,10" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- Countdown: drains left→right; pauses on hover -->
+            <Grid Grid.Row="2" Height="2">
+                <Border Background="#18FFFFFF" CornerRadius="1" />
+                <Border x:Name="Bar" CornerRadius="1" RenderTransformOrigin="1,0.5">
+                    <Border.RenderTransform>
+                        <ScaleTransform />
+                    </Border.RenderTransform>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

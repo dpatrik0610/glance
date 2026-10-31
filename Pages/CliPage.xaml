@@ -1,0 +1,188 @@
+<UserControl x:Class="Glance.Pages.CliPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Glance.Pages"
+             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf">
+    <UserControl.Resources>
+        <!-- Tab chip: tinted with its color when selected -->
+        <Style x:Key="TabChip" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource Sub}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="b" CornerRadius="12" Padding="12,6,4,6" Margin="0,0,6,0" BorderThickness="1"
+                                Background="Transparent" BorderBrush="Transparent">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{StaticResource CardBg}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{Binding Tint}" />
+                                <Setter TargetName="b" Property="BorderBrush" Value="{Binding Brush}" />
+                                <Setter Property="Foreground" Value="{StaticResource Text}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- Tab strip -->
+        <DockPanel DockPanel.Dock="Top" Margin="6,6,6,6">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
+                <!-- Vector icons drawn on a 20×20 grid: crisp at any DPI, unlike the exes' 32px bitmaps scaled down -->
+                <Button Style="{StaticResource Ghost}" Padding="8,6" ToolTip="New PowerShell tab" Click="NewShell">
+                    <Canvas Width="20" Height="20">
+                        <Path Data="M5.5,3 H18.5 L14.5,17 H1.5 Z" StrokeThickness="1.5" StrokeLineJoin="Round">
+                            <Path.Fill>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#4A9BF0" Offset="0" />
+                                    <GradientStop Color="#2363C2" Offset="1" />
+                                </LinearGradientBrush>
+                            </Path.Fill>
+                            <Path.Stroke>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#4A9BF0" Offset="0" />
+                                    <GradientStop Color="#2363C2" Offset="1" />
+                                </LinearGradientBrush>
+                            </Path.Stroke>
+                        </Path>
+                        <Path Data="M6.8,6.6 L10.6,10 L5.8,13.4 M10,13.4 H13.4" Stroke="White" StrokeThickness="1.7"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                    </Canvas>
+                </Button>
+                <Button x:Name="ClaudeButton" Style="{StaticResource Ghost}" Padding="8,6" Margin="2,0,0,0" ToolTip="New Claude Code tab" Click="NewClaude">
+                    <Path Width="20" Height="20" Stroke="#D97757" StrokeThickness="2.1" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          Data="M10,10 L18.58,10.6 M10,10 L15.83,14.56 M10,10 L12.75,18.46 M10,10 L9.46,17.78 M10,10 L4.83,16.62 M10,10 L3.15,12.22 M10,10 L1.22,9.39 M10,10 L4.01,5.32 M10,10 L7.37,1.92 M10,10 L10.51,2.72 M10,10 L15.48,2.99 M10,10 L17.32,7.62" />
+                </Button>
+                <ToggleButton x:Name="FoldersToggle" Style="{StaticResource IconToggle}" Padding="8,6" Margin="2,0,0,0"
+                              ToolTip="Quick folders" Checked="ToggleFolders" Unchecked="ToggleFolders">
+                    <Path Width="20" Height="20" StrokeThickness="1.5" StrokeLineJoin="Round"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                          Data="M2.5,15 V5 Q2.5,3.5 4,3.5 H7.6 L9.6,5.8 H16 Q17.5,5.8 17.5,7.3 V15 Q17.5,16.5 16,16.5 H4 Q2.5,16.5 2.5,15 Z M2.5,8.4 H17.5" />
+                </ToggleButton>
+            </StackPanel>
+            <ListBox x:Name="TabList" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource TabChip}"
+                     ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     SelectionChanged="TabSelected">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Background="Transparent" MouseLeftButtonDown="TabMouseDown">
+                            <StackPanel.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Rename" Click="Rename" />
+                                    <MenuItem StaysOpenOnClick="True">
+                                        <MenuItem.Header>
+                                            <ItemsControl ItemsSource="{x:Static local:CliPage.Palette}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Click="SetColor" Tag="{Binding}" Padding="0" Margin="0,0,6,0" Background="Transparent">
+                                                            <Ellipse Width="16" Height="16" Fill="{Binding}" />
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </MenuItem.Header>
+                                    </MenuItem>
+                                    <MenuItem Header="Duplicate" Click="Duplicate" />
+                                    <MenuItem Header="Close" Click="CloseTab" />
+                                </ContextMenu>
+                            </StackPanel.ContextMenu>
+                            <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <Grid VerticalAlignment="Center">
+                                <TextBlock x:Name="Label" Text="{Binding Name}"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBox x:Name="Edit" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Visibility="Collapsed"
+                                         MinWidth="90" Padding="2,0" Background="Transparent"
+                                         IsVisibleChanged="EditShown" KeyDown="EditKey" LostKeyboardFocus="EditDone" />
+                            </Grid>
+                            <Button Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="{StaticResource Icons}" FontSize="9"
+                                    Padding="6,3" Margin="6,0,0,0" ToolTip="Close" Click="CloseTab"
+                                    Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                        </StackPanel>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Editing}" Value="True">
+                                <Setter TargetName="Label" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="Edit" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- All terminals render in this one WebView (Terminal\term.html), transparent so the glass shows through -->
+            <Border x:Name="Screen" Style="{StaticResource Card}" Padding="10">
+                <Grid>
+                    <wv2:WebView2 x:Name="Web" />
+                    <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE756;" FontFamily="{StaticResource Icons}" FontSize="32" Foreground="{StaticResource Sub}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Style="{StaticResource Label}" Margin="0,10,0,0" Text="No terminals. Open one above or from a folder." />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Quick folders (closed until the folder button is pressed) -->
+            <Border x:Name="FolderPanel" Grid.Column="1" Style="{StaticResource Card}" Width="210" Visibility="Collapsed">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE710;" FontFamily="{StaticResource Icons}"
+                                FontSize="12" ToolTip="Add folder" Click="AddFolder" />
+                        <TextBlock Style="{StaticResource H}" Text="Folders" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Label}" FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0"
+                               Text="Click: cd in this tab. Right-click: more." />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="Folders">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource Ghost}" HorizontalContentAlignment="Stretch" Padding="10,7" Margin="0,1"
+                                            ToolTip="{Binding}" Click="GoFolder">
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Open in new tab" Click="FolderNewTab" />
+                                                <MenuItem Header="Claude here" Click="FolderClaude" />
+                                                <MenuItem Header="Show in Explorer" Click="FolderExplorer" />
+                                                <MenuItem Header="Remove from list" Click="FolderRemove" />
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                            <TextBlock Text="&#xE8B7;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource Accent}" Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding Converter={x:Static local:CliPage.Leaf}}" TextTrimming="CharacterEllipsis"
+                                                       MaxWidth="130" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

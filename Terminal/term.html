@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="vendor/xterm.css">
+<style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+    .t { position: absolute; inset: 6px 4px 6px 10px; display: none; }
+    .t.on { display: block; }
+    /* xterm paints the viewport with the theme background; keep the glass visible */
+    .xterm .xterm-viewport { background: transparent !important; }
+    .xterm-viewport::-webkit-scrollbar { width: 6px; }
+    .xterm-viewport::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18); border-radius: 3px; }
+</style>
+</head>
+<body>
+<script src="vendor/xterm.js"></script>
+<script src="vendor/addon-fit.js"></script>
+<script src="vendor/addon-webgl.js"></script>
+<script src="vendor/addon-unicode11.js"></script>
+<script src="vendor/addon-web-links.js"></script>
+<script>
+// Glance's CLI renderer. One xterm per tab; the host (CliPage.xaml.cs) owns the shells and talks over postMessage.
+// host → page: {t:'open'|'show'|'close', id} {t:'out', id, d} {t:'focus'}
+// page → host: {t:'in', id, d} {t:'size', id, cols, rows} {t:'link', uri}
+const host = window.chrome.webview;
+const send = m => host.postMessage(m);
+
+// Dimidium (as in Windows Terminal) on a transparent background, so Glance's glass shows through.
+const theme = {
+    background: '#00000000', foreground: '#D3D0CF', cursor: '#FF6A3D', cursorAccent: '#0F0F11',
+    selectionBackground: 'rgba(90, 169, 255, .35)',
+    black: '#000000', red: '#CF494C', green: '#60B442', yellow: '#DB9C11', blue: '#0575D8', magenta: '#AF5ED2', cyan: '#1DB6BB', white: '#BAB7B6',
+    brightBlack: '#817E7E', brightRed: '#FF643B', brightGreen: '#37E57B', brightYellow: '#FCCD1A', brightBlue: '#688DFD', brightMagenta: '#ED6FE9', brightCyan: '#32E0FB', brightWhite: '#D3D8D9',
+};
+
+const terms = new Map();
+let current = null;
+
+function open(id) {
+    const el = document.createElement('div');
+    el.className = 't';
+    document.body.appendChild(el);
+    const term = new Terminal({
+        allowTransparency: true, allowProposedApi: true, theme,
+        fontFamily: '"FiraCode Nerd Font", "Cascadia Mono", monospace', fontSize: 14,
+        cursorBlink: true, cursorStyle: 'bar', scrollback: 10000,
+    });
+    const fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.loadAddon(new Unicode11Addon.Unicode11Addon());
+    term.unicode.activeVersion = '11';
+    term.loadAddon(new WebLinksAddon.WebLinksAddon((e, uri) => send({ t: 'link', uri })));
+    term.open(el);
+    try { term.loadAddon(new WebglAddon.WebglAddon()); } catch { /* no GPU: DOM renderer */ }
+
+    term.onData(d => send({ t: 'in', id, d }));
+    term.onResize(({ cols, rows }) => send({ t: 'size', id, cols, rows }));
+
+    // Windows Terminal habits: Ctrl+C copies when something is selected, Ctrl+V pastes.
+    term.attachCustomKeyEventHandler(e => {
+        if (e.type !== 'keydown' || !e.ctrlKey || e.altKey) return true;
+        const k = e.key.toLowerCase();
+        if (k === 'c' && (e.shiftKey || term.hasSelection())) {
+            navigator.clipboard.writeText(term.getSelection());
+            term.clearSelection();
+            return false;
+        }
+        if (k === 'v') return false; // skip xterm; the browser's own paste event reaches it
+        return true;
+    });
+    // Right-click: copy the selection, or paste.
+    el.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        if (term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); term.clearSelection(); }
+        else navigator.clipboard.readText().then(text => term.paste(text));
+    });
+
+    terms.set(id, { term, fit, el });
+}
+
+function show(id) {
+    current = id;
+    for (const [k, v] of terms) v.el.classList.toggle('on', k === id);
+    const t = terms.get(id);
+    if (!t) return;
+    t.fit.fit();
+    // Always report: the host starts the shell on the first size, and fit() only fires onResize on change.
+    send({ t: 'size', id, cols: t.term.cols, rows: t.term.rows });
+    t.term.focus();
+}
+
+host.addEventListener('message', ({ data: m }) => {
+    switch (m.t) {
+        case 'out': terms.get(m.id)?.term.write(m.d); break;
+        case 'open': open(m.id); break;
+        case 'show': show(m.id); break;
+        case 'close': { const t = terms.get(m.id); if (t) { t.term.dispose(); t.el.remove(); terms.delete(m.id); } break; }
+        case 'focus': terms.get(current)?.term.focus(); break;
+    }
+});
+
+new ResizeObserver(() => terms.get(current)?.fit.fit()).observe(document.body);
+send({ t: 'ready' });
+</script>
+</body>
+</html>

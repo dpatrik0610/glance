@@ -1,0 +1,165 @@
+<UserControl x:Class="Glance.Pages.SystemPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="clr-namespace:Glance">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="1.1*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Stat tiles -->
+        <UniformGrid Columns="4">
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <DockPanel>
+                        <Border x:Name="CpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right">
+                            <TextBlock x:Name="CpuTemp" FontSize="12" FontWeight="SemiBold" />
+                        </Border>
+                        <TextBlock Text="CPU" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock x:Name="CpuLoad" Style="{StaticResource Big}" Margin="0,6,0,0" />
+                    <TextBlock x:Name="CpuSub" Style="{StaticResource Label}" />
+                    <g:Spark x:Name="CpuSpark" Color="#FF6A3D" Height="34" Margin="0,10,0,0" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <DockPanel>
+                        <Border x:Name="GpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right">
+                            <TextBlock x:Name="GpuTemp" FontSize="12" FontWeight="SemiBold" />
+                        </Border>
+                        <TextBlock Text="GPU" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock x:Name="GpuLoad" Style="{StaticResource Big}" Margin="0,6,0,0" />
+                    <TextBlock x:Name="GpuSub" Style="{StaticResource Label}" />
+                    <g:Spark x:Name="GpuSpark" Color="#4CC37A" Height="34" Margin="0,10,0,0" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <DockPanel>
+                        <TextBlock x:Name="RamPct" DockPanel.Dock="Right" Style="{StaticResource Label}" />
+                        <TextBlock Text="Memory" Style="{StaticResource Label}" />
+                    </DockPanel>
+                    <TextBlock x:Name="RamUsed" Style="{StaticResource Big}" Margin="0,6,0,0" />
+                    <TextBlock x:Name="RamSub" Style="{StaticResource Label}" />
+                    <g:Spark x:Name="RamSpark" Color="#F5B83D" Height="34" Margin="0,10,0,0" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Network" Style="{StaticResource Label}" />
+                    <TextBlock x:Name="NetDown" Style="{StaticResource Big}" Margin="0,6,0,0" />
+                    <TextBlock x:Name="NetUp" Style="{StaticResource Label}" />
+                    <Grid Height="34" Margin="0,10,0,0">
+                        <g:Spark x:Name="DownSpark" Color="#5AA9FF" Max="0" />
+                        <g:Spark x:Name="UpSpark" Color="#B07CFF" Max="0" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Load history + drives -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource Accent}" Margin="0,0,6,0" />
+                            <TextBlock Text="CPU" Style="{StaticResource Label}" Margin="0,0,14,0" />
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource Green}" Margin="0,0,6,0" />
+                            <TextBlock Text="GPU" Style="{StaticResource Label}" />
+                        </StackPanel>
+                        <TextBlock Text="Load · last 60 samples" Style="{StaticResource H}" />
+                    </DockPanel>
+                    <Grid>
+                        <!-- 25% gridlines -->
+                        <UniformGrid Rows="4">
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1" />
+                        </UniformGrid>
+                        <g:Spark x:Name="CpuHistory" Color="#FF6A3D" />
+                        <g:Spark x:Name="GpuHistory" Color="#4CC37A" />
+                    </Grid>
+                </DockPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource Card}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Drives" Style="{StaticResource H}" Margin="0,0,0,12" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="Drives">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,14">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Text}" Style="{StaticResource Label}" />
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                        </DockPanel>
+                                        <ProgressBar Value="{Binding Pct, Mode=OneWay}" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Processes + system info -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="90" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Top processes" Style="{StaticResource H}" />
+                        <TextBlock Grid.Column="1" Text="CPU" Style="{StaticResource Label}" HorizontalAlignment="Right" />
+                        <TextBlock Grid.Column="2" Text="Memory" Style="{StaticResource Label}" HorizontalAlignment="Right" />
+                    </Grid>
+                    <ItemsControl x:Name="Procs">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="90" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Text="{Binding CpuText}" HorizontalAlignment="Right" />
+                                    <TextBlock Grid.Column="2" Text="{Binding MemText}" Style="{StaticResource Label}" HorizontalAlignment="Right" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="System" Style="{StaticResource H}" Margin="0,0,0,10" />
+                    <TextBlock Text="CPU" Style="{StaticResource Label}" />
+                    <TextBlock x:Name="CpuName" TextTrimming="CharacterEllipsis" Margin="0,0,0,8" />
+                    <TextBlock Text="GPU" Style="{StaticResource Label}" />
+                    <TextBlock x:Name="GpuName" TextTrimming="CharacterEllipsis" Margin="0,0,0,8" />
+                    <TextBlock Text="Uptime" Style="{StaticResource Label}" />
+                    <TextBlock x:Name="Uptime" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
