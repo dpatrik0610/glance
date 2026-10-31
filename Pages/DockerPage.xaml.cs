@@ -61,7 +61,7 @@ public partial class DockerPage : UserControl
     {
         var c = Of(sender);
         ((Button)sender).IsEnabled = false;
-        if (await Docker.Do(verb, c.ID) is { } error) MessageBox.Show(error, $"docker {verb} {c.Names}");
+        if (await Docker.Do(verb, c.ID) is { } error) Dialog.Info("Docker", $"Couldn't {verb} {c.Names}", error);
         Load();
     }
 

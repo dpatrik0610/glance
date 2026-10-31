@@ -267,9 +267,9 @@ public partial class App : Application
 
     void Quit()
     {
-        if (CliPage.Running > 0 && MessageBox.Show(
-                $"{CliPage.Running} terminal{(CliPage.Running == 1 ? " is" : "s are")} open. They reopen next time, but anything running in them stops.",
-                "Glance", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
+        if (CliPage.Running > 0 && !Dialog.Confirm("Exit Glance",
+                $"{CliPage.Running} terminal{(CliPage.Running == 1 ? " is" : "s are")} still open",
+                "They reopen next time, but anything running in them stops.", "Exit")) return;
         Db.Info("exit");
         if (saveTimer?.IsEnabled == true) Settings.Save();
         tray!.Hide();

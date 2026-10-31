@@ -47,7 +47,7 @@ public partial class NotesPage : UserControl
     void DeleteNote(object sender, RoutedEventArgs e)
     {
         if (Current is not { } n) return;
-        if (MessageBox.Show($"Delete \"{n.DisplayTitle}\"?", "Glance", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!Dialog.Confirm("Delete note", $"Delete \"{n.DisplayTitle}\"?", "This can't be undone.", "Delete")) return;
         var i = List.SelectedIndex;
         NoteStore.Notes.Remove(n);
         List.SelectedIndex = Math.Min(i, NoteStore.Notes.Count - 1);

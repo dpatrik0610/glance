@@ -81,8 +81,8 @@ public partial class SystemPage : UserControl
     {
         var p = (Proc)((FrameworkElement)sender).DataContext;
         var what = p.Count == 1 ? p.Name : $"all {p.Count} {p.Name} processes";
-        if (MessageBox.Show($"End {what}? Unsaved work in it is lost.", "Glance", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
-        if (HardwareMonitor.Kill(p.Name) is { } error) MessageBox.Show(error, "Glance", MessageBoxButton.OK, MessageBoxImage.Information);
+        if (!Dialog.Confirm("End process", $"End {what}?", "Unsaved work in it is lost.", "End")) return;
+        if (HardwareMonitor.Kill(p.Name) is { } error) Dialog.Info("End process", $"Couldn't end all of {p.Name}", error);
         last = last.Where(x => x.Name != p.Name).ToArray();
         Procs.ItemsSource = null; // drop the stale row now, even under the cursor
         Dispatcher.BeginInvoke(ShowProcs, DispatcherPriority.Input);

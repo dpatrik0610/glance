@@ -39,8 +39,7 @@ public partial class DevPage : UserControl
     void Kill(object sender, RoutedEventArgs e)
     {
         var p = (PortInfo)((FrameworkElement)sender).DataContext;
-        if (MessageBox.Show($"Kill {p.Process} (PID {p.Pid}) listening on :{p.Port}?", "Glance",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!Dialog.Confirm("Kill process", $"Kill {p.Process}?", $"PID {p.Pid}, listening on :{p.Port}.", "Kill")) return;
         try
         {
             using var proc = Process.GetProcessById(p.Pid);
@@ -50,7 +49,7 @@ public partial class DevPage : UserControl
         }
         catch (Exception ex) when (ex is ArgumentException or Win32Exception or InvalidOperationException)
         {
-            MessageBox.Show(ex.Message, "Glance"); // already gone, or needs admin
+            Dialog.Info("Kill process", $"Couldn't kill {p.Process}", ex.Message); // already gone, or needs admin
         }
         Load();
     }
