@@ -57,6 +57,7 @@ public partial class App : Application
         catch (AbandonedMutexException) { first = true; } // previous instance died holding it
         catch (UnauthorizedAccessException) { first = false; } // the running one is elevated
         if (!first) { Send(e.Args); Shutdown(); return; } // second launch hands its args to the running one
+        if (e.Args.Contains("--exit")) { Shutdown(); return; } // nothing running to close
 
         Db.Init(Settings.MongoUrl);
         NoteStore.Load(); // at startup, not when the Notes page opens: reminders need it
@@ -67,6 +68,7 @@ public partial class App : Application
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Open", null, (_, _) => ShowMain());
         if (!Native.IsAdmin) menu.Items.Add("Restart as admin (CPU temps)", null, (_, _) => RestartAsAdmin());
+        if (DeployScript is not null) menu.Items.Add("Rebuild and restart", null, (_, _) => Rebuild());
         menu.Items.Add("Exit", null, (_, _) => Quit());
         tray = new Tray(menu, () => ToggleMain(false));
 
@@ -125,7 +127,12 @@ public partial class App : Application
                     PipeOptions.Asynchronous, 0, 0, security);
                 await pipe.WaitForConnectionAsync();
                 var args = (await new StreamReader(pipe).ReadToEndAsync()).Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                _ = Dispatcher.BeginInvoke(() => { if (CliArg(args) is { } dir) OpenCli(dir); else ShowMain(); });
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    if (args.Contains("--exit")) Quit(ask: false); // from tools\deploy.ps1
+                    else if (CliArg(args) is { } dir) OpenCli(dir);
+                    else ShowMain();
+                });
             }
             catch (IOException e) { Db.Error("ipc", e); await Task.Delay(1000); }
         }
@@ -267,9 +274,24 @@ public partial class App : Application
         catch (System.ComponentModel.Win32Exception) { } // UAC prompt declined
     }
 
-    void Quit()
+    /// tools\deploy.ps1 in the source tree this exe was built from; null for a build whose source isn't on this PC.
+    internal static readonly string? DeployScript =
+        typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .Cast<System.Reflection.AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "SourceDir")?.Value is { } src
+        && Path.Combine(src, "tools", "deploy.ps1") is var script && File.Exists(script) ? script : null;
+
+    /// Builds the source in a console window, then the script closes this instance and starts the new build.
+    internal static void Rebuild()
     {
-        if (CliPage.Running > 0 && !Dialog.Confirm("Exit Glance",
+        if (DeployScript is null) return;
+        var shell = Shell.OnPath("pwsh.exe") ? "pwsh.exe" : "powershell.exe";
+        Process.Start(new ProcessStartInfo(shell, $"-NoProfile -ExecutionPolicy Bypass -File \"{DeployScript}\"") { UseShellExecute = true });
+        Db.Info("rebuild requested");
+    }
+
+    void Quit(bool ask = true)
+    {
+        if (ask && CliPage.Running > 0 && !Dialog.Confirm("Exit Glance",
                 $"{CliPage.Running} terminal{(CliPage.Running == 1 ? " is" : "s are")} still open",
                 "They reopen next time, but anything running in them stops.", "Exit")) return;
         Db.Info("exit");

@@ -98,6 +98,8 @@ public partial class MainWindow
             Task.FromResult<string?>(ClipboardHistory.CopySecret(Passwords.Generate(20, true, true, true, true, true).Password, TimeSpan.FromSeconds(30))
                 ? "Copied a 20-character password · clipboard clears in 30s" : "Clipboard busy, try again.")));
 
+        if (App.DeployScript is not null) list.Add(new("Rebuild and restart Glance", "Glance", "\uE72C", Do(App.Rebuild)));
+
         foreach (var dir in App.Settings.CliFolders)
         {
             var leaf = Path.GetFileName(dir.TrimEnd('\\')) is { Length: > 0 } l ? l : dir;
