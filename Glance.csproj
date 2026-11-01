@@ -15,6 +15,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <ApplicationIcon>Glance.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- WinForms' "set DPI in code" advice: WPF owns the windows here and reads DPI awareness from the manifest. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
@@ -25,8 +26,9 @@
     <Resource Include="Glance.ico" />
     <None Include="Terminal\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Map\**" CopyToOutputDirectory="PreserveNewest" />
-    <!-- Where this build came from, for "Rebuild and restart" (tools\deploy.ps1). Only in the local binary, not the repo. -->
-    <AssemblyMetadata Include="SourceDir" Value="$(MSBuildProjectDirectory)" />
+    <!-- Where this build came from, for "Rebuild and restart" (tools\deploy.ps1). Only in local builds: a release
+         (-p:PublicBuild=true) carries no path from the machine that built it. -->
+    <AssemblyMetadata Include="SourceDir" Value="$(MSBuildProjectDirectory)" Condition="'$(PublicBuild)' != 'true'" />
   </ItemGroup>
 
   <!-- Sign the exe with the local cert (see tools\trust.ps1). No-op until that cert exists. -->

@@ -58,7 +58,7 @@ static class SelfTest
             Check(Git.WebUrl("F:/repos/x") is null, "git local remote");
             Check(Shell.OnPath("cmd.exe") && !Shell.OnPath("no-such-tool.exe"), "tool detection hides Git/Docker tabs");
 
-            var mark = Pages.CliPage.CwdMark().Match("x\x1b]9;9;\"F:\\Coding\\glance\"\x1b\\qantanas");
+            var mark = Pages.CliPage.CwdMark().Match("x\x1b]9;9;\"F:\\Coding\\glance\"\x1b\\user");
             Check(mark.Success && mark.Groups[1].Value == @"F:\Coding\glance", "cli cwd mark");
 
             Task<string?> Nop() => Task.FromResult<string?>(null);
