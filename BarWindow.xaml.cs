@@ -13,7 +13,8 @@ using Microsoft.Win32;
 namespace Glance;
 
 /// The always-on-top pill at the top center of the main screen. One view at a time: arrows or the wheel switch,
-/// a click opens that view's page, the down arrow drops Glance under it. Views with nothing to show (no hometown,
+/// the Glance icon opens Glance on that view's page, the down arrow drops the player under it. Over a maximized
+/// window (browser tabs at the top) it shrinks to a thin line until hovered. Views with nothing to show (no hometown,
 /// no reminders, nothing playing) are skipped. Steps aside while a fullscreen app (game, video, slides) is in front.
 public partial class BarWindow : Window
 {
@@ -36,6 +37,8 @@ public partial class BarWindow : Window
     bool mainDropped;
     readonly DispatcherTimer tick, fullscreen, progress;
     bool away; // stepped aside for a fullscreen app
+    bool slim; // shrunk to the line over a maximized window
+    readonly DispatcherTimer peek; // hover delay before the line opens up
     int index;
     Snapshot? snap;
     Weather.Current? weather;
@@ -65,6 +68,8 @@ public partial class BarWindow : Window
         // The song progress line: once a second, only while the Music view shows something playing.
         progress = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => ShowProgress(), Dispatcher);
         progress.Stop();
+        peek = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Normal, (_, _) => { peek!.Stop(); Slim(false); }, Dispatcher);
+        peek.Stop();
         Closed += (_, _) =>
         {
             App.Sampled -= OnSample;
@@ -73,6 +78,7 @@ public partial class BarWindow : Window
             Media.Changed -= OnMedia;
             fullscreen.Stop();
             progress.Stop();
+            peek.Stop();
             SystemEvents.DisplaySettingsChanged -= Moved;
             tick.Stop();
         };
@@ -101,11 +107,12 @@ public partial class BarWindow : Window
     void ApplyLook()
     {
         Pill.Background = PillBrush;
+        SliverLine.Background = PillBrush;
         Pill.LayoutTransform = new ScaleTransform(Scale, Scale);
     }
 
     /// Where the pill ends on screen, for things hung below it.
-    public double Edge => Top + Pill.TranslatePoint(new Point(0, Pill.ActualHeight), this).Y;
+    public double Edge => slim ? Top + Sliver.Height : Top + Pill.TranslatePoint(new Point(0, Pill.ActualHeight), this).Y;
     public double Center => Left + ActualWidth / 2;
     public double PillWidth => Pill.ActualWidth * Scale;
 
@@ -128,7 +135,7 @@ public partial class BarWindow : Window
     void CheckFullscreen()
     {
         var hide = App.Settings.BarHideFullscreen && Native.FullscreenApp();
-        if (hide == away) return;
+        if (hide == away) { CheckSlim(); return; }
         away = hide;
         if (hide)
         {
@@ -143,6 +150,48 @@ public partial class BarWindow : Window
             SlideIn();
         }
     }
+
+    // Once a second: shrink over a maximized window once the mouse is off the bar and nothing hangs from it; open up
+    // again when that window is gone (or Glance itself comes to the front).
+    void CheckSlim()
+    {
+        if (away) return;
+        var covered = App.Settings.BarSlim && Native.MaximizedUnder(new WindowInteropHelper(this).Handle);
+        // While open over such a window, the pill's see-through margins hold the mouse too, so it doesn't flicker shut.
+        Background = covered && !slim ? Hold : Brushes.Transparent;
+        if (!covered) { if (slim) Slim(false); }
+        else if (!slim && !IsMouseOver && mini is null && !mainDropped) Slim(true);
+    }
+
+    static readonly Brush Hold = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)); // invisible, but not click-through
+
+    void Slim(bool on)
+    {
+        if (on == slim) return;
+        slim = on;
+        if (on)
+        {
+            Motion.To(Pill, OpacityProperty, 0, 160);
+            Motion.To(Slide, TranslateTransform.YProperty, -Pill.ActualHeight - Pill.Margin.Top, 200, done: () =>
+            {
+                if (!slim) return;
+                Pill.Visibility = Visibility.Collapsed;
+                Sliver.Visibility = Visibility.Visible;
+                Motion.To(SliverLine, OpacityProperty, 1, 200, from: 0);
+            });
+        }
+        else
+        {
+            Background = Hold; // hovered open: the margins count as the bar until the next check
+            Sliver.Visibility = Visibility.Collapsed;
+            Pill.Visibility = Visibility.Visible;
+            Motion.To(Pill, OpacityProperty, 1, 220);
+            Motion.To(Slide, TranslateTransform.YProperty, 0, 260);
+        }
+    }
+
+    void SliverEnter(object sender, MouseEventArgs e) => peek.Start();
+    void SliverLeave(object sender, MouseEventArgs e) => peek.Stop();
 
     // Top center of the main screen's work area (below a top taskbar, if any).
     void Place()
@@ -160,7 +209,7 @@ public partial class BarWindow : Window
     void Next(object sender, RoutedEventArgs e) => Show(+1);
     void Wheel(object sender, MouseWheelEventArgs e) => Show(e.Delta > 0 ? -1 : +1);
 
-    void OpenTab(object sender, MouseButtonEventArgs e) => drop(Views[index].Tab);
+    void OpenGlance(object sender, RoutedEventArgs e) => drop(Views[index].Tab);
     // The down arrow: the player under the pill; again, or a click elsewhere, closes it.
     void Down(object sender, RoutedEventArgs e)
     {
@@ -200,7 +249,6 @@ public partial class BarWindow : Window
         var v = Views[index];
         if (Read(v) is not { } segs) { Show(1); return; } // e.g. the last reminder was ticked off
         Glyph.Text = v.Icon;
-        Body.ToolTip = $"Open {v.Tab}";
         ShowMusic(v.Name == "Music" ? Media.Current : null);
         Segs.Children.Clear();
         foreach (var (dim, bright) in segs)

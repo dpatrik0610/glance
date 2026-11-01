@@ -40,6 +40,7 @@ public partial class SettingsPage : UserControl
         FBox.IsChecked = s.Fahrenheit;
         BarBox.IsChecked = s.TopBar;
         BarFullscreenBox.IsChecked = s.BarHideFullscreen;
+        BarSlimBox.IsChecked = s.BarSlim;
         foreach (RadioButton r in BarSizes.Children) r.IsChecked = (string)r.Content == s.BarSize;
         TrackAlertsBox.IsChecked = s.TrackAlerts;
         AlertsBox.IsChecked = s.AlertsEnabled;
@@ -78,6 +79,7 @@ public partial class SettingsPage : UserControl
         s.Fahrenheit = FBox.IsChecked == true;
         s.TopBar = BarBox.IsChecked == true;
         s.BarHideFullscreen = BarFullscreenBox.IsChecked == true;
+        s.BarSlim = BarSlimBox.IsChecked == true;
         s.TrackAlerts = TrackAlertsBox.IsChecked == true;
         s.AlertsEnabled = AlertsBox.IsChecked == true;
         s.AlertSound = SoundBox.IsChecked == true;

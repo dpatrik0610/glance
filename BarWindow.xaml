@@ -39,6 +39,12 @@
         </Style>
     </Window.Resources>
 
+  <Grid>
+    <!-- Slim mode (a maximized window under the bar): a thin line to hover. The zone around it catches the mouse. -->
+    <Border x:Name="Sliver" Width="140" Height="9" Background="#01000000" VerticalAlignment="Top" Visibility="Collapsed"
+            MouseEnter="SliverEnter" MouseLeave="SliverLeave">
+        <Border x:Name="SliverLine" Width="72" Height="5" CornerRadius="2.5" Margin="0,2,0,0" VerticalAlignment="Top" BorderBrush="#40FFFFFF" BorderThickness="1" />
+    </Border>
     <!-- Floating pill just below the top edge. Margin leaves room for the shadow. -->
     <Border x:Name="Pill" Margin="14,6,14,16" Height="32" CornerRadius="16" BorderBrush="#24FFFFFF" BorderThickness="1" Opacity="0">
         <Border.RenderTransform>
@@ -58,8 +64,27 @@
             </Border>
         </Grid>
         <DockPanel Margin="5,0">
+            <!-- The Glance icon: the only thing on the bar that opens the app -->
+            <Button DockPanel.Dock="Left" Cursor="Hand" Focusable="False" ToolTip="Open Glance" Click="OpenGlance" Margin="0,0,1,0">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Width="22" Height="22" Background="Transparent">
+                            <Ellipse x:Name="bg" Fill="White" Opacity="0" />
+                            <Image Source="pack://application:,,,/Glance;component/Glance.ico" Width="14" Height="14" RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.1" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.18" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
             <Button DockPanel.Dock="Left" Style="{StaticResource Arrow}" Content="&#xE76B;" ToolTip="Previous" Click="Prev" />
-            <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Open Glance" Click="Down">
+            <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Player" Click="Down">
                 <Button.Tag>
                     <RotateTransform x:Name="Turn" />
                 </Button.Tag>
@@ -74,8 +99,7 @@
                 <Button x:Name="NextTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE893;"
                         ToolTip="Next song" Click="TrackNext" />
             </StackPanel>
-            <StackPanel x:Name="Body" Orientation="Horizontal" Margin="4,0" Background="Transparent" Cursor="Hand"
-                        MouseLeftButtonUp="OpenTab">
+            <StackPanel x:Name="Body" Orientation="Horizontal" Margin="4,0" Background="Transparent">
                 <StackPanel.RenderTransform>
                     <TranslateTransform x:Name="Shift" />
                 </StackPanel.RenderTransform>
@@ -91,4 +115,5 @@
         </DockPanel>
       </Grid>
     </Border>
+  </Grid>
 </Window>

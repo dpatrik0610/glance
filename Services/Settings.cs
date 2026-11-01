@@ -33,6 +33,8 @@ public class Settings
     public double BarOpacity { get; set; } = 0.94;
     public string BarView { get; set; } = "System";
     public bool BarHideFullscreen { get; set; } = true;
+    /// Over a maximized window (browser tabs), the bar shrinks to a thin line until hovered.
+    public bool BarSlim { get; set; } = true;
     /// Small, Medium or Large: the bar and the alerts under it.
     public string BarSize { get; set; } = "Small";
     /// A small alert when the song changes (Now Playing).

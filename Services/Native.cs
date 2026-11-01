@@ -26,6 +26,22 @@ public static class Native
     public static bool FullscreenApp() =>
         SHQueryUserNotificationState(out var s) == 0 && s is 2 /* busy */ or 3 /* D3D fullscreen */ or 4 /* presentation */;
 
+    [DllImport("user32.dll")] static extern bool IsZoomed(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out Rect r);
+    [DllImport("user32.dll")] static extern int GetWindowThreadProcessId(IntPtr hwnd, out int pid);
+    struct Rect { public int Left, Top, Right, Bottom; }
+
+    /// The window in front is maximized under `over` (another app's, not Glance's): its title bar or tabs sit behind it.
+    public static bool MaximizedUnder(IntPtr over)
+    {
+        var fg = GetForegroundWindow();
+        if (fg == IntPtr.Zero || !IsZoomed(fg)) return false;
+        GetWindowThreadProcessId(fg, out var pid);
+        if (pid == Environment.ProcessId) return false;
+        if (!GetWindowRect(fg, out var a) || !GetWindowRect(over, out var b)) return false;
+        return a.Left < b.Right && b.Left < a.Right && a.Top < b.Bottom && b.Top < a.Bottom; // same monitor
+    }
+
     public static bool IsAdmin { get; } = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
 
     // ---- Native Windows 11 frame: acrylic blur, anti-aliased rounded corners, shadow, dark border ----
