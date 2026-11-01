@@ -17,9 +17,9 @@ namespace Glance;
 /// no reminders, nothing playing) are skipped. Steps aside while a fullscreen app (game, video, slides) is in front.
 public partial class BarWindow : Window
 {
-    internal record View(string Name, string Tab, string Icon);
+    record View(string Name, string Tab, string Icon);
 
-    internal static readonly View[] Views =
+    static readonly View[] Views =
     [
         new("System", "System", ""),
         new("Network", "Network", ""),
@@ -107,6 +107,7 @@ public partial class BarWindow : Window
     /// Where the pill ends on screen, for things hung below it.
     public double Edge => Top + Pill.TranslatePoint(new Point(0, Pill.ActualHeight), this).Y;
     public double Center => Left + ActualWidth / 2;
+    public double PillWidth => Pill.ActualWidth * Scale;
 
     /// The down arrow turns up while something hangs from the bar (the panel, or Glance itself).
     public void Dropped(bool on)
@@ -160,7 +161,7 @@ public partial class BarWindow : Window
     void Wheel(object sender, MouseWheelEventArgs e) => Show(e.Delta > 0 ? -1 : +1);
 
     void OpenTab(object sender, MouseButtonEventArgs e) => drop(Views[index].Tab);
-    // The down arrow: the small panel (media, volume, the bar's views at once); again, or a click elsewhere, closes it.
+    // The down arrow: the player under the pill; again, or a click elsewhere, closes it.
     void Down(object sender, RoutedEventArgs e)
     {
         if (mini is not null) { mini.Away(); return; }
@@ -249,7 +250,7 @@ public partial class BarWindow : Window
     static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
 
     /// What a view shows as (dim label, bright value) pairs; null when it has nothing to show.
-    internal (string, string)[]? Read(View v)
+    (string, string)[]? Read(View v)
     {
         var s = App.Settings;
         switch (v.Name)
@@ -284,8 +285,8 @@ public partial class BarWindow : Window
 
     void Fetch() => _ = Fetch(Views[index].Name);
 
-    // Weather and rates load only while their view is on screen (or the panel is open), and only when stale.
-    internal async Task Fetch(string v)
+    // Weather and rates load only while their view is on screen, and only when stale.
+    async Task Fetch(string v)
     {
         if (fetching) return;
         var s = App.Settings;
