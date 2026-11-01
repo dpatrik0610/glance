@@ -74,6 +74,8 @@ static class SelfTest
             Check(H("Mo-Fr 09:00-17:00, Sa 10:00-12:00", 6, 11) == "Open · closes 12:00", "hours: comma-separated rules");
             Check(H("Mo-Fr 11:00-14:30,17:00-22:00", 3, 15) == "Closed · opens 17:00", "hours: lunch break");
             Check(H("24/7", 0, 3) == "Open 24/7" && H("sunrise-sunset", 1, 10) is null && H("", 1, 10) is null, "hours: 24/7, unknown syntax");
+            Check(Places.Pattern("Pizza") == "p[ií]zz" && Places.Pattern("kfc") == "kfc", "search pattern: stem, accents");
+            Check(Places.Pattern("c++ (x)") == @"c\+\+ \(x\)", "search pattern: regex chars literal");
             Check(Places.ShortName("12, Andrássy út, Terézváros, Budapest") == "12, Andrássy út", "place short name");
 
             Check(MainWindow.Match(cmds, "").Count == 3, "palette: notes only on search");

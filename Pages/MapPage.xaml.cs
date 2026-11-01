@@ -81,7 +81,7 @@ public partial class MapPage : UserControl
                 view = new("", m.S, m.W, m.N, m.E);
                 break;
             case "add":
-                Drop(m.Lat, m.Lng);
+                DropPin(m.Lat, m.Lng);
                 break;
             case "move" when Find(m.Id) is { } p:
                 (p.Lat, p.Lon) = (m.Lat, m.Lng);
@@ -162,13 +162,15 @@ public partial class MapPage : UserControl
         ListTitle.Text = "Searching…";
         try
         {
-            results = await Places.Search(q, v);
+            (results, var busy) = await Places.Search(q, v);
             showingResults = true;
             List.ItemsSource = results;
             BackButton.Visibility = Visibility.Visible;
             Empty.Visibility = Visibility.Collapsed;
-            ListTitle.Text = results.Count == 0 ? $"No \"{q}\" in view. Zoom out?"
-                : $"{results.Count} result{(results.Count == 1 ? "" : "s")} for \"{q}\"";
+            ListTitle.Text = busy ? $"Name matches only: the place-type search is busy, try again soon"
+                : results.Count > 0 ? $"{results.Count} result{(results.Count == 1 ? "" : "s")} for \"{q}\""
+                : v.North - v.South >= 1 ? $"No \"{q}\" by name. Zoom in to search by type"
+                : $"No \"{q}\" in view. Zoom out?";
             SendResults();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
@@ -204,7 +206,7 @@ public partial class MapPage : UserControl
     // ---- Pins ----
 
     // Right-click on the map: pin it now, then name it after what's there (if the user hasn't named it meanwhile).
-    async void Drop(double lat, double lng)
+    async void DropPin(double lat, double lng)
     {
         var pin = new Pin { Name = Unnamed, Lat = lat, Lon = lng, Color = NextColor() };
         Add(pin, fly: false);

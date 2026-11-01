@@ -81,10 +81,12 @@ public static class PinStore
     }
 }
 
-/// Place search via OpenStreetMap's Nominatim: free, no key. One request per user action (their policy: at most 1/s).
+/// Place lookups in OpenStreetMap data: Nominatim (names, addresses) and Overpass (tags: cuisine, shop type).
+/// Both free, no key; one request per user action, as their policies ask.
 public static class Places
 {
-    static readonly HttpClient http = Client();
+    static readonly HttpClient http = Client("https://nominatim.openstreetmap.org/");
+    static readonly HttpClient[] Overpass = [Client("https://overpass-api.de/api/", 8), Client("https://overpass.private.coffee/api/", 8)];
 
     public record Area(string Name, double South, double West, double North, double East);
 
@@ -92,10 +94,14 @@ public static class Places
         [property: JsonPropertyName("display_name")] string? DisplayName,
         string[]? Boundingbox, Dictionary<string, string>? Address, Dictionary<string, string>? Extratags);
 
-    static HttpClient Client()
+    record Osm(OsmElement[] Elements);
+    record OsmElement(double? Lat, double? Lon, Coord? Center, Dictionary<string, string>? Tags);
+    record Coord(double Lat, double Lon);
+
+    static HttpClient Client(string root, int seconds = 15)
     {
-        var c = new HttpClient { BaseAddress = new("https://nominatim.openstreetmap.org/"), Timeout = TimeSpan.FromSeconds(12) };
-        c.DefaultRequestHeaders.UserAgent.ParseAdd("Glance/1.0 (personal desktop dashboard)"); // Nominatim requires an identifying agent
+        var c = new HttpClient { BaseAddress = new(root), Timeout = TimeSpan.FromSeconds(seconds) };
+        c.DefaultRequestHeaders.UserAgent.ParseAdd("Glance/1.0 (personal desktop dashboard)"); // both ask for an identifying agent
         return c;
     }
 
@@ -108,16 +114,72 @@ public static class Places
         return a.North - a.South > 40 || a.East - a.West > 60 ? null : a;
     }
 
-    /// Up to 15 places matching the text inside the area ("pharmacy", "Lidl", a street), closest to its middle first.
-    public static async Task<List<Pin>> Search(string query, Area area)
+    /// Places in the area matching the text, closest to its middle first. Tags first ("pizza" finds cuisine=pizza and
+    /// "Pizzéria"; "pharmacy", "Lidl"), then names and addresses (a street) when the tags find nothing.
+    /// TagsBusy: the tag search couldn't run (servers full), so these are name matches only.
+    public static async Task<(List<Pin> Places, bool TagsBusy)> Search(string query, Area area)
     {
+        List<Pin>? found = null;
+        if (area.North - area.South < 1) // county-sized or smaller: a tag search over a whole country is slow on a shared server
+            found = await Tagged(query, area);
+        var busy = found is null && area.North - area.South < 1;
+        if (found is not { Count: > 0 }) found = await Named(query, area);
         double lat = (area.North + area.South) / 2, lon = (area.East + area.West) / 2, squeeze = Math.Cos(lat * Math.PI / 180);
-        var box = FormattableString.Invariant($"{area.West},{area.North},{area.East},{area.South}");
+        return (found.OrderBy(p => Math.Pow(p.Lat - lat, 2) + Math.Pow((p.Lon - lon) * squeeze, 2)).ToList(), busy); // flat-earth distance: fine at city scale
+    }
+
+    static async Task<List<Pin>> Named(string query, Area a)
+    {
+        var box = FormattableString.Invariant($"{a.West},{a.North},{a.East},{a.South}");
         var hits = await http.GetFromJsonAsync<Hit[]>(
             $"search?format=jsonv2&limit=15&addressdetails=1&extratags=1&bounded=1&viewbox={box}&q={Uri.EscapeDataString(query)}");
-        return (hits ?? []).Select(h => Fill(new Pin { Lat = Num(h.Lat), Lon = Num(h.Lon), Color = "#F4F4F5" }, h))
-            .OrderBy(p => Math.Pow(p.Lat - lat, 2) + Math.Pow((p.Lon - lon) * squeeze, 2)) // flat-earth distance: fine at city scale
-            .ToList();
+        return (hits ?? []).Select(h => Fill(new Pin { Lat = Num(h.Lat), Lon = Num(h.Lon), Color = "#F4F4F5" }, h)).ToList();
+    }
+
+    /// Null when every server was full or down.
+    static async Task<List<Pin>?> Tagged(string query, Area a)
+    {
+        var re = Pattern(query).Replace(@"\", @"\\").Replace("\"", "\\\""); // into a quoted Overpass string
+        // Area first, then the tag match: the server narrows to the box before running the regex.
+        var ql = FormattableString.Invariant(
+            $"[out:json][timeout:10];nwr({a.South},{a.West},{a.North},{a.East})->.a;nwr.a[name][~\"^(name|brand|cuisine|amenity|shop|tourism|leisure)$\"~\"{re}\",i];out center 40;");
+        Osm? osm = null;
+        foreach (var server in Overpass) // the main one is often at capacity; a mirror usually isn't
+        {
+            try
+            {
+                using var res = await server.PostAsync("interpreter", new FormUrlEncodedContent([new("data", ql)]));
+                if (!res.IsSuccessStatusCode) continue; // 429/502/504: full
+                osm = await res.Content.ReadFromJsonAsync<Osm>();
+                break;
+            }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException) { }
+        }
+        if (osm is null) return null;
+        return osm.Elements.Where(e => e.Tags is not null && (e.Lat ?? e.Center?.Lat) is not null).Select(e =>
+        {
+            var t = e.Tags!;
+            var street = string.Join(" ", new[] { t.GetValueOrDefault("addr:street"), t.GetValueOrDefault("addr:housenumber") }.Where(s => s is not null));
+            var address = string.Join(", ", new[] { street, t.GetValueOrDefault("addr:city") }.Where(s => !string.IsNullOrEmpty(s)));
+            var p = new Pin { Name = t["name"], Lat = e.Lat ?? e.Center!.Lat, Lon = e.Lon ?? e.Center!.Lon, Color = "#F4F4F5" };
+            var type = t.GetValueOrDefault("amenity") ?? t.GetValueOrDefault("shop") ?? t.GetValueOrDefault("tourism") ?? t.GetValueOrDefault("leisure");
+            return Details(p, t, type, address.Length > 0 ? address : null);
+        }).ToList();
+    }
+
+    static readonly Dictionary<char, string> Accents = new()
+    {
+        ['a'] = "[aá]", ['á'] = "[aá]", ['e'] = "[eé]", ['é'] = "[eé]", ['i'] = "[ií]", ['í'] = "[ií]",
+        ['o'] = "[oóöő]", ['ó'] = "[oóöő]", ['ö'] = "[oóöő]", ['ő'] = "[oóöő]", ['u'] = "[uúüű]", ['ú'] = "[uúüű]", ['ü'] = "[uúüű]", ['ű'] = "[uúüű]",
+    };
+
+    /// Search text → regex: "pizza" → "p[ií]zz". One-word queries of 5+ letters lose their last letter (so "pizza" finds
+    /// "Pizzéria"), Hungarian vowels match with or without accents, regex characters are literal.
+    public static string Pattern(string query)
+    {
+        var q = query.Trim().ToLowerInvariant();
+        if (q.Length >= 5 && !q.Contains(' ')) q = q[..^1];
+        return string.Concat(q.Select(c => Accents.TryGetValue(c, out var any) ? any : @".^$*+?()[]{}|\".Contains(c) ? @"\" + c : c.ToString()));
     }
 
     /// What's at a dropped pin: fills in address, hours and contacts, returns a name for it (null over open water and such).
@@ -133,13 +195,18 @@ public static class Places
     static Pin Fill(Pin p, Hit h, bool keepName = false)
     {
         if (!keepName) p.Name = NameOf(h);
-        var tags = h.Extratags ?? [];
-        var kind = h.Type is null or "yes" ? null : Cap(h.Type.Replace('_', ' '));
-        if (tags.GetValueOrDefault("cuisine") is { } cuisine) kind = $"{kind ?? "Food"} · {cuisine.Replace(';', ',').Replace('_', ' ')}";
+        return Details(p, h.Extratags ?? [], h.Type, Street(h.Address));
+    }
+
+    // From OSM tags, whichever service they came from.
+    static Pin Details(Pin p, Dictionary<string, string> tags, string? type, string? address)
+    {
+        var kind = type is null or "yes" ? null : Cap(type.Replace('_', ' '));
+        if (tags.GetValueOrDefault("cuisine") is { } cuisine) kind = $"{kind ?? "Food"} · {cuisine.Replace(";", ", ").Replace('_', ' ')}";
         p.Kind = kind;
-        p.Address = Street(h.Address);
+        p.Address = address;
         p.Hours = tags.GetValueOrDefault("opening_hours");
-        p.Phone = tags.GetValueOrDefault("phone") ?? tags.GetValueOrDefault("contact:phone");
+        p.Phone = new[] { "phone", "contact:phone", "mobile", "contact:mobile" }.Select(tags.GetValueOrDefault).FirstOrDefault(v => v is not null);
         p.Website = tags.GetValueOrDefault("website") ?? tags.GetValueOrDefault("contact:website");
         p.Refresh();
         return p;
