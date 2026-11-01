@@ -47,12 +47,15 @@ public partial class BarWindow : Window
         index = Math.Max(0, Array.FindIndex(Views, v => v.Name == App.Settings.BarView));
 
         App.Sampled += OnSample;
+        App.SettingsChanged += ApplyOpacity;
+        ApplyOpacity();
         SystemEvents.DisplaySettingsChanged += Moved;
         // Each half minute: relative times ("in 5 min") move on, and stale weather/rates refresh while shown.
         tick = new DispatcherTimer(TimeSpan.FromSeconds(30), DispatcherPriority.Background, (_, _) => { Render(); Fetch(); }, Dispatcher);
         Closed += (_, _) =>
         {
             App.Sampled -= OnSample;
+            App.SettingsChanged -= ApplyOpacity;
             SystemEvents.DisplaySettingsChanged -= Moved;
             tick.Stop();
         };
@@ -72,6 +75,10 @@ public partial class BarWindow : Window
         snap = s;
         if (Views[index].Name is "System" or "Network") Render();
     });
+
+    // Background only, like the main window: the text stays fully readable.
+    void ApplyOpacity() =>
+        Pill.Background = new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255), 0x14, 0x14, 0x17));
 
     // Top center of the main screen's work area (below a top taskbar, if any).
     void Place()

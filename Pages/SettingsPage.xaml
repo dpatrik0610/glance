@@ -61,7 +61,13 @@
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Text="Top bar" Style="{StaticResource H}" Margin="0,0,0,14" />
-                        <CheckBox x:Name="BarBox" Style="{StaticResource Switch}" Content="Show the bar at the top of the screen" Click="Toggled" />
+                        <CheckBox x:Name="BarBox" Style="{StaticResource Switch}" Content="Show the bar at the top of the screen" Click="Toggled"
+                                  Margin="0,0,0,14" />
+                        <DockPanel x:Name="BarOpacityRow" Style="{StaticResource SliderRow}">
+                            <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" Style="{StaticResource Label}" />
+                            <TextBlock Text="Opacity" Style="{StaticResource RowLabel}" />
+                            <Slider Minimum="0.1" Maximum="1" />
+                        </DockPanel>
                         <TextBlock Style="{StaticResource Label}" TextWrapping="Wrap" Margin="0,10,0,0"
                                    Text="Always on top. The arrows or the mouse wheel switch what it shows; a click opens that page." />
                     </StackPanel>

@@ -14,6 +14,7 @@ public partial class SettingsPage : UserControl
     {
         InitializeComponent();
         Bind(OpacityRow, s.Opacity, v => s.Opacity = Math.Round(v, 2), v => $"{v:P0}");
+        Bind(BarOpacityRow, s.BarOpacity, v => s.BarOpacity = Math.Round(v, 2), v => $"{v:P0}");
         Bind(RefreshRow, s.RefreshMs, v => s.RefreshMs = (int)v, v => $"{v / 1000:0.##}s");
         Bind(CpuLimitRow, s.CpuTempLimit, v => s.CpuTempLimit = (float)v, v => $"{v:0}°C");
         Bind(GpuLimitRow, s.GpuTempLimit, v => s.GpuTempLimit = (float)v, v => $"{v:0}°C");

@@ -24,6 +24,7 @@ public class Settings
     public bool Fahrenheit { get; set; }
     /// The always-on-top strip at the top of the screen, and which view it was left on.
     public bool TopBar { get; set; } = true;
+    public double BarOpacity { get; set; } = 0.94;
     public string BarView { get; set; } = "System";
     public string City { get; set; } = "";
     public double? Lat { get; set; }
