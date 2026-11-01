@@ -83,9 +83,14 @@ static class SelfTest
                     && Places.Why(new HttpRequestException("dns")).Contains("connection"), "map errors name the service");
             Check(Places.ShortName("12, Andrássy út, Terézváros, Budapest") == "12, Andrássy út", "place short name");
 
-            var wav = Chime.Wave();
-            Check(wav.Length > 100_000 && wav[0] == (byte)'R' && BitConverter.ToInt32(wav, 4) == wav.Length - 8, "chime wav header");
-            Check(Enumerable.Range(0, (wav.Length - 44) / 2).Max(i => Math.Abs((int)BitConverter.ToInt16(wav, 44 + i * 2))) is > 3000 and < 32767, "chime level");
+            static int Peak(byte[] w) => Enumerable.Range(0, (w.Length - 44) / 2).Max(i => Math.Abs((int)BitConverter.ToInt16(w, 44 + i * 2)));
+            foreach (var name in Chime.Names)
+            {
+                var wav = Chime.Wave(name, 1);
+                Check(wav.Length > 80_000 && wav[0] == (byte)'R' && BitConverter.ToInt32(wav, 4) == wav.Length - 8, $"{name} wav header");
+                Check(Peak(wav) is > 5000 and < 32767, $"{name} level: {Peak(wav)}"); // audible, never clipping
+            }
+            Check(Math.Abs(Peak(Chime.Wave("Chime", 0.5)) * 2 - Peak(Chime.Wave("Chime", 1))) < 4, "chime volume scales");
 
             foreach (var (aumid, name) in new[] { ("Spotify.exe", "Spotify"), ("Chrome", "Chrome"), ("308046B0AF4A39CB", "Firefox"),
                          ("Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic", "Media Player"), ("Acme.Tunes_1x2y!App", "Tunes"), ("foobar2000.exe", "foobar2000") })

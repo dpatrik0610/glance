@@ -18,6 +18,8 @@ public class Settings
     public bool AlertsEnabled { get; set; } = true;
     /// The two-note chime with alerts and reminders.
     public bool AlertSound { get; set; } = true;
+    public string AlertSoundName { get; set; } = "Chime";
+    public double AlertSoundVolume { get; set; } = 0.6;
     public float CpuTempLimit { get; set; } = 85;
     public float GpuTempLimit { get; set; } = 85;
     public float RamLimit { get; set; } = 90;

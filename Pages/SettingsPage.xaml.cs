@@ -20,6 +20,19 @@ public partial class SettingsPage : UserControl
         Bind(GpuLimitRow, s.GpuTempLimit, v => s.GpuTempLimit = (float)v, v => $"{v:0}°C");
         Bind(RamLimitRow, s.RamLimit, v => s.RamLimit = (float)v, v => $"{v:0}%");
         Bind(DiskLimitRow, s.DiskFreeLimit, v => s.DiskFreeLimit = (float)v, v => $"{v:0}%");
+        Bind(SoundVolumeRow, s.AlertSoundVolume, v => s.AlertSoundVolume = Math.Round(v, 2), v => $"{v:P0}");
+        foreach (var name in Chime.Names)
+        {
+            var chip = new RadioButton { Style = (Style)FindResource("Chip"), GroupName = "sound", Content = name, Margin = new(0, 0, 6, 6), IsChecked = name == s.AlertSoundName };
+            chip.Checked += (_, _) =>
+            {
+                if (!IsLoaded) return; // the initial check
+                s.AlertSoundName = name;
+                App.ApplySettings();
+                Chime.Play(preview: true);
+            };
+            Sounds.Children.Add(chip);
+        }
 
         BlurBox.IsChecked = s.Blur;
         TopBox.IsChecked = s.Topmost;
@@ -86,6 +99,8 @@ public partial class SettingsPage : UserControl
         App.ApplySettings();
         HotkeyStatus.Text = App.HotkeyStatus;
     }
+
+    void PreviewSound(object sender, MouseButtonEventArgs e) => Chime.Play(preview: true);
 
     async void TestAlert(object sender, RoutedEventArgs e) =>
         App.ShowAlert(new Alert("CPU · Temperature", s.CpuTempLimit + 3, s.CpuTempLimit, "°C", true, false, Blame.Cpu), await HardwareMonitor.Top(false));
