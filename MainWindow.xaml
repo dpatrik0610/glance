@@ -28,14 +28,33 @@
             <!-- Top bar: drag area -->
             <Grid Grid.ColumnSpan="2" Background="Transparent" MouseLeftButtonDown="Drag" Margin="0,0,6,10">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource Ghost}" Width="44" Content="&#xE700;" FontFamily="{StaticResource Icons}"
+                    <Button x:Name="NavToggle" Style="{StaticResource Ghost}" Width="44" Content="&#xE700;" FontFamily="{StaticResource Icons}"
                             ToolTip="Collapse sidebar" Click="ToggleNav" />
                     <Ellipse Width="14" Height="14" Stroke="{StaticResource Accent}" StrokeThickness="3" Margin="8,0,8,0" />
-                    <TextBlock Text="Glance" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <TextBlock Text="/" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" Margin="10,0" />
-                    <TextBlock x:Name="PageTitle" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" />
+                    <StackPanel x:Name="Brand" Orientation="Horizontal">
+                        <TextBlock Text="Glance" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="/" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" Margin="10,0" />
+                        <TextBlock x:Name="PageTitle" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <!-- Compact mode: the tabs as a row of icons instead of the sidebar -->
+                    <ListBox x:Name="Strip" Style="{StaticResource Sidebar}" Visibility="Collapsed" Margin="2,0,0,0" SelectionChanged="StripChanged">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Icon}" ToolTip="{Binding Name}" FontFamily="{StaticResource Icons}" FontSize="15" Margin="-3,-3"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="CompactButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
+                            Content="&#xE73F;" ToolTip="Compact mode"
+                            Click="CompactClick" />
                     <Button Style="{StaticResource Ghost}" Content="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
                             ToolTip="Search everything (Ctrl+K)" Click="PaletteClick" />
                     <Button Style="{StaticResource Ghost}" Content="✕" FontSize="13" ToolTip="Hide to tray (Esc)" Click="HideClick" />
@@ -43,7 +62,7 @@
             </Grid>
 
             <!-- Sidebar: grouped tabs (scroll when they don't fit), Settings pinned below as an icon -->
-            <Grid Grid.Row="1">
+            <Grid x:Name="Side" Grid.Row="1">
                 <Grid.RowDefinitions>
                     <RowDefinition />
                     <RowDefinition Height="Auto" />

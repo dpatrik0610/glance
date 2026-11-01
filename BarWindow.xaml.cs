@@ -12,7 +12,7 @@ using Microsoft.Win32;
 
 namespace Glance;
 
-/// The always-on-top island at the top center of the main screen. One view at a time: arrows or the wheel switch,
+/// The always-on-top pill at the top center of the main screen. One view at a time: arrows or the wheel switch,
 /// a click opens that view's page, the down arrow drops Glance under it. Views with nothing to show (no hometown,
 /// no reminders, nothing playing) are skipped. Steps aside while a fullscreen app (game, video, slides) is in front.
 public partial class BarWindow : Window
@@ -32,7 +32,7 @@ public partial class BarWindow : Window
     static readonly TimeSpan WeatherAge = TimeSpan.FromMinutes(15), RatesAge = TimeSpan.FromHours(3);
 
     readonly Action<string?> drop;
-    readonly DispatcherTimer tick, fullscreen;
+    readonly DispatcherTimer tick, fullscreen, progress;
     bool away; // stepped aside for a fullscreen app
     int index;
     Snapshot? snap;
@@ -60,12 +60,16 @@ public partial class BarWindow : Window
         // One cheap shell query a second (no hooks): is a fullscreen app in front?
         fullscreen = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => CheckFullscreen(), Dispatcher);
         fullscreen.Stop();
+        // The song progress line: once a second, only while the Music view shows something playing.
+        progress = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => ShowProgress(), Dispatcher);
+        progress.Stop();
         Closed += (_, _) =>
         {
             App.Sampled -= OnSample;
             App.SettingsChanged -= ApplyOpacity;
             Media.Changed -= OnMedia;
             fullscreen.Stop();
+            progress.Stop();
             SystemEvents.DisplaySettingsChanged -= Moved;
             tick.Stop();
         };
@@ -89,9 +93,9 @@ public partial class BarWindow : Window
 
     // Background only, like the main window: the text stays fully readable.
     void ApplyOpacity() =>
-        Outline.Fill = new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255), 0x14, 0x14, 0x17));
+        Pill.Background = new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255), 0x14, 0x14, 0x17));
 
-    /// Where the island ends, for dropping Glance just below it.
+    /// Where the bar ends, for dropping Glance just below it.
     public double Edge => Top + Pill.Margin.Top + Pill.ActualHeight;
 
     /// The down arrow turns up while Glance hangs under the bar.
@@ -113,40 +117,13 @@ public partial class BarWindow : Window
         {
             // Hidden, not just transparent: a topmost window over a game can cost it its fullscreen fast path.
             Motion.To(Pill, OpacityProperty, 0, 180);
-            Motion.To(Slide, TranslateTransform.YProperty, -Pill.ActualHeight, 220, done: () => { if (away) Hide(); });
+            Motion.To(Slide, TranslateTransform.YProperty, -Pill.ActualHeight - Pill.Margin.Top, 220, done: () => { if (away) Hide(); });
         }
         else
         {
             Show();
             SlideIn();
         }
-    }
-
-    // Flush with the top edge, sides slanting in to rounded bottom corners. The top edge has no stroke.
-    void Reshape(object sender, SizeChangedEventArgs e)
-    {
-        double w = Pill.ActualWidth, h = Pill.ActualHeight, slant = 11, r = 7;
-        var g = new StreamGeometry();
-        using (var c = g.Open())
-        {
-            c.BeginFigure(new Point(0, 0), isFilled: true, isClosed: false);
-            Corner(c, new(0, 0), new(slant, h), new(w - slant, h), r);
-            Corner(c, new(slant, h), new(w - slant, h), new(w, 0), r);
-            c.LineTo(new Point(w, 0), true, true);
-        }
-        g.Freeze();
-        Outline.Data = g;
-    }
-
-    // From a toward corner b, rounded off by r, turning toward c.
-    static void Corner(StreamGeometryContext c, Point a, Point b, Point to, double r)
-    {
-        var inn = b - a;
-        var outn = to - b;
-        inn.Normalize();
-        outn.Normalize();
-        c.LineTo(b - inn * r, true, true);
-        c.QuadraticBezierTo(b, b + outn * r, true, true);
     }
 
     // Top center of the main screen's work area (below a top taskbar, if any).
@@ -197,6 +174,7 @@ public partial class BarWindow : Window
         if (Read(v) is not { } segs) { Show(1); return; } // e.g. the last reminder was ticked off
         Glyph.Text = v.Icon;
         Body.ToolTip = $"Open {v.Tab}";
+        ShowMusic(v.Name == "Music" ? Media.Current : null);
         Segs.Children.Clear();
         foreach (var (dim, bright) in segs)
         {
@@ -210,6 +188,37 @@ public partial class BarWindow : Window
             });
         }
     }
+
+    // Music view extras: cover instead of the icon, prev/play/next, and the progress line.
+    void ShowMusic(Player? p)
+    {
+        var on = p is not null;
+        Controls.Visibility = Progress.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        CoverBox.Visibility = p?.Cover is not null ? Visibility.Visible : Visibility.Collapsed;
+        Glyph.Visibility = p?.Cover is null ? Visibility.Visible : Visibility.Collapsed;
+        if (p is null) { progress.Stop(); return; }
+        CoverArt.ImageSource = p.Cover;
+        PlayPause.Content = p.Playing ? "\uE769" : "\uE768";
+        PlayPause.ToolTip = p.Playing ? "Pause" : "Play";
+        PlayPause.IsEnabled = p.CanToggle;
+        PrevTrack.IsEnabled = p.CanPrev;
+        NextTrack.IsEnabled = p.CanNext;
+        Progress.Visibility = p.Duration > TimeSpan.Zero ? Visibility.Visible : Visibility.Collapsed;
+        ShowProgress();
+        if (p.Playing && p.Duration > TimeSpan.Zero) progress.Start(); else progress.Stop();
+    }
+
+    void ShowProgress()
+    {
+        if (Media.Current is not { Duration.Ticks: > 0 } p) return;
+        // Glides to where the song will be a second from now, so the line moves smoothly instead of ticking.
+        var ahead = p.Playing ? p.Position + TimeSpan.FromSeconds(1) : p.Position;
+        Motion.To(Done, ScaleTransform.ScaleXProperty, Math.Clamp(ahead / p.Duration, 0, 1), p.Playing ? 1000 : 200);
+    }
+
+    void TrackPrev(object sender, RoutedEventArgs e) { if (Media.Current is { } p) Media.Do(p.Prev); }
+    void TrackToggle(object sender, RoutedEventArgs e) { if (Media.Current is { } p) Media.Do(p.Toggle); }
+    void TrackNext(object sender, RoutedEventArgs e) { if (Media.Current is { } p) Media.Do(p.Next); }
 
     static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
 

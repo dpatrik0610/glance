@@ -49,6 +49,7 @@ public partial class MainWindow : Window
         view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(Tab.Group)));
         Nav.ItemsSource = view;
         Bottom.ItemsSource = new[] { SettingsTab };
+        Strip.ItemsSource = Tabs.Append(SettingsTab).ToArray();
         Nav.SelectedIndex = 0;
         App.SettingsChanged += ApplySettings;
         PreviewKeyDown += Shortcut;
@@ -121,7 +122,43 @@ public partial class MainWindow : Window
         Panel.Background = new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(s.Opacity, 0.1, 1) * 255), 0x16, 0x16, 0x18));
         Topmost = s.Topmost;
         Nav.Tag = !s.NavCollapsed; // item labels and group headers bind to this
+        SetCompact(s.Compact);
         Native.SetBlur(hwnd, s.Blur);
+    }
+
+    // ---- Compact mode: smaller window, no sidebar, the tabs as icons across the top. Same pages, other frame. ----
+
+    bool compact;
+    Size other = new(880, 600); // the size of the mode we're not in, swapped on toggle
+
+    void SetCompact(bool on)
+    {
+        if (on == compact) return;
+        compact = on;
+        var keep = new Size(Width, Height);
+        (Width, Height) = (other.Width, other.Height);
+        other = keep;
+        var shown = on ? Visibility.Collapsed : Visibility.Visible;
+        Side.Visibility = Brand.Visibility = NavToggle.Visibility = shown;
+        Strip.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        Page.Margin = on ? new Thickness(0) : new Thickness(8, 0, 0, 0);
+        Body.Margin = new Thickness(on ? 10 : 14);
+        CompactButton.Content = on ? "\uE740" : "\uE73F";
+        CompactButton.ToolTip = on ? "Full layout" : "Compact mode";
+        if (Dropped) Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - Width) / 2; // stay centered under the bar
+    }
+
+    void CompactClick(object sender, RoutedEventArgs e)
+    {
+        App.Settings.Compact = !compact;
+        App.ApplySettings();
+    }
+
+    // The strip only mirrors the sidebar lists, which stay the source of truth.
+    void StripChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (Strip.SelectedItem is not Tab t) return;
+        if (t == SettingsTab) Bottom.SelectedItem = t; else Nav.SelectedItem = t;
     }
 
     // Shared by both sidebar lists; selecting in one clears the other so only one item is ever highlighted.
@@ -130,6 +167,7 @@ public partial class MainWindow : Window
         var list = (ListBox)sender;
         if (list.SelectedItem is not Tab t) return;
         (list == Nav ? Bottom : Nav).SelectedItem = null;
+        Strip.SelectedItem = t;
         if (!pages.TryGetValue(t, out var page)) pages[t] = page = t.Create();
         Page.Content = page;
         PageTitle.Text = t.Name;

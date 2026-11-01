@@ -6,17 +6,19 @@
         FontFamily="Segoe UI Variable Text, Segoe UI" Foreground="{StaticResource Text}" TextOptions.TextFormattingMode="Display"
         Typography.NumeralAlignment="Tabular" MouseWheel="Wheel">
     <Window.Resources>
-        <!-- Small round chevron: dim until hovered -->
+        <!-- Small round glyph button: dim until hovered (chevrons; the music controls are brighter and larger) -->
         <Style x:Key="Arrow" TargetType="Button">
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Focusable" Value="False" />
+            <Setter Property="FontSize" Value="8" />
+            <Setter Property="Foreground" Value="{StaticResource Sub}" /> 
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Grid Width="20" Height="20" Background="Transparent">
                             <Ellipse x:Name="bg" Fill="White" Opacity="0" />
-                            <TextBlock x:Name="glyph" Text="{TemplateBinding Content}" FontFamily="{StaticResource Icons}" FontSize="8"
-                                       Foreground="{StaticResource Sub}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            <TextBlock x:Name="glyph" Text="{TemplateBinding Content}" FontFamily="{StaticResource Icons}" FontSize="{TemplateBinding FontSize}"
+                                       Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                        RenderTransformOrigin="0.5,0.5" RenderTransform="{TemplateBinding Tag}" />
                         </Grid>
                         <ControlTemplate.Triggers>
@@ -27,6 +29,9 @@
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="bg" Property="Opacity" Value="0.18" />
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.3" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -34,20 +39,25 @@
         </Style>
     </Window.Resources>
 
-    <!-- The island: flush with the top edge, sides slanting in to a rounded bottom. Margin leaves room for the shadow. -->
-    <Grid x:Name="Pill" Margin="16,0,16,18" Height="26" Opacity="0" SizeChanged="Reshape">
-        <Grid.RenderTransform>
-            <TranslateTransform x:Name="Slide" Y="-26" />
-        </Grid.RenderTransform>
-        <!-- In a Canvas so the shape (redrawn to the content's size) never feeds back into the size -->
-        <Canvas>
-            <Path x:Name="Outline" Stroke="#24FFFFFF" StrokeThickness="1">
-                <Path.Effect>
-                    <DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.45" Color="Black" />
-                </Path.Effect>
-            </Path>
-        </Canvas>
-        <DockPanel Margin="14,0,14,1">
+    <!-- Floating pill just below the top edge. Margin leaves room for the shadow. -->
+    <Border x:Name="Pill" Margin="14,6,14,16" Height="32" CornerRadius="16" BorderBrush="#24FFFFFF" BorderThickness="1" Opacity="0">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="Slide" Y="-10" />
+        </Border.RenderTransform>
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="270" Opacity="0.45" Color="Black" />
+        </Border.Effect>
+      <Grid>
+        <!-- Song progress along the flat part of the bottom edge (Music view) -->
+        <Grid x:Name="Progress" VerticalAlignment="Bottom" Height="2" Margin="16,0,16,2" IsHitTestVisible="False" Visibility="Collapsed">
+            <Border Background="#1FFFFFFF" CornerRadius="1" />
+            <Border Background="{StaticResource Accent}" CornerRadius="1" RenderTransformOrigin="0,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="Done" ScaleX="0" />
+                </Border.RenderTransform>
+            </Border>
+        </Grid>
+        <DockPanel Margin="5,0">
             <Button DockPanel.Dock="Left" Style="{StaticResource Arrow}" Content="&#xE76B;" ToolTip="Previous" Click="Prev" />
             <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Open Glance" Click="Down">
                 <Button.Tag>
@@ -56,6 +66,14 @@
             </Button>
             <Border DockPanel.Dock="Right" Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
             <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE76C;" ToolTip="Next" Click="Next" />
+            <!-- Music controls (Music view only) -->
+            <StackPanel x:Name="Controls" DockPanel.Dock="Right" Orientation="Horizontal" Margin="2,0,4,0" Visibility="Collapsed">
+                <Button x:Name="PrevTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE892;"
+                        ToolTip="Previous song" Click="TrackPrev" />
+                <Button x:Name="PlayPause" Style="{StaticResource Arrow}" FontSize="10" Foreground="{StaticResource Text}" Click="TrackToggle" />
+                <Button x:Name="NextTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE893;"
+                        ToolTip="Next song" Click="TrackNext" />
+            </StackPanel>
             <StackPanel x:Name="Body" Orientation="Horizontal" Margin="4,0" Background="Transparent" Cursor="Hand"
                         MouseLeftButtonUp="OpenTab">
                 <StackPanel.RenderTransform>
@@ -63,8 +81,14 @@
                 </StackPanel.RenderTransform>
                 <TextBlock x:Name="Glyph" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="{StaticResource Accent}"
                            VerticalAlignment="Center" Margin="0,1,9,0" />
+                <Border x:Name="CoverBox" Width="16" Height="16" CornerRadius="4" Margin="0,0,8,0" VerticalAlignment="Center" Visibility="Collapsed">
+                    <Border.Background>
+                        <ImageBrush x:Name="CoverArt" Stretch="UniformToFill" />
+                    </Border.Background>
+                </Border>
                 <StackPanel x:Name="Segs" Orientation="Horizontal" VerticalAlignment="Center" />
             </StackPanel>
         </DockPanel>
-    </Grid>
+      </Grid>
+    </Border>
 </Window>

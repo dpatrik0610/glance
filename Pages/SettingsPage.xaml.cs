@@ -23,6 +23,7 @@ public partial class SettingsPage : UserControl
 
         BlurBox.IsChecked = s.Blur;
         TopBox.IsChecked = s.Topmost;
+        CompactBox.IsChecked = s.Compact;
         FBox.IsChecked = s.Fahrenheit;
         BarBox.IsChecked = s.TopBar;
         BarFullscreenBox.IsChecked = s.BarHideFullscreen;
@@ -58,6 +59,7 @@ public partial class SettingsPage : UserControl
     {
         s.Blur = BlurBox.IsChecked == true;
         s.Topmost = TopBox.IsChecked == true;
+        s.Compact = CompactBox.IsChecked == true;
         s.Fahrenheit = FBox.IsChecked == true;
         s.TopBar = BarBox.IsChecked == true;
         s.BarHideFullscreen = BarFullscreenBox.IsChecked == true;

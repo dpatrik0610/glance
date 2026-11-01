@@ -22,7 +22,8 @@
                             <Slider Minimum="0.1" Maximum="1" />
                         </DockPanel>
                         <CheckBox x:Name="BlurBox" Style="{StaticResource Switch}" Content="Blur background" Margin="0,0,0,12" Click="Toggled" />
-                        <CheckBox x:Name="TopBox" Style="{StaticResource Switch}" Content="Always on top" Click="Toggled" />
+                        <CheckBox x:Name="TopBox" Style="{StaticResource Switch}" Content="Always on top" Margin="0,0,0,12" Click="Toggled" />
+                        <CheckBox x:Name="CompactBox" Style="{StaticResource Switch}" Content="Compact mode (tabs as icons on top)" Click="Toggled" />
                     </StackPanel>
                 </Border>
 

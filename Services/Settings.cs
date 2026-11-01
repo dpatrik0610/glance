@@ -10,6 +10,8 @@ public class Settings
     public bool Blur { get; set; } = true;
     public bool Topmost { get; set; }
     public bool NavCollapsed { get; set; }
+    /// Smaller window with the tabs as icons across the top instead of the sidebar.
+    public bool Compact { get; set; }
     public int RefreshMs { get; set; } = 1000;
     public string Hotkey { get; set; } = "Win+Shift+G";
 
