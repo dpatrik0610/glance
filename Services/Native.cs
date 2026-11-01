@@ -20,6 +20,12 @@ public static class Native
         SetWindowLongPtr(hwnd, ExStyle, GetWindowLongPtr(hwnd, ExStyle) | NoActivate | ToolWindow);
     }
 
+    [DllImport("shell32.dll")] static extern int SHQueryUserNotificationState(out int state);
+
+    /// A game, fullscreen video or presentation is in front (Windows' own "don't disturb" signal, the one toasts respect).
+    public static bool FullscreenApp() =>
+        SHQueryUserNotificationState(out var s) == 0 && s is 2 /* busy */ or 3 /* D3D fullscreen */ or 4 /* presentation */;
+
     public static bool IsAdmin { get; } = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
 
     // ---- Native Windows 11 frame: acrylic blur, anti-aliased rounded corners, shadow, dark border ----

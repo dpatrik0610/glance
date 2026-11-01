@@ -83,6 +83,10 @@ static class SelfTest
                     && Places.Why(new HttpRequestException("dns")).Contains("connection"), "map errors name the service");
             Check(Places.ShortName("12, Andrássy út, Terézváros, Budapest") == "12, Andrássy út", "place short name");
 
+            foreach (var (aumid, name) in new[] { ("Spotify.exe", "Spotify"), ("Chrome", "Chrome"), ("308046B0AF4A39CB", "Firefox"),
+                         ("Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic", "Media Player"), ("Acme.Tunes_1x2y!App", "Tunes"), ("foobar2000.exe", "foobar2000") })
+                Check(Player.SourceName(aumid) == name, $"player name {aumid}: {Player.SourceName(aumid)}");
+
             Check(MainWindow.Match(cmds, "").Count == 3, "palette: notes only on search");
             Check(MainWindow.Match(cmds, "net").Select(c => c.Title).SequenceEqual(["Network", "Copy public IP"]), "palette: title prefix first");
             Check(MainWindow.Match(cmds, "coding gla").Single().Title == "glance" && MainWindow.Match(cmds, "milk").Single().Title == "todo", "palette: all words, extra text");

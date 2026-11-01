@@ -26,6 +26,9 @@ public class Settings
     public bool TopBar { get; set; } = true;
     public double BarOpacity { get; set; } = 0.94;
     public string BarView { get; set; } = "System";
+    public bool BarHideFullscreen { get; set; } = true;
+    /// A small alert when the song changes (Now Playing).
+    public bool TrackAlerts { get; set; } = true;
     public string City { get; set; } = "";
     public double? Lat { get; set; }
     public double? Lon { get; set; }

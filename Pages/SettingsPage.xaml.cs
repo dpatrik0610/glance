@@ -25,6 +25,8 @@ public partial class SettingsPage : UserControl
         TopBox.IsChecked = s.Topmost;
         FBox.IsChecked = s.Fahrenheit;
         BarBox.IsChecked = s.TopBar;
+        BarFullscreenBox.IsChecked = s.BarHideFullscreen;
+        TrackAlertsBox.IsChecked = s.TrackAlerts;
         AlertsBox.IsChecked = s.AlertsEnabled;
         HotkeyBox.Text = s.Hotkey;
         CityBox.Text = s.City;
@@ -58,6 +60,8 @@ public partial class SettingsPage : UserControl
         s.Topmost = TopBox.IsChecked == true;
         s.Fahrenheit = FBox.IsChecked == true;
         s.TopBar = BarBox.IsChecked == true;
+        s.BarHideFullscreen = BarFullscreenBox.IsChecked == true;
+        s.TrackAlerts = TrackAlertsBox.IsChecked == true;
         s.AlertsEnabled = AlertsBox.IsChecked == true;
         if (sender == AutoBox) Settings.AutoStart = AutoBox.IsChecked == true;
         if (sender == MenuBox) Settings.ExplorerMenu = MenuBox.IsChecked == true;

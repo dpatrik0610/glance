@@ -7,8 +7,9 @@ using Glance.Services;
 namespace Glance;
 
 /// What a toast shows. Headline with a Unit = a metric (big number); without = a sentence (wrapped).
-/// Sticky toasts stay until clicked or closed; others drain away (paused while hovered).
-public record Toast(string Label, string Headline, string Unit, string SideTitle, string SideText, Color Color, bool Sticky);
+/// Sticky toasts stay until clicked or closed; others drain away (paused while hovered). Art and Detail: a picture and a line under the headline.
+public record Toast(string Label, string Headline, string Unit, string SideTitle, string SideText, Color Color, bool Sticky,
+    ImageSource? Art = null, string Detail = "");
 
 /// Custom toast: slides in bottom-right, glows in its color.
 public partial class AlertWindow : Window
@@ -47,7 +48,19 @@ public partial class AlertWindow : Window
             Value.TextWrapping = TextWrapping.Wrap;
             Value.TextTrimming = TextTrimming.CharacterEllipsis;
             Value.MaxHeight = 52;
-            Value.MaxWidth = 270; // the row is a horizontal StackPanel, so wrapping needs a width
+            Value.MaxWidth = t.Art is null ? 270 : 250; // the row is a horizontal StackPanel, so wrapping needs a width
+        }
+        if (t.Art is not null)
+        {
+            Art.ImageSource = t.Art;
+            ArtBox.Visibility = Visibility.Visible;
+        }
+        if (t.Detail.Length > 0)
+        {
+            Detail.Text = t.Detail;
+            Detail.MaxWidth = Value.MaxWidth;
+            Detail.Visibility = Visibility.Visible;
+            Value.MaxHeight = 28; // one line of headline, one of detail
         }
         SideTitle.Text = Spaced(t.SideTitle.ToUpperInvariant());
         SideText.Text = t.SideText;

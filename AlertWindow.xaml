@@ -55,9 +55,19 @@
                     <TextBlock x:Name="SideTitle" FontSize="9" Foreground="#6A6A72" HorizontalAlignment="Right" />
                     <TextBlock x:Name="SideText" FontSize="14" Foreground="#9C9CA3" HorizontalAlignment="Right" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="Value" FontSize="46" FontWeight="Light" Foreground="White" />
-                    <TextBlock x:Name="Unit" FontSize="18" FontWeight="Light" Foreground="#9C9CA3" VerticalAlignment="Bottom" Margin="4,0,0,10" />
+                <!-- Cover art (song alerts) -->
+                <Border x:Name="ArtBox" DockPanel.Dock="Left" Width="54" Height="54" CornerRadius="9" Margin="0,0,14,0"
+                        VerticalAlignment="Center" Visibility="Collapsed">
+                    <Border.Background>
+                        <ImageBrush x:Name="Art" Stretch="UniformToFill" />
+                    </Border.Background>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="Value" FontSize="46" FontWeight="Light" Foreground="White" />
+                        <TextBlock x:Name="Unit" FontSize="18" FontWeight="Light" Foreground="#9C9CA3" VerticalAlignment="Bottom" Margin="4,0,0,10" />
+                    </StackPanel>
+                    <TextBlock x:Name="Detail" FontSize="13" Foreground="#9C9CA3" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" Visibility="Collapsed" />
                 </StackPanel>
             </DockPanel>
 

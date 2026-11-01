@@ -12,8 +12,9 @@ using Microsoft.Win32;
 
 namespace Glance;
 
-/// The always-on-top strip at the top center of the main screen. One view at a time: arrows or the wheel switch,
-/// a click opens that view's page. Views with nothing to show (no hometown, no reminders) are skipped.
+/// The always-on-top island at the top center of the main screen. One view at a time: arrows or the wheel switch,
+/// a click opens that view's page, the down arrow drops Glance under it. Views with nothing to show (no hometown,
+/// no reminders, nothing playing) are skipped. Steps aside while a fullscreen app (game, video, slides) is in front.
 public partial class BarWindow : Window
 {
     record View(string Name, string Tab, string Icon);
@@ -22,6 +23,7 @@ public partial class BarWindow : Window
     [
         new("System", "System", ""),
         new("Network", "Network", ""),
+        new("Music", "Now Playing", ""),
         new("Weather", "Weather", ""),
         new("Exchange", "Exchange", ""),
         new("Reminder", "Notes", ""),
@@ -29,8 +31,9 @@ public partial class BarWindow : Window
 
     static readonly TimeSpan WeatherAge = TimeSpan.FromMinutes(15), RatesAge = TimeSpan.FromHours(3);
 
-    readonly Action<string> openTab;
-    readonly DispatcherTimer tick;
+    readonly Action<string?> drop;
+    readonly DispatcherTimer tick, fullscreen;
+    bool away; // stepped aside for a fullscreen app
     int index;
     Snapshot? snap;
     Weather.Current? weather;
@@ -40,33 +43,36 @@ public partial class BarWindow : Window
     string? failed; // the view whose fetch failed, so it says so instead of "…"
     bool fetching;
 
-    public BarWindow(Action<string> openTab)
+    /// drop: opens Glance under the bar at that tab; null (the down arrow) toggles it.
+    public BarWindow(Action<string?> drop)
     {
         InitializeComponent();
-        this.openTab = openTab;
+        this.drop = drop;
         index = Math.Max(0, Array.FindIndex(Views, v => v.Name == App.Settings.BarView));
 
         App.Sampled += OnSample;
         App.SettingsChanged += ApplyOpacity;
         ApplyOpacity();
+        Media.Changed += OnMedia;
         SystemEvents.DisplaySettingsChanged += Moved;
         // Each half minute: relative times ("in 5 min") move on, and stale weather/rates refresh while shown.
         tick = new DispatcherTimer(TimeSpan.FromSeconds(30), DispatcherPriority.Background, (_, _) => { Render(); Fetch(); }, Dispatcher);
+        // One cheap shell query a second (no hooks): is a fullscreen app in front?
+        fullscreen = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => CheckFullscreen(), Dispatcher);
+        fullscreen.Stop();
         Closed += (_, _) =>
         {
             App.Sampled -= OnSample;
             App.SettingsChanged -= ApplyOpacity;
+            Media.Changed -= OnMedia;
+            fullscreen.Stop();
             SystemEvents.DisplaySettingsChanged -= Moved;
             tick.Stop();
         };
 
         SourceInitialized += (_, _) => Native.Passive(new WindowInteropHelper(this).Handle);
         SizeChanged += (_, _) => Place();
-        Loaded += (_, _) =>
-        {
-            Motion.To(Pill, OpacityProperty, 1, 300);
-            Motion.To(Slide, TranslateTransform.YProperty, 0, 380);
-        };
+        Loaded += (_, _) => SlideIn();
         Show(0);
     }
 
@@ -76,9 +82,72 @@ public partial class BarWindow : Window
         if (Views[index].Name is "System" or "Network") Render();
     });
 
+    void OnMedia()
+    {
+        if (Views[index].Name == "Music") Render();
+    }
+
     // Background only, like the main window: the text stays fully readable.
     void ApplyOpacity() =>
-        Pill.Background = new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255), 0x14, 0x14, 0x17));
+        Outline.Fill = new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255), 0x14, 0x14, 0x17));
+
+    /// Where the island ends, for dropping Glance just below it.
+    public double Edge => Top + Pill.Margin.Top + Pill.ActualHeight;
+
+    /// The down arrow turns up while Glance hangs under the bar.
+    public void Dropped(bool on) => Motion.To(Turn, RotateTransform.AngleProperty, on ? 180 : 0, 260);
+
+    void SlideIn()
+    {
+        Motion.To(Pill, OpacityProperty, 1, 300);
+        Motion.To(Slide, TranslateTransform.YProperty, 0, 380);
+        fullscreen.Start();
+    }
+
+    void CheckFullscreen()
+    {
+        var hide = App.Settings.BarHideFullscreen && Native.FullscreenApp();
+        if (hide == away) return;
+        away = hide;
+        if (hide)
+        {
+            // Hidden, not just transparent: a topmost window over a game can cost it its fullscreen fast path.
+            Motion.To(Pill, OpacityProperty, 0, 180);
+            Motion.To(Slide, TranslateTransform.YProperty, -Pill.ActualHeight, 220, done: () => { if (away) Hide(); });
+        }
+        else
+        {
+            Show();
+            SlideIn();
+        }
+    }
+
+    // Flush with the top edge, sides slanting in to rounded bottom corners. The top edge has no stroke.
+    void Reshape(object sender, SizeChangedEventArgs e)
+    {
+        double w = Pill.ActualWidth, h = Pill.ActualHeight, slant = 11, r = 7;
+        var g = new StreamGeometry();
+        using (var c = g.Open())
+        {
+            c.BeginFigure(new Point(0, 0), isFilled: true, isClosed: false);
+            Corner(c, new(0, 0), new(slant, h), new(w - slant, h), r);
+            Corner(c, new(slant, h), new(w - slant, h), new(w, 0), r);
+            c.LineTo(new Point(w, 0), true, true);
+        }
+        g.Freeze();
+        Outline.Data = g;
+    }
+
+    // From a toward corner b, rounded off by r, turning toward c.
+    static void Corner(StreamGeometryContext c, Point a, Point b, Point to, double r)
+    {
+        var inn = b - a;
+        var outn = to - b;
+        inn.Normalize();
+        outn.Normalize();
+        c.LineTo(b - inn * r, true, true);
+        c.QuadraticBezierTo(b, b + outn * r, true, true);
+    }
 
     // Top center of the main screen's work area (below a top taskbar, if any).
     void Place()
@@ -96,7 +165,8 @@ public partial class BarWindow : Window
     void Next(object sender, RoutedEventArgs e) => Show(+1);
     void Wheel(object sender, MouseWheelEventArgs e) => Show(e.Delta > 0 ? -1 : +1);
 
-    void OpenTab(object sender, MouseButtonEventArgs e) => openTab(Views[index].Tab);
+    void OpenTab(object sender, MouseButtonEventArgs e) => drop(Views[index].Tab);
+    void Down(object sender, RoutedEventArgs e) => drop(null);
 
     /// Moves `step` views (0: stay), skipping views that have nothing to show.
     void Show(int step)
@@ -132,8 +202,12 @@ public partial class BarWindow : Window
         {
             if (Segs.Children.Count > 0) Segs.Children.Add(new Border { Width = 14 });
             if (dim.Length > 0)
-                Segs.Children.Add(new TextBlock { Text = dim, FontSize = 11.5, Foreground = Brush("Sub"), Margin = new(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center });
-            Segs.Children.Add(new TextBlock { Text = bright, FontSize = 12.5, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+                Segs.Children.Add(new TextBlock { Text = dim, FontSize = 11, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = Brush("Sub"), Margin = new(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center });
+            Segs.Children.Add(new TextBlock
+            {
+                Text = bright, FontSize = 12, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 300, TextTrimming = TextTrimming.CharacterEllipsis, // long song titles
+            });
         }
     }
 
@@ -154,6 +228,9 @@ public partial class BarWindow : Window
                 return [.. sys];
             case "Network":
                 return snap is null ? [("", "…")] : [("↓", SystemPage.Rate(snap.NetDown)), ("↑", SystemPage.Rate(snap.NetUp))];
+            case "Music":
+                if (Media.Current is not { Title.Length: > 0 } p) return null;
+                return [(p.Artist, p.Title)];
             case "Weather":
                 if (s.Lat is null) return null; // no hometown set on the Weather page
                 var place = s.City.Length > 0 ? s.City : "Weather";

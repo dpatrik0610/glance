@@ -13,10 +13,11 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid Width="24" Height="24" Background="Transparent">
+                        <Grid Width="20" Height="20" Background="Transparent">
                             <Ellipse x:Name="bg" Fill="White" Opacity="0" />
-                            <TextBlock x:Name="glyph" Text="{TemplateBinding Content}" FontFamily="{StaticResource Icons}" FontSize="9"
-                                       Foreground="{StaticResource Sub}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock x:Name="glyph" Text="{TemplateBinding Content}" FontFamily="{StaticResource Icons}" FontSize="8"
+                                       Foreground="{StaticResource Sub}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       RenderTransformOrigin="0.5,0.5" RenderTransform="{TemplateBinding Tag}" />
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -33,27 +34,37 @@
         </Style>
     </Window.Resources>
 
-    <!-- Margin leaves room for the shadow -->
-    <Border x:Name="Pill" Margin="14,6,14,16" Height="32" CornerRadius="16" Background="#F0141417" BorderBrush="#24FFFFFF"
-            BorderThickness="1" Opacity="0">
-        <Border.RenderTransform>
-            <TranslateTransform x:Name="Slide" Y="-10" />
-        </Border.RenderTransform>
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="270" Opacity="0.45" Color="Black" />
-        </Border.Effect>
-        <DockPanel Margin="3,0">
+    <!-- The island: flush with the top edge, sides slanting in to a rounded bottom. Margin leaves room for the shadow. -->
+    <Grid x:Name="Pill" Margin="16,0,16,18" Height="26" Opacity="0" SizeChanged="Reshape">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="Slide" Y="-26" />
+        </Grid.RenderTransform>
+        <!-- In a Canvas so the shape (redrawn to the content's size) never feeds back into the size -->
+        <Canvas>
+            <Path x:Name="Outline" Stroke="#24FFFFFF" StrokeThickness="1">
+                <Path.Effect>
+                    <DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.45" Color="Black" />
+                </Path.Effect>
+            </Path>
+        </Canvas>
+        <DockPanel Margin="14,0,14,1">
             <Button DockPanel.Dock="Left" Style="{StaticResource Arrow}" Content="&#xE76B;" ToolTip="Previous" Click="Prev" />
+            <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Open Glance" Click="Down">
+                <Button.Tag>
+                    <RotateTransform x:Name="Turn" />
+                </Button.Tag>
+            </Button>
+            <Border DockPanel.Dock="Right" Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
             <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE76C;" ToolTip="Next" Click="Next" />
-            <StackPanel x:Name="Body" Orientation="Horizontal" Margin="5,0" Background="Transparent" Cursor="Hand"
+            <StackPanel x:Name="Body" Orientation="Horizontal" Margin="4,0" Background="Transparent" Cursor="Hand"
                         MouseLeftButtonUp="OpenTab">
                 <StackPanel.RenderTransform>
                     <TranslateTransform x:Name="Shift" />
                 </StackPanel.RenderTransform>
-                <TextBlock x:Name="Glyph" FontFamily="{StaticResource Icons}" FontSize="13" Foreground="{StaticResource Accent}"
-                           VerticalAlignment="Center" Margin="0,1,10,0" />
+                <TextBlock x:Name="Glyph" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="{StaticResource Accent}"
+                           VerticalAlignment="Center" Margin="0,1,9,0" />
                 <StackPanel x:Name="Segs" Orientation="Horizontal" VerticalAlignment="Center" />
             </StackPanel>
         </DockPanel>
-    </Border>
+    </Grid>
 </Window>

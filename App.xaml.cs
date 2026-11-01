@@ -74,6 +74,7 @@ public partial class App : Application
         tray = new Tray(menu, () => ToggleMain(false));
 
         main = new MainWindow();
+        main.DroppedChanged += on => bar?.Dropped(on);
         // The window may start hidden (--tray), but the hotkey and clipboard listener need its handle now.
         hwnd = new WindowInteropHelper(main).EnsureHandle();
         HwndSource.FromHwnd(hwnd)!.AddHook(WndProc);
@@ -89,6 +90,9 @@ public partial class App : Application
             var who = a.Blame == Blame.None ? null : await HardwareMonitor.Top(a.Blame == Blame.Memory);
             _ = Dispatcher.BeginInvoke(() => ShowAlert(a, who));
         });
+
+        Media.TrackChanged += ShowTrack;
+        Media.Start();
 
         Listen();
         Task.Run(SampleLoop);
@@ -186,6 +190,13 @@ public partial class App : Application
             ((App)Current).ShowMain);
     }
 
+    void ShowTrack(Player p)
+    {
+        if (!Settings.TrackAlerts) return;
+        AlertWindow.Show(new Toast($"Now playing · {p.Source}", p.Title, "", "", "", Color.FromRgb(0xFF, 0x6A, 0x3D), false, p.Cover, p.Artist),
+            () => Drop("Now Playing"));
+    }
+
     // Checklist reminders: polled, so ones that came due while Glance was off fire right after start.
     void CheckReminders()
     {
@@ -252,7 +263,7 @@ public partial class App : Application
     {
         if (Settings.TopBar && bar is null)
         {
-            bar = new BarWindow(tab => { ShowMain(); main!.ShowTab(tab); });
+            bar = new BarWindow(Drop);
             bar.Show();
         }
         else if (!Settings.TopBar && bar is not null)
@@ -260,6 +271,15 @@ public partial class App : Application
             bar.Close();
             bar = null;
         }
+    }
+
+    /// From the bar: Glance slides down under it, at that tab. The arrow (no tab) toggles it.
+    void Drop(string? tab)
+    {
+        if (tab is null && main!.IsVisible && main.Dropped) { main.Away(); return; }
+        if (!main!.IsVisible || main.Dropped) main.DropUnder(bar!.Edge); // already open somewhere else: just switch tabs
+        ShowMain();
+        if (tab is not null) main.ShowTab(tab);
     }
 
     void ShowMain()
@@ -278,7 +298,7 @@ public partial class App : Application
     // Window.IsActive can be true while another app has the foreground, so ask Windows directly.
     void ToggleMain(bool requireFocus)
     {
-        if (main!.IsVisible && (!requireFocus || Native.GetForegroundWindow() == hwnd)) main.Hide(); else ShowMain();
+        if (main!.IsVisible && (!requireFocus || Native.GetForegroundWindow() == hwnd)) main.Away(); else ShowMain();
     }
 
     void RestartAsAdmin()

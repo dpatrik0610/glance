@@ -25,6 +25,7 @@ public partial class MainWindow : Window
         new("Weather", "Life", "\uE706", () => new WeatherPage()),
         new("Map", "Life", "\uE707", () => new MapPage()),
         new("Exchange", "Life", "\uE8AB", () => new ExchangePage()),
+        new("Now Playing", "Life", "\uEC4F", () => new NowPlayingPage()),
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
         new("Notes", "Tools", "\uE70B", () => new NotesPage()),
         new("Password", "Tools", "\uE8D7", () => new PasswordPage()),
@@ -51,6 +52,58 @@ public partial class MainWindow : Window
         Nav.SelectedIndex = 0;
         App.SettingsChanged += ApplySettings;
         PreviewKeyDown += Shortcut;
+        Deactivated += (_, _) => Dispatcher.BeginInvoke(LostToOutside, System.Windows.Threading.DispatcherPriority.Input);
+        IsVisibleChanged += (_, _) => { if (!IsVisible) Undrop(); };
+    }
+
+    // ---- Dropped from the top bar: hangs under it, slides back up on Esc, the arrow, or a click elsewhere ----
+
+    public bool Dropped { get; private set; }
+    public event Action<bool>? DroppedChanged;
+    Rect home; // where the window was before, restored when it goes back up
+    bool homeMaximized;
+
+    /// Places the (hidden or shown) window centered under the bar and slides it down into place.
+    public void DropUnder(double top)
+    {
+        if (!Dropped)
+        {
+            home = new Rect(Left, Top, Width, Height);
+            homeMaximized = WindowState == WindowState.Maximized;
+            Dropped = true;
+            DroppedChanged?.Invoke(true);
+        }
+        if (WindowState != WindowState.Normal) WindowState = WindowState.Normal;
+        var area = SystemParameters.WorkArea;
+        Left = area.Left + (area.Width - Width) / 2;
+        Height = Math.Min(Height, area.Bottom - top - 8);
+        BeginAnimation(TopProperty, null);
+        Top = top + 6;
+        Motion.To(this, TopProperty, top + 6, 260, from: top - 18, done: () => BeginAnimation(TopProperty, null));
+    }
+
+    /// Hides: dropped, it slides up into the bar first.
+    public void Away()
+    {
+        if (!Dropped || !IsVisible) { Hide(); return; }
+        Motion.To(Body, OpacityProperty, 0, 150);
+        Motion.To(this, TopProperty, Top - 18, 180, done: () => { BeginAnimation(TopProperty, null); Hide(); });
+    }
+
+    // Focus went elsewhere (not to one of our own dialogs): a dropped Glance goes back up.
+    void LostToOutside()
+    {
+        if (Dropped && IsVisible && !IsActive && !OwnedWindows.Cast<Window>().Any(w => w.IsActive)) Away();
+    }
+
+    void Undrop()
+    {
+        if (!Dropped) return;
+        Dropped = false;
+        BeginAnimation(TopProperty, null);
+        (Left, Top, Width, Height) = (home.Left, home.Top, home.Width, home.Height);
+        if (homeMaximized) WindowState = WindowState.Maximized;
+        DroppedChanged?.Invoke(false);
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -100,7 +153,7 @@ public partial class MainWindow : Window
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         if (e.Key == Key.Escape && PaletteLayer.IsVisible) ClosePalette();
         // In a terminal Esc belongs to the shell: PSReadLine clears the typed line, Claude stops its reply.
-        else if (e.Key == Key.Escape && !(Page.Content is CliPage && e.OriginalSource is Microsoft.Web.WebView2.Wpf.WebView2)) Hide();
+        else if (e.Key == Key.Escape && !(Page.Content is CliPage && e.OriginalSource is Microsoft.Web.WebView2.Wpf.WebView2)) Away();
         else if (ctrl && e.Key == Key.K) OpenPalette();
         else if (ctrl && e.Key is >= Key.D1 and <= Key.D9 && e.Key - Key.D1 < Tabs.Length) Nav.SelectedIndex = e.Key - Key.D1;
         else if (ctrl && e.Key == Key.OemComma) Bottom.SelectedIndex = 0;
@@ -122,7 +175,7 @@ public partial class MainWindow : Window
 
     void Drag(object sender, MouseButtonEventArgs e) => DragMove();
 
-    void HideClick(object sender, RoutedEventArgs e) => Hide();
+    void HideClick(object sender, RoutedEventArgs e) => Away();
 
     // Closing (Alt+F4) just hides; the tray menu is the only way out.
     protected override void OnClosing(CancelEventArgs e)
