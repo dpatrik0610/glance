@@ -41,6 +41,7 @@ public partial class App : Application
     Mutex? mutex;
     Tray? tray;
     MainWindow? main;
+    BarWindow? bar;
     IntPtr hwnd;
     string? registeredHotkey;
 
@@ -79,6 +80,8 @@ public partial class App : Application
         Native.AddClipboardFormatListener(hwnd);
         RegisterHotkey();
         SettingsChanged += RegisterHotkey;
+        ApplyBar();
+        SettingsChanged += ApplyBar;
 
         Sampled += s => Dispatcher.BeginInvoke(() => tray.Update(s));
         alerts.Fired += a => Task.Run(async () =>
@@ -242,6 +245,20 @@ public partial class App : Application
             }
             catch (Exception e) { Db.Error("sample", e); }
             await wake.WaitAsync(isLive ? Math.Max(250, Settings.RefreshMs) : 5000);
+        }
+    }
+
+    void ApplyBar()
+    {
+        if (Settings.TopBar && bar is null)
+        {
+            bar = new BarWindow(tab => { ShowMain(); main!.ShowTab(tab); });
+            bar.Show();
+        }
+        else if (!Settings.TopBar && bar is not null)
+        {
+            bar.Close();
+            bar = null;
         }
     }
 

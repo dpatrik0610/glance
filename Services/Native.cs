@@ -10,6 +10,16 @@ public record ConnInfo(string Process, int Pid, string Remote, int Port);
 
 public static class Native
 {
+    [DllImport("user32.dll")] static extern nint GetWindowLongPtr(IntPtr hwnd, int index);
+    [DllImport("user32.dll")] static extern nint SetWindowLongPtr(IntPtr hwnd, int index, nint value);
+
+    /// Clicks never take focus from the app you're in (WS_EX_NOACTIVATE), and it stays out of Alt+Tab (WS_EX_TOOLWINDOW).
+    public static void Passive(IntPtr hwnd)
+    {
+        const int ExStyle = -20, NoActivate = 0x08000000, ToolWindow = 0x80;
+        SetWindowLongPtr(hwnd, ExStyle, GetWindowLongPtr(hwnd, ExStyle) | NoActivate | ToolWindow);
+    }
+
     public static bool IsAdmin { get; } = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
 
     // ---- Native Windows 11 frame: acrylic blur, anti-aliased rounded corners, shadow, dark border ----
