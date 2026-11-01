@@ -34,6 +34,9 @@ const theme = {
     brightBlack: '#817E7E', brightRed: '#FF643B', brightGreen: '#37E57B', brightYellow: '#FCCD1A', brightBlue: '#688DFD', brightMagenta: '#ED6FE9', brightCyan: '#32E0FB', brightWhite: '#D3D8D9',
 };
 
+// vendor/addon-webgl.js is patched (search "67108863&"): it gave dim and italic cells a background rectangle in the
+// transparent default color, drawn opaque, i.e. black bars under Claude's faded text. Redo the patch after updating it.
+
 // Programs that paint backgrounds black (Claude CLI does) assume an opaque black terminal; here that's solid blocks
 // on the glass. Black backgrounds become the default one: palette 40, 256-color 0/16/232-234, truecolor near-black.
 // ponytail: a color code split across two output chunks slips through (rare, and only costs one black run).
