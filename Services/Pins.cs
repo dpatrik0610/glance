@@ -237,4 +237,15 @@ public static class Places
         : $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString($"{p.Name}, {p.Address}")}";
 
     static double Num(string s) => double.Parse(s, CultureInfo.InvariantCulture);
+
+    /// Why a lookup failed, in words that say whose end it is: the user's connection or OpenStreetMap's server.
+    public static string Why(Exception e) => e switch
+    {
+        _ when !System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable() => "You're offline. Check your connection.",
+        TaskCanceledException => "OpenStreetMap didn't answer in time (their server, not Glance). Try again in a minute.",
+        HttpRequestException { StatusCode: (System.Net.HttpStatusCode)429 or >= System.Net.HttpStatusCode.InternalServerError } =>
+            "OpenStreetMap is busy right now (their server, not Glance). Try again in a minute.",
+        HttpRequestException { StatusCode: null } => "Can't reach OpenStreetMap. Check your connection, or their server may be down.",
+        _ => "OpenStreetMap sent a reply Glance couldn't read. Try again later.",
+    };
 }

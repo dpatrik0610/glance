@@ -31,10 +31,17 @@
     .leaflet-tooltip.lbl { background: rgba(24,24,28,.94); color: #f4f4f5; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
                            box-shadow: 0 4px 14px rgba(0,0,0,.4); font-size: 12px; padding: 3px 9px; }
     .leaflet-tooltip.lbl::before { display: none; }
+    #down { position: absolute; z-index: 1000; top: 14px; left: 50%; transform: translate(-50%, -8px); opacity: 0; pointer-events: none;
+            background: rgba(24,24,28,.94); color: #f4f4f5; border: 1px solid rgba(255,255,255,.12); border-radius: 999px;
+            padding: 7px 16px; font: 12.5px "Segoe UI Variable Text", "Segoe UI", sans-serif; white-space: nowrap;
+            box-shadow: 0 6px 20px rgba(0,0,0,.45); transition: opacity .25s, transform .25s; }
+    #down.on { opacity: 1; transform: translate(-50%, 0); }
+    #down b { color: #F5B83D; font-weight: 600; }
 </style>
 </head>
 <body>
 <div id="map"></div>
+<div id="down"><b>Map tiles aren't loading.</b> OpenStreetMap isn't answering, or you're offline.</div>
 <script src="vendor/leaflet.js"></script>
 <script>
 // Glance's map. The host (Pages/MapPage.xaml.cs) owns the data and talks over postMessage.
@@ -48,10 +55,13 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 map.attributionControl.setPrefix(false);
 // OpenStreetMap's own tiles: free, no key, fine for personal use (their policy wants attribution and no bulk downloading).
 // Only tiles on screen load; keepBuffer 1 keeps few off-screen ones around. WebView2 caches them on disk.
+const down = document.getElementById('down');
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19, keepBuffer: 1, updateWhenZooming: false,
     attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
-}).addTo(map);
+}).on('tileerror', () => down.classList.add('on'))
+  .on('tileload', () => down.classList.remove('on'))
+  .addTo(map);
 
 // Locked to one city or country: no panning out of it, no zooming out past it.
 let outer = null;

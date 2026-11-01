@@ -147,7 +147,7 @@ public partial class MapPage : UserControl
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException)
         {
             AreaName.Text = before;
-            ListTitle.Text = "Area lookup failed: " + e.Message;
+            ListTitle.Text = Places.Why(e);
         }
     }
 
@@ -167,7 +167,7 @@ public partial class MapPage : UserControl
             List.ItemsSource = results;
             BackButton.Visibility = Visibility.Visible;
             Empty.Visibility = Visibility.Collapsed;
-            ListTitle.Text = busy ? $"Name matches only: the place-type search is busy, try again soon"
+            ListTitle.Text = busy ? "OpenStreetMap's place-type search is busy (their server, not Glance), so these are name matches only. Try again in a minute."
                 : results.Count > 0 ? $"{results.Count} result{(results.Count == 1 ? "" : "s")} for \"{q}\""
                 : v.North - v.South >= 1 ? $"No \"{q}\" by name. Zoom in to search by type"
                 : $"No \"{q}\" in view. Zoom out?";
@@ -175,7 +175,7 @@ public partial class MapPage : UserControl
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            ListTitle.Text = "Search failed: " + ex.Message;
+            ListTitle.Text = Places.Why(ex);
         }
     }
 

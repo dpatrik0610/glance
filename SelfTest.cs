@@ -1,3 +1,4 @@
+using System.Net.Http;
 using Glance.Services;
 
 namespace Glance;
@@ -76,6 +77,10 @@ static class SelfTest
             Check(H("24/7", 0, 3) == "Open 24/7" && H("sunrise-sunset", 1, 10) is null && H("", 1, 10) is null, "hours: 24/7, unknown syntax");
             Check(Places.Pattern("Pizza") == "p[ií]zz" && Places.Pattern("kfc") == "kfc", "search pattern: stem, accents");
             Check(Places.Pattern("c++ (x)") == @"c\+\+ \(x\)", "search pattern: regex chars literal");
+            if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+                Check(Places.Why(new HttpRequestException("", null, System.Net.HttpStatusCode.BadGateway)).Contains("their server")
+                    && Places.Why(new TaskCanceledException()).Contains("their server")
+                    && Places.Why(new HttpRequestException("dns")).Contains("connection"), "map errors name the service");
             Check(Places.ShortName("12, Andrássy út, Terézváros, Budapest") == "12, Andrássy út", "place short name");
 
             Check(MainWindow.Match(cmds, "").Count == 3, "palette: notes only on search");
