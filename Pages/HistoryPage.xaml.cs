@@ -9,7 +9,7 @@ namespace Glance.Pages;
 
 public partial class HistoryPage : UserControl
 {
-    public record Chart(string Title, string Stats, string From, float[] Series, Color Color, float Max);
+    public record Chart(string Title, string Stats, string From, float[] Series, Color Color, float Max, string Format, TimeSpan Step);
 
     // ~60–360 points per chart regardless of range; Mongo does the averaging.
     static readonly (string Label, TimeSpan Span, int Bucket)[] Ranges =
@@ -63,21 +63,22 @@ public partial class HistoryPage : UserControl
             return a;
         }
 
-        Chart Make(string title, string field, Func<float, string> fmt, int rgb, float max)
+        Chart Make(string title, string field, string format, int rgb, float max)
         {
             var a = Col(field);
-            var stats = Summary(a) is { } s ? $"avg {fmt(s.Avg)} · peak {fmt(s.Peak)}" : "no data";
-            return new(title, stats, "−" + label, a, Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb), max);
+            var stats = Summary(a) is { } s ? $"avg {Spark.Text(format, s.Avg)} · peak {Spark.Text(format, s.Peak)}" : "no data";
+            return new(title, stats, "−" + label, a, Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb), max,
+                format, TimeSpan.FromMinutes(bucket));
         }
 
         Charts.ItemsSource = new[]
         {
-            Make("CPU load", "cpu", v => $"{v:0}%", 0xFF6A3D, 100),
-            Make("GPU load", "gpu", v => $"{v:0}%", 0x4CC37A, 100),
-            Make("CPU temperature", "cpuTemp", v => $"{v:0}°C", 0xFF4D5E, 100),
-            Make("GPU temperature", "gpuTemp", v => $"{v:0}°C", 0xF5B83D, 100),
-            Make("Memory", "ramGb", v => $"{v:0.0} GB", 0xB07CFF, 0),
-            Make("Download", "netDown", v => SystemPage.Rate(v), 0x5AA9FF, 0),
+            Make("CPU load", "cpu", "{0:0}%", 0xFF6A3D, 100),
+            Make("GPU load", "gpu", "{0:0}%", 0x4CC37A, 100),
+            Make("CPU temperature", "cpuTemp", "{0:0}°C", 0xFF4D5E, 100),
+            Make("GPU temperature", "gpuTemp", "{0:0}°C", 0xF5B83D, 100),
+            Make("Memory", "ramGb", "{0:0.0} GB", 0xB07CFF, 0),
+            Make("Download", "netDown", "rate", 0x5AA9FF, 0),
         };
     }
 

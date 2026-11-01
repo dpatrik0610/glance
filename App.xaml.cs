@@ -240,7 +240,9 @@ public partial class App : Application
 
     void ShowMain()
     {
-        main!.Show();
+        var wasHidden = !main!.IsVisible;
+        main.Show();
+        if (wasHidden) main.Reveal();
         if (main.WindowState == WindowState.Minimized) main.WindowState = WindowState.Normal;
         // Activate alone can't lift an already-visible window above others (foreground lock); a topmost blip can.
         main.Topmost = true;

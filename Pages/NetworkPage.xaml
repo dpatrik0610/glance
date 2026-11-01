@@ -46,7 +46,7 @@
                     <TextBlock Text="Download" Style="{StaticResource Label}" />
                     <TextBlock x:Name="DownRate" Text="—" Style="{StaticResource Big}" FontSize="26" Margin="0,4,0,0" />
                     <TextBlock x:Name="DownTotal" Style="{StaticResource Label}" />
-                    <g:Spark x:Name="DownSpark" Color="#5AA9FF" Max="0" Height="30" Margin="0,8,0,0" />
+                    <g:Spark x:Name="DownSpark" Format="rate" Color="#5AA9FF" Max="0" Height="30" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>
             <Border Grid.Column="2" Style="{StaticResource Card}">
@@ -54,7 +54,7 @@
                     <TextBlock Text="Upload" Style="{StaticResource Label}" />
                     <TextBlock x:Name="UpRate" Text="—" Style="{StaticResource Big}" FontSize="26" Margin="0,4,0,0" />
                     <TextBlock x:Name="UpTotal" Style="{StaticResource Label}" />
-                    <g:Spark x:Name="UpSpark" Color="#B07CFF" Max="0" Height="30" Margin="0,8,0,0" />
+                    <g:Spark x:Name="UpSpark" Format="rate" Color="#B07CFF" Max="0" Height="30" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>
             <Border Grid.Column="3" Style="{StaticResource Card}">
@@ -62,7 +62,7 @@
                     <TextBlock Text="Latency · 1.1.1.1" Style="{StaticResource Label}" />
                     <TextBlock x:Name="PingText" Text="—" Style="{StaticResource Big}" FontSize="26" Margin="0,4,0,0" />
                     <TextBlock x:Name="PingSub" Style="{StaticResource Label}" TextTrimming="CharacterEllipsis" ToolTip="Router ping · jitter · packet loss, last minute" />
-                    <g:Spark x:Name="PingSpark" Color="#4CC37A" Max="0" Height="30" Margin="0,8,0,0" />
+                    <g:Spark x:Name="PingSpark" Format="{}{0:0} ms" Color="#4CC37A" Max="0" Height="30" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>
         </Grid>

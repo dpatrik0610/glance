@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Glance.Pages;
 using Glance.Services;
@@ -41,6 +42,9 @@ public partial class MainWindow
             commands = BuiltIn();
             PaletteLayer.Visibility = Visibility.Visible;
             if (Page.Content is CliPage) Page.Visibility = Visibility.Hidden; // the terminal is a native window; WPF can't draw over it
+            Motion.To(PaletteLayer, OpacityProperty, 1, 140, 0);
+            Motion.To(PaletteZoom, ScaleTransform.ScaleXProperty, 1, 200, 0.97);
+            Motion.To(PaletteZoom, ScaleTransform.ScaleYProperty, 1, 200, 0.97);
             PaletteStatus.Text = "";
             Query.Text = "";
             Filter();

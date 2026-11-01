@@ -79,7 +79,12 @@ public partial class MainWindow : Window
         if (!pages.TryGetValue(t, out var page)) pages[t] = page = t.Create();
         Page.Content = page;
         PageTitle.Text = t.Name;
+        // The terminal is a native window: it can't fade or move with WPF content, so it just appears.
+        if (page is not CliPage) Motion.Rise(Page, PageShift);
     }
+
+    /// Called when the window comes up from hidden: the content settles in.
+    public void Reveal() => Motion.Rise(Body, BodyShift, 8, 220);
 
     public UserControl ShowTab(string name)
     {

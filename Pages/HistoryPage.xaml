@@ -30,7 +30,7 @@
                                     <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
                                     <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1" />
                                 </UniformGrid>
-                                <g:Spark Series="{Binding Series}" Color="{Binding Color}" Max="{Binding Max}" />
+                                <g:Spark Series="{Binding Series}" Color="{Binding Color}" Max="{Binding Max}" Format="{Binding Format}" Step="{Binding Step}" />
                             </Grid>
                         </DockPanel>
                     </Border>

@@ -9,7 +9,6 @@ namespace Glance;
 public partial class Dialog : Window
 {
     static readonly Color Danger = Color.FromRgb(0xFF, 0x4D, 0x5E), Accent = Color.FromRgb(0xFF, 0x6A, 0x3D);
-    static readonly IEasingFunction Ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
     bool result, closing;
 
@@ -56,9 +55,9 @@ public partial class Dialog : Window
         InitializeComponent();
         Loaded += (_, _) =>
         {
-            Animate(Root, OpacityProperty, 1, 220);
-            Animate(Zoom, ScaleTransform.ScaleXProperty, 1, 260);
-            Animate(Zoom, ScaleTransform.ScaleYProperty, 1, 260);
+            Motion.To(Root, OpacityProperty, 1, 220);
+            Motion.To(Zoom, ScaleTransform.ScaleXProperty, 1, 260);
+            Motion.To(Zoom, ScaleTransform.ScaleYProperty, 1, 260);
             OkButton.Focus();
         };
     }
@@ -71,17 +70,10 @@ public partial class Dialog : Window
     {
         if (closing) return;
         (closing, result) = (true, ok);
-        Animate(Zoom, ScaleTransform.ScaleXProperty, 0.97, 140);
-        Animate(Zoom, ScaleTransform.ScaleYProperty, 0.97, 140);
-        Animate(Root, OpacityProperty, 0, 140, Close);
+        Motion.To(Zoom, ScaleTransform.ScaleXProperty, 0.97, 140);
+        Motion.To(Zoom, ScaleTransform.ScaleYProperty, 0.97, 140);
+        Motion.To(Root, OpacityProperty, 0, 140, done: Close);
     }
 
     void Drag(object sender, MouseButtonEventArgs e) => DragMove();
-
-    static void Animate(IAnimatable target, DependencyProperty prop, double to, int ms, Action? done = null)
-    {
-        var a = new DoubleAnimation(to, TimeSpan.FromMilliseconds(ms)) { EasingFunction = Ease };
-        if (done is not null) a.Completed += (_, _) => done();
-        target.BeginAnimation(prop, a);
-    }
 }

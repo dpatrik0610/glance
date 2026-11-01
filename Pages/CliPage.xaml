@@ -13,13 +13,29 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="b" CornerRadius="12" Padding="12,6,4,6" Margin="0,0,6,0" BorderThickness="1"
-                                Background="Transparent" BorderBrush="Transparent">
-                            <ContentPresenter />
-                        </Border>
+                        <Grid Margin="0,0,6,0">
+                            <Border x:Name="hov" CornerRadius="12" Background="{StaticResource CardBg}" Opacity="0" />
+                            <Border x:Name="b" CornerRadius="12" Padding="12,6,4,6" BorderThickness="1"
+                                    Background="Transparent" BorderBrush="Transparent">
+                                <ContentPresenter />
+                            </Border>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="b" Property="Background" Value="{StaticResource CardBg}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="hov" Storyboard.TargetProperty="Opacity" To="1" Duration="{StaticResource In}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="hov" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="b" Property="Background" Value="{Binding Tint}" />
@@ -71,7 +87,8 @@
             </StackPanel>
             <ListBox x:Name="TabList" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource TabChip}"
                      ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                     SelectionChanged="TabSelected">
+                     SelectionChanged="TabSelected" AllowDrop="True" PreviewMouseMove="TabDragMove" DragOver="TabDragOver"
+                     PreviewMouseWheel="TabWheel">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Orientation="Horizontal" />
@@ -110,7 +127,7 @@
                                 <TextBlock x:Name="Label" Text="{Binding Name}"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                                 <TextBox x:Name="Edit" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Visibility="Collapsed"
-                                         MinWidth="90" Padding="2,0" Background="Transparent"
+                                         MinWidth="90" Padding="2,0" Background="Transparent" BorderThickness="0"
                                          IsVisibleChanged="EditShown" KeyDown="EditKey" LostKeyboardFocus="EditDone" />
                             </Grid>
                             <Button Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="{StaticResource Icons}" FontSize="9"

@@ -300,11 +300,48 @@ public partial class CliPage : UserControl
         Open(t.Cwd, t.Command, t.Name, t.Color);
     }
 
-    // Double-click a tab to rename; single click puts the cursor back in its terminal.
+    // Double-click a tab to rename; single click puts the cursor back in its terminal (or starts a drag).
     void TabMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount == 2) { TabOf(sender).Editing = true; e.Handled = true; }
-        else FocusTerm();
+        if (e.ClickCount == 2) { TabOf(sender).Editing = true; e.Handled = true; return; }
+        (dragging, dragStart) = (TabOf(sender), e.GetPosition(TabList));
+        FocusTerm();
+    }
+
+    // Drag a tab sideways to reorder; the strip rearranges live under the cursor.
+    CliTab? dragging;
+    Point dragStart;
+
+    void TabDragMove(object sender, MouseEventArgs e)
+    {
+        if (dragging is not { } t || e.LeftButton != MouseButtonState.Pressed) { dragging = null; return; }
+        if (Math.Abs(e.GetPosition(TabList).X - dragStart.X) < SystemParameters.MinimumHorizontalDragDistance) return;
+        dragging = null;
+        DragDrop.DoDragDrop(TabList, new DataObject(typeof(CliTab), t), DragDropEffects.Move);
+        Save();
+        FocusTerm();
+    }
+
+    void TabDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+        if (e.Data.GetData(typeof(CliTab)) is not CliTab t
+            || ItemsControl.ContainerFromElement(TabList, (DependencyObject)e.OriginalSource) is not ListBoxItem { DataContext: CliTab over } item
+            || over == t) return;
+        int from = tabs.IndexOf(t), to = tabs.IndexOf(over);
+        // Only swap once the cursor is past the neighbor's middle, so tabs of different widths don't flip back and forth.
+        var x = e.GetPosition(item).X;
+        if (to > from ? x < item.ActualWidth / 2 : x > item.ActualWidth / 2) return;
+        tabs.Move(from, to);
+    }
+
+    // The strip scrolls sideways with the wheel once tabs overflow.
+    void TabWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (VisualTreeHelper.GetChildrenCount(TabList) == 0 || VisualTreeHelper.GetChild(TabList, 0) is not Border { Child: ScrollViewer sv }) return;
+        sv.ScrollToHorizontalOffset(sv.HorizontalOffset - e.Delta / 2.0);
+        e.Handled = true;
     }
 
     void Rename(object sender, RoutedEventArgs e) => TabOf(sender).Editing = true;

@@ -15,7 +15,6 @@ public partial class AlertWindow : Window
 {
     static readonly List<AlertWindow> open = [];
     static readonly TimeSpan Life = TimeSpan.FromSeconds(8);
-    static readonly IEasingFunction Ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
     readonly Action onClick;
     readonly int slot;
@@ -69,8 +68,8 @@ public partial class AlertWindow : Window
 
     void Enter()
     {
-        Animate(Root, OpacityProperty, 1, 350);
-        Animate(Slide, TranslateTransform.XProperty, 0, 450);
+        Motion.To(Root, OpacityProperty, 1, 350);
+        Motion.To(Slide, TranslateTransform.XProperty, 0, 450);
 
         // Breathing status dot.
         Dot.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0.25, TimeSpan.FromMilliseconds(900))
@@ -90,8 +89,8 @@ public partial class AlertWindow : Window
         if (closing) return;
         closing = true;
         open.Remove(this);
-        Animate(Slide, TranslateTransform.XProperty, 40, 300);
-        Animate(Root, OpacityProperty, 0, 300, Close);
+        Motion.To(Slide, TranslateTransform.XProperty, 40, 300);
+        Motion.To(Root, OpacityProperty, 0, 300, done: Close);
     }
 
     void Clicked(object sender, MouseButtonEventArgs e)
@@ -101,13 +100,6 @@ public partial class AlertWindow : Window
     }
 
     void CloseClicked(object sender, RoutedEventArgs e) => Dismiss();
-
-    static void Animate(IAnimatable target, DependencyProperty prop, double to, int ms, Action? done = null)
-    {
-        var a = new DoubleAnimation(to, TimeSpan.FromMilliseconds(ms)) { EasingFunction = Ease };
-        if (done is not null) a.Completed += (_, _) => done(); // must attach before BeginAnimation
-        target.BeginAnimation(prop, a);
-    }
 
     // WPF has no letter-spacing; hair spaces give the wide, technical look.
     static string Spaced(string s) => string.Join("\u200A", s.ToCharArray());

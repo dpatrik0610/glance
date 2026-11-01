@@ -1,16 +1,28 @@
+using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
+using Glance.Pages;
 
 namespace Glance;
 
 /// Area chart. Either a rolling buffer (Push) or a whole series (Series). NaN = gap.
 /// Renders straight to the DrawingContext: no per-point elements.
+/// Hover shows a guide line and the value under the cursor; charts stacked in the same panel share the hover.
 public sealed class Spark : FrameworkElement
 {
+    static readonly Pen Guide = Frozen(new Pen(new SolidColorBrush(Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF)), 1));
+    static readonly Pen DotRing = Frozen(new Pen(new SolidColorBrush(Color.FromRgb(0x16, 0x16, 0x18)), 2));
+    static readonly Brush LabelBg = Frozen(new SolidColorBrush(Color.FromArgb(0xEE, 0x1E, 0x1E, 0x22)));
+    static readonly Brush LabelText = Frozen(new SolidColorBrush(Color.FromRgb(0xF4, 0xF4, 0xF5)));
+    static readonly Typeface Face = new("Segoe UI Variable Text, Segoe UI");
+
     float[] data = new float[60];
     int count, head;
     Pen pen = null!;
-    Brush fill = null!;
+    Brush fill = null!, solid = null!;
+    double? hoverX;
 
     public Spark() => SetBrushes(Colors.White);
 
@@ -24,17 +36,28 @@ public sealed class Spark : FrameworkElement
     public static readonly DependencyProperty SeriesProperty = DependencyProperty.Register(nameof(Series), typeof(IReadOnlyList<float>), typeof(Spark),
         new FrameworkPropertyMetadata(null, (d, e) => ((Spark)d).Set(e.NewValue as float[] ?? (e.NewValue as IReadOnlyList<float>)?.ToArray() ?? [])));
 
+    /// How the hover label shows a value: a .NET format string ("{0:0}%"), or "rate" for bytes/s.
+    public static readonly DependencyProperty FormatProperty = DependencyProperty.Register(nameof(Format), typeof(string), typeof(Spark),
+        new FrameworkPropertyMetadata("{0:0.#}"));
+
+    /// Time between points, newest = now. When set, the hover label also says when.
+    public static readonly DependencyProperty StepProperty = DependencyProperty.Register(nameof(Step), typeof(TimeSpan), typeof(Spark),
+        new FrameworkPropertyMetadata(TimeSpan.Zero));
+
     public Color Color { get => (Color)GetValue(ColorProperty); set => SetValue(ColorProperty, value); }
     public float Max { get => (float)GetValue(MaxProperty); set => SetValue(MaxProperty, value); }
     // IReadOnlyList, not float[]: the XAML compiler rejects array-typed properties inside templates.
     public IReadOnlyList<float>? Series { get => (IReadOnlyList<float>?)GetValue(SeriesProperty); set => SetValue(SeriesProperty, value); }
+    public string Format { get => (string)GetValue(FormatProperty); set => SetValue(FormatProperty, value); }
+    public TimeSpan Step { get => (TimeSpan)GetValue(StepProperty); set => SetValue(StepProperty, value); }
+
+    public static string Text(string format, float v) => format == "rate" ? SystemPage.Rate(v) : string.Format(CultureInfo.CurrentCulture, format, v);
 
     void SetBrushes(Color c)
     {
-        pen = new Pen(new SolidColorBrush(c), 2) { LineJoin = PenLineJoin.Round };
-        fill = new LinearGradientBrush(Color.FromArgb(0x50, c.R, c.G, c.B), Color.FromArgb(0, c.R, c.G, c.B), 90);
-        pen.Freeze();
-        fill.Freeze();
+        pen = Frozen(new Pen(new SolidColorBrush(c), 2) { LineJoin = PenLineJoin.Round });
+        fill = Frozen(new LinearGradientBrush(Color.FromArgb(0x50, c.R, c.G, c.B), Color.FromArgb(0, c.R, c.G, c.B), 90));
+        solid = Frozen(new SolidColorBrush(c));
     }
 
     public void Push(float? v)
@@ -51,10 +74,25 @@ public sealed class Spark : FrameworkElement
         InvalidateVisual();
     }
 
+    // Charts layered in one panel (CPU over GPU, down over up) hover together.
+    IEnumerable<Spark> Layered => Parent is Panel p ? p.Children.OfType<Spark>() : [this];
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        var x = e.GetPosition(this).X;
+        foreach (var s in Layered) { s.hoverX = x; s.InvalidateVisual(); }
+    }
+
+    protected override void OnMouseLeave(MouseEventArgs e)
+    {
+        foreach (var s in Layered) { s.hoverX = null; s.InvalidateVisual(); }
+    }
+
     protected override void OnRender(DrawingContext dc)
     {
-        if (count < 2) return;
         double w = ActualWidth, h = ActualHeight, step = w / (data.Length - 1);
+        dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, w, h)); // hover anywhere, not just on the line
+        if (count < 2) return;
         float lo = 0, hi = Max;
         if (hi <= 0)
         {
@@ -66,6 +104,9 @@ public sealed class Spark : FrameworkElement
             (lo, hi) = (lo - pad, hi + pad);
         }
 
+        float ValueAt(int i) => data[(head - count + i + data.Length) % data.Length];
+        Point At(int i, float v) => new(w - (count - 1 - i) * step, h - Math.Clamp((v - lo) / (hi - lo), 0, 1) * (h - 2) - 1);
+
         var line = new StreamGeometry();
         var area = new StreamGeometry();
         using (var l = line.Open())
@@ -74,14 +115,14 @@ public sealed class Spark : FrameworkElement
             Point? last = null;
             for (var i = 0; i < count; i++)
             {
-                var v = data[(head - count + i + data.Length) % data.Length];
+                var v = ValueAt(i);
                 if (float.IsNaN(v))
                 {
                     CloseArea(a, last, h);
                     last = null;
                     continue;
                 }
-                var p = new Point(w - (count - 1 - i) * step, h - Math.Clamp((v - lo) / (hi - lo), 0, 1) * (h - 2) - 1);
+                var p = At(i, v);
                 if (last is null)
                 {
                     l.BeginFigure(p, false, false);
@@ -97,10 +138,41 @@ public sealed class Spark : FrameworkElement
         area.Freeze();
         dc.DrawGeometry(fill, null, area);
         dc.DrawGeometry(null, pen, line);
+
+        if (hoverX is { } hx) DrawHover(dc, hx, w, h, step, ValueAt, At);
+    }
+
+    void DrawHover(DrawingContext dc, double hx, double w, double h, double step, Func<int, float> valueAt, Func<int, float, Point> at)
+    {
+        var i = (int)Math.Round((hx - (w - (count - 1) * step)) / step);
+        if (i < 0 || i >= count || valueAt(i) is var v && float.IsNaN(v)) return;
+        var p = at(i, v);
+        var layer = Layered.ToList().IndexOf(this);
+        if (layer == 0) dc.DrawLine(Guide, new Point(p.X, 0), new Point(p.X, h));
+        dc.DrawEllipse(solid, DotRing, p, 4, 4);
+
+        var text = Text(Format, v);
+        if (Step > TimeSpan.Zero)
+            text += "  ·  " + (DateTime.Now - Step * (count - 1 - i)).ToString(Step >= TimeSpan.FromHours(1) ? "ddd HH:mm" : "HH:mm");
+        var ft = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Face, 11.5, LabelText,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        var bw = ft.Width + 24;
+        var bh = ft.Height + 6;
+        var x = p.X + 10 + bw > w ? p.X - 10 - bw : p.X + 10; // flip left near the right edge
+        var box = new Rect(Math.Max(0, x), 2 + layer * (bh + 4), bw, bh);
+        dc.DrawRoundedRectangle(LabelBg, null, box, bh / 2, bh / 2);
+        dc.DrawEllipse(solid, null, new Point(box.X + 8, box.Y + bh / 2), 2.5, 2.5);
+        dc.DrawText(ft, new Point(box.X + 14, box.Y + 3));
     }
 
     static void CloseArea(StreamGeometryContext a, Point? last, double h)
     {
         if (last is { } p) a.LineTo(new Point(p.X, h), false, false);
+    }
+
+    static T Frozen<T>(T f) where T : Freezable
+    {
+        f.Freeze();
+        return f;
     }
 }
