@@ -11,10 +11,10 @@
 
         <!-- Stat tiles -->
         <UniformGrid Columns="4">
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="CPU load" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <DockPanel>
-                        <Border x:Name="CpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right">
+                        <Border x:Name="CpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right" Tag="CPU temperature" ToolTip="Temperature history" MouseLeftButtonUp="OpenHistory">
                             <TextBlock x:Name="CpuTemp" FontSize="12" FontWeight="SemiBold" />
                         </Border>
                         <TextBlock Text="CPU" Style="{StaticResource Label}" VerticalAlignment="Center" />
@@ -24,10 +24,10 @@
                     <g:Spark x:Name="CpuSpark" Format="{}{0:0}%" Color="#FF6A3D" Height="34" Margin="0,10,0,0" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="GPU load" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <DockPanel>
-                        <Border x:Name="GpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right">
+                        <Border x:Name="GpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right" Tag="GPU temperature" ToolTip="Temperature history" MouseLeftButtonUp="OpenHistory">
                             <TextBlock x:Name="GpuTemp" FontSize="12" FontWeight="SemiBold" />
                         </Border>
                         <TextBlock Text="GPU" Style="{StaticResource Label}" VerticalAlignment="Center" />
@@ -37,7 +37,7 @@
                     <g:Spark x:Name="GpuSpark" Format="{}{0:0}%" Color="#4CC37A" Height="34" Margin="0,10,0,0" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="Memory" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <DockPanel>
                         <TextBlock x:Name="RamPct" DockPanel.Dock="Right" Style="{StaticResource Label}" />
@@ -48,7 +48,7 @@
                     <g:Spark x:Name="RamSpark" Format="{}{0:0}%" Color="#F5B83D" Height="34" Margin="0,10,0,0" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="Download" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <TextBlock Text="Network" Style="{StaticResource Label}" />
                     <TextBlock x:Name="NetDown" Style="{StaticResource Big}" Margin="0,6,0,0" />
@@ -67,7 +67,7 @@
                 <ColumnDefinition Width="2*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="CPU load" MouseLeftButtonUp="OpenHistory">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">

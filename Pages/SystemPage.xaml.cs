@@ -88,6 +88,14 @@ public partial class SystemPage : UserControl
         Dispatcher.BeginInvoke(ShowProcs, DispatcherPriority.Input);
     }
 
+    // Tiles (and their temperature pills) open their chart on the History page.
+    void OpenHistory(object sender, MouseButtonEventArgs e)
+    {
+        if (e.Handled) return; // a pill inside a tile already handled it
+        e.Handled = true;
+        if (((MainWindow)Window.GetWindow(this)).ShowTab("History") is HistoryPage h) h.Spotlight((string)((FrameworkElement)sender).Tag);
+    }
+
     static string Pct(float? v) => v is { } x ? $"{x:0}%" : "—";
 
     static string Join(params string?[] parts) => string.Join(" · ", parts.Where(p => p is not null));

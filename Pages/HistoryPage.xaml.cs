@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Glance.Services;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -38,6 +39,7 @@ public partial class HistoryPage : UserControl
     {
         var (label, span, bucket) = Ranges[range];
         loadedAt = DateTime.Now;
+        loading = true;
         List<BsonDocument> docs;
         try { docs = await Db.History(span, bucket); }
         catch (Exception e) when (e is MongoException or TimeoutException)
@@ -46,6 +48,7 @@ public partial class HistoryPage : UserControl
             loadedAt = default;
             return;
         }
+        finally { loading = false; }
         Status.Text = docs.Count == 0 ? "No data yet: one sample is logged per minute." : "";
 
         // Fixed time grid; buckets with no data stay NaN and draw as gaps (app wasn't running).
@@ -71,7 +74,7 @@ public partial class HistoryPage : UserControl
                 format, TimeSpan.FromMinutes(bucket));
         }
 
-        Charts.ItemsSource = new[]
+        Charts.ItemsSource = charts = new[]
         {
             Make("CPU load", "cpu", "{0:0}%", 0xFF6A3D, 100),
             Make("GPU load", "gpu", "{0:0}%", 0x4CC37A, 100),
@@ -80,7 +83,35 @@ public partial class HistoryPage : UserControl
             Make("Memory", "ramGb", "{0:0.0} GB", 0xB07CFF, 0),
             Make("Download", "netDown", "rate", 0x5AA9FF, 0),
         };
+        ShowSpotlight();
     }
+
+    Chart[] charts = [];
+    string? spotlight;
+    bool loading;
+
+    /// Rings one chart briefly so the eye lands on it (when a System tile was clicked). Waits for the data if it's still loading.
+    public void Spotlight(string title)
+    {
+        spotlight = title;
+        if (!loading && charts.Length > 0) ShowSpotlight(); // else Load does it once the fresh charts are in
+    }
+
+    void ShowSpotlight() => Dispatcher.BeginInvoke(() =>
+    {
+        if (spotlight is null || charts.FirstOrDefault(c => c.Title == spotlight) is not { } chart) return;
+        spotlight = null;
+        if (Charts.ItemContainerGenerator.ContainerFromItem(chart) is not ContentPresenter cp
+            || VisualTreeHelper.GetChildrenCount(cp) == 0 || VisualTreeHelper.GetChild(cp, 0) is not Border card) return;
+        var ring = new SolidColorBrush(((SolidColorBrush)FindResource("Accent")).Color) { Opacity = 0 };
+        card.BorderBrush = ring;
+        var pulse = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromSeconds(1.9) };
+        pulse.KeyFrames.Add(new EasingDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.25))));
+        pulse.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1.1))));
+        pulse.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1.9)), new CubicEase()));
+        pulse.Completed += (_, _) => card.ClearValue(Border.BorderBrushProperty); // back to the style's (and its hover)
+        ring.BeginAnimation(Brush.OpacityProperty, pulse);
+    }, System.Windows.Threading.DispatcherPriority.Loaded);
 
     static (float Avg, float Peak)? Summary(float[] a)
     {
