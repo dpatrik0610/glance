@@ -14,12 +14,13 @@ public partial class MapPage : UserControl
 {
     const string Unnamed = "Dropped pin";
 
-    record Msg(string T, string? Id, double Lat, double Lng);
+    record Msg(string T, string? Id, double Lat, double Lng, double S, double W, double N, double E);
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     readonly List<object> queued = []; // messages sent before the page loaded
     readonly DispatcherTimer saveSoon;
     List<Pin> results = [];
+    Places.Area? view; // the part of the map on screen
     bool ready, showingResults, fromMap;
 
     static Places.Area? Area => App.Settings.MapBounds is [var s, var w, var n, var e] ? new(App.Settings.MapArea, s, w, n, e) : null;
@@ -75,6 +76,9 @@ public partial class MapPage : UserControl
                 SendPins();
                 foreach (var q in queued) Post(q);
                 queued.Clear();
+                break;
+            case "view":
+                view = new("", m.S, m.W, m.N, m.E);
                 break;
             case "add":
                 Drop(m.Lat, m.Lng);
@@ -154,16 +158,16 @@ public partial class MapPage : UserControl
     async void SearchKey(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter || SearchBox.Text.Trim() is not { Length: > 0 } q) return;
-        if (Area is not { } a) { ListTitle.Text = "Pick an area first (Change, top right)."; return; }
+        if (view is not { } v) return; // map not loaded yet
         ListTitle.Text = "Searching…";
         try
         {
-            results = await Places.Search(q, a);
+            results = await Places.Search(q, v);
             showingResults = true;
             List.ItemsSource = results;
             BackButton.Visibility = Visibility.Visible;
             Empty.Visibility = Visibility.Collapsed;
-            ListTitle.Text = results.Count == 0 ? $"Nothing found for \"{q}\" in {a.Name}"
+            ListTitle.Text = results.Count == 0 ? $"No \"{q}\" in view. Zoom out?"
                 : $"{results.Count} result{(results.Count == 1 ? "" : "s")} for \"{q}\"";
             SendResults();
         }

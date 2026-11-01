@@ -21,7 +21,7 @@
                 </DockPanel>
                 <TextBox x:Name="AreaBox" DockPanel.Dock="Top" Margin="0,10,0,0" Tag="A city or country, then Enter" Visibility="Collapsed"
                          KeyDown="AreaKey" />
-                <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="0,12,0,0" Tag="Search: restaurant, pharmacy, Lidl, a street…" KeyDown="SearchKey" />
+                <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="0,12,0,0" Tag="Search in view: restaurant, pharmacy, Lidl…" KeyDown="SearchKey" />
 
                 <DockPanel DockPanel.Dock="Top" Margin="4,14,2,6">
                     <Button x:Name="BackButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Back to pins" FontSize="12"

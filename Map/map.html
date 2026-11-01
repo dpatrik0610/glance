@@ -39,7 +39,7 @@
 <script>
 // Glance's map. The host (Pages/MapPage.xaml.cs) owns the data and talks over postMessage.
 // host → page: {t:'area', s,w,n,e} {t:'pins', items, fresh} {t:'results', items} {t:'select', id, fly}
-// page → host: {t:'ready'} {t:'add', lat, lng} {t:'move', id, lat, lng} {t:'select', id} {t:'palette'}
+// page → host: {t:'view', s,w,n,e} {t:'ready'} {t:'add', lat, lng} {t:'move', id, lat, lng} {t:'select', id} {t:'palette'}
 const host = window.chrome.webview;
 const send = m => host.postMessage(m);
 
@@ -107,6 +107,8 @@ function mark(id, fly) {
     if (fly) map.flyTo(m.getLatLng(), Math.max(map.getZoom(), 15), { duration: 0.7 });
 }
 
+// What's on screen, so search looks there.
+map.on('moveend', () => { const b = map.getBounds(); send({ t: 'view', s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() }); });
 map.on('contextmenu', e => send({ t: 'add', lat: e.latlng.lat, lng: e.latlng.lng }));
 document.addEventListener('keydown', e => {
     if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); send({ t: 'palette' }); }

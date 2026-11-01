@@ -108,13 +108,16 @@ public static class Places
         return a.North - a.South > 40 || a.East - a.West > 60 ? null : a;
     }
 
-    /// Up to 15 places matching the text inside the area: "pizza", "pharmacy", "Lidl", a street.
+    /// Up to 15 places matching the text inside the area ("pharmacy", "Lidl", a street), closest to its middle first.
     public static async Task<List<Pin>> Search(string query, Area area)
     {
+        double lat = (area.North + area.South) / 2, lon = (area.East + area.West) / 2, squeeze = Math.Cos(lat * Math.PI / 180);
         var box = FormattableString.Invariant($"{area.West},{area.North},{area.East},{area.South}");
         var hits = await http.GetFromJsonAsync<Hit[]>(
             $"search?format=jsonv2&limit=15&addressdetails=1&extratags=1&bounded=1&viewbox={box}&q={Uri.EscapeDataString(query)}");
-        return (hits ?? []).Select(h => Fill(new Pin { Lat = Num(h.Lat), Lon = Num(h.Lon), Color = "#F4F4F5" }, h)).ToList();
+        return (hits ?? []).Select(h => Fill(new Pin { Lat = Num(h.Lat), Lon = Num(h.Lon), Color = "#F4F4F5" }, h))
+            .OrderBy(p => Math.Pow(p.Lat - lat, 2) + Math.Pow((p.Lon - lon) * squeeze, 2)) // flat-earth distance: fine at city scale
+            .ToList();
     }
 
     /// What's at a dropped pin: fills in address, hours and contacts, returns a name for it (null over open water and such).
