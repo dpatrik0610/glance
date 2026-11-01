@@ -34,6 +34,26 @@ const theme = {
     brightBlack: '#817E7E', brightRed: '#FF643B', brightGreen: '#37E57B', brightYellow: '#FCCD1A', brightBlue: '#688DFD', brightMagenta: '#ED6FE9', brightCyan: '#32E0FB', brightWhite: '#D3D8D9',
 };
 
+// Programs that paint backgrounds black (Claude CLI does) assume an opaque black terminal; here that's solid blocks
+// on the glass. Black backgrounds become the default one: palette 40, 256-color 0/16/232-234, truecolor near-black.
+// ponytail: a color code split across two output chunks slips through (rare, and only costs one black run).
+const BLACK_BG = new Set(['40', '48;5;0', '48;5;16', '48;5;232', '48;5;233', '48;5;234']);
+function clearBlackBg(d) {
+    if (!d.includes('\x1b[')) return d;
+    return d.replace(/\x1b\[([0-9;]*)m/g, (all, p) => {
+        const a = p.split(';'), out = [];
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== '38' && a[i] !== '48') { out.push(a[i] === '40' ? '49' : a[i]); continue; }
+            const len = a[i + 1] === '5' ? 3 : a[i + 1] === '2' ? 5 : 1; // extended color: keep its arguments together
+            const c = a.slice(i, i + len);
+            i += len - 1;
+            const black = c[0] === '48' && (BLACK_BG.has(c.join(';')) || (c[1] === '2' && c.slice(2).every(v => +v < 24)));
+            out.push(...(black ? ['49'] : c));
+        }
+        return '\x1b[' + out.join(';') + 'm';
+    });
+}
+
 const terms = new Map();
 let current = null;
 
@@ -93,7 +113,7 @@ function show(id) {
 
 host.addEventListener('message', ({ data: m }) => {
     switch (m.t) {
-        case 'out': terms.get(m.id)?.term.write(m.d); break;
+        case 'out': terms.get(m.id)?.term.write(clearBlackBg(m.d)); break;
         case 'open': open(m.id); break;
         case 'show': show(m.id); break;
         case 'close': { const t = terms.get(m.id); if (t) { t.term.dispose(); t.el.remove(); terms.delete(m.id); } break; }
