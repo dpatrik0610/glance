@@ -15,7 +15,10 @@
             <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.5" Color="Black" />
         </Border.Effect>
         <Grid>
-            <StackPanel x:Name="Player">
+            <DockPanel x:Name="Player">
+                <!-- Volume: upright along the right edge -->
+                <g:VolumeBar x:Name="Volume" DockPanel.Dock="Right" Margin="8,-4,-6,-2" />
+              <StackPanel>
                 <DockPanel Cursor="Hand" Background="Transparent" MouseLeftButtonUp="OpenPlayer" ToolTip="Open Now Playing">
                     <Grid DockPanel.Dock="Left" Width="46" Height="46" Margin="0,0,12,0">
                         <Border CornerRadius="8" Background="{StaticResource Track}" />
@@ -40,8 +43,8 @@
                             Background="{StaticResource Accent}" Foreground="White" Click="Toggle" />
                     <Button x:Name="NextButton" Style="{StaticResource Round}" Width="32" Height="32" FontSize="12" Content="&#xE893;" ToolTip="Next" Click="Next" />
                 </StackPanel>
-                <g:VolumeBar x:Name="Volume" Margin="0,4,0,0" />
-            </StackPanel>
+              </StackPanel>
+            </DockPanel>
             <TextBlock x:Name="Empty" Text="Nothing is playing" Style="{StaticResource Label}" HorizontalAlignment="Center" Margin="0,2,0,6" />
         </Grid>
     </Border>

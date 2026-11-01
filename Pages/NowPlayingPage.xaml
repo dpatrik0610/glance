@@ -18,6 +18,8 @@
                     </Border>
                 </Grid>
 
+                <!-- Volume: upright along the right edge -->
+                <g:VolumeBar x:Name="Volume" DockPanel.Dock="Right" Margin="24,0,0,0" />
                 <StackPanel VerticalAlignment="Center">
                     <!-- One chip per player; the switch when there are several -->
                     <WrapPanel x:Name="Sources" Margin="0,0,0,14" />
@@ -40,7 +42,6 @@
                                 Background="{StaticResource Accent}" Foreground="White" Click="Toggle" />
                         <Button x:Name="NextButton" Style="{StaticResource Round}" Content="&#xE893;" ToolTip="Next" Click="Next" />
                     </StackPanel>
-                    <g:VolumeBar x:Name="Volume" Width="240" HorizontalAlignment="Center" Margin="0,12,0,0" />
                 </StackPanel>
             </DockPanel>
         </Border>

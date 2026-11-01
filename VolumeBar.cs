@@ -5,7 +5,7 @@ using Glance.Services;
 
 namespace Glance;
 
-/// Mute button + slider for a player's app volume (the mixer's). Show() re-reads it, since the mixer can change it too.
+/// Upright slider over a mute button, for a player's app volume. Show() re-reads it, since the mixer can change it too.
 public class VolumeBar : DockPanel
 {
     readonly Button icon;
@@ -27,14 +27,19 @@ public class VolumeBar : DockPanel
             player.SetMuted(!v.Muted);
             Show(player);
         };
-        slider = new Slider { Minimum = 0, Maximum = 1, IsMoveToPointEnabled = true, Focusable = false, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) };
+        slider = new Slider
+        {
+            Style = (Style)Application.Current.FindResource("VSlider"), Minimum = 0, Maximum = 1, IsMoveToPointEnabled = true, Focusable = false,
+            Margin = new Thickness(0, 2, 0, 4), SmallChange = 0.05, LargeChange = 0.1,
+        };
+        slider.MouseWheel += (_, e) => slider.Value += e.Delta > 0 ? 0.05 : -0.05; // the wheel nudges it
         slider.ValueChanged += (_, e) =>
         {
             if (loading || player is null) return;
             player.SetVolume((float)e.NewValue);
             Glyph(e.NewValue, false);
         };
-        SetDock(icon, Dock.Left);
+        SetDock(icon, Dock.Bottom);
         Children.Add(icon);
         Children.Add(slider);
     }
