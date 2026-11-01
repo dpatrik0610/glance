@@ -293,6 +293,39 @@
         </Setter>
     </Style>
 
+    <!-- Dark tooltips. Without this, Windows' white tooltip box shows the app's near-white text: unreadable. -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{StaticResource Text}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border x:Name="b" Background="#F51C1C20" BorderBrush="#2EFFFFFF" BorderThickness="1" CornerRadius="9" Padding="10,5" Opacity="0">
+                        <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsOpen" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="b" Storyboard.TargetProperty="Opacity" To="1" Duration="{StaticResource In}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="b" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Dark right-click menus (flat: no submenus) -->
     <Style TargetType="ContextMenu">
         <Setter Property="Foreground" Value="{StaticResource Text}" />
