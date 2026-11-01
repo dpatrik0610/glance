@@ -129,23 +129,14 @@ public partial class CliPage : UserControl
     {
         try
         {
-            Web.DefaultBackgroundColor = System.Drawing.Color.Transparent;
-            var env = await CoreWebView2Environment.CreateAsync(null, Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Glance", "WebView2"));
-            await Web.EnsureCoreWebView2Async(env);
-            var core = Web.CoreWebView2;
-            core.Settings.AreDefaultContextMenusEnabled = false;
-            core.Settings.AreBrowserAcceleratorKeysEnabled = false; // no Ctrl+F/F5/Ctrl+P stealing keys from the shell
-            core.Settings.IsStatusBarEnabled = false;
-            core.Settings.IsZoomControlEnabled = false;
-            core.PermissionRequested += (_, e) =>
+            await WebHost.Open(Web, "glance.term", "Terminal", "term.html", core =>
             {
-                if (e.PermissionKind == CoreWebView2PermissionKind.ClipboardRead) e.State = CoreWebView2PermissionState.Allow; // right-click paste
-            };
-            core.WebMessageReceived += (_, e) => Receive(JsonSerializer.Deserialize<Msg>(e.WebMessageAsJson, Json)!);
-            core.SetVirtualHostNameToFolderMapping("glance.term", Path.Combine(AppContext.BaseDirectory, "Terminal"),
-                CoreWebView2HostResourceAccessKind.DenyCors);
-            core.Navigate("https://glance.term/term.html");
+                core.PermissionRequested += (_, e) =>
+                {
+                    if (e.PermissionKind == CoreWebView2PermissionKind.ClipboardRead) e.State = CoreWebView2PermissionState.Allow; // right-click paste
+                };
+                core.WebMessageReceived += (_, e) => Receive(JsonSerializer.Deserialize<Msg>(e.WebMessageAsJson, Json)!);
+            });
         }
         catch (Exception e) { Db.Error("cli webview", e); } // e.g. WebView2 runtime missing
     }

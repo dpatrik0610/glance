@@ -41,7 +41,7 @@ public partial class MainWindow
         {
             commands = BuiltIn();
             PaletteLayer.Visibility = Visibility.Visible;
-            if (Page.Content is CliPage) Page.Visibility = Visibility.Hidden; // the terminal is a native window; WPF can't draw over it
+            if (IsWeb(Page.Content)) Page.Visibility = Visibility.Hidden; // WebView2 is a native window; WPF can't draw over it
             Motion.To(PaletteLayer, OpacityProperty, 1, 140, 0);
             Motion.To(PaletteZoom, ScaleTransform.ScaleXProperty, 1, 200, 0.97);
             Motion.To(PaletteZoom, ScaleTransform.ScaleYProperty, 1, 200, 0.97);
@@ -111,6 +111,9 @@ public partial class MainWindow
             list.Add(new(n.DisplayTitle, "Note", n.Icon, Do(() => { Go("Notes"); NoteStore.RequestFocus(n); }),
                 n.Text + " " + string.Join(" ", n.Items.Select(i => i.Text)), true));
 
+        foreach (var p in PinStore.Pins)
+            list.Add(new(p.Name, "Pin", "\uE707", Do(() => ((MapPage)ShowTab("Map")).ShowPin(p)), $"{p.Note} {p.Address} {p.Kind}", true));
+
         foreach (var c in ClipboardHistory.Items)
         {
             var line = string.Join(" ", c.Text.Split((char[])['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries)).Trim();
@@ -157,6 +160,9 @@ public partial class MainWindow
     }
 
     void Go(string name) => ShowTab(name);
+
+    // Pages hosting a WebView2 (a native child window): no fades or slides, nothing drawn over them.
+    static bool IsWeb(object? page) => page is CliPage or MapPage;
 
     void PaletteClick(object sender, RoutedEventArgs e) => OpenPalette();
 

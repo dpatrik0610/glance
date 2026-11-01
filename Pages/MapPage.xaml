@@ -1,0 +1,131 @@
+<UserControl x:Class="Glance.Pages.MapPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="340" />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <Border Style="{StaticResource Card}">
+            <DockPanel>
+                <!-- The city or country the map is locked to -->
+                <DockPanel DockPanel.Dock="Top">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Change" FontSize="12" VerticalAlignment="Center"
+                            Click="ChangeArea" />
+                    <StackPanel>
+                        <TextBlock Text="Area" Style="{StaticResource Label}" FontSize="11.5" />
+                        <TextBlock x:Name="AreaName" Style="{StaticResource H}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </DockPanel>
+                <TextBox x:Name="AreaBox" DockPanel.Dock="Top" Margin="0,10,0,0" Tag="A city or country, then Enter" Visibility="Collapsed"
+                         KeyDown="AreaKey" />
+                <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="0,12,0,0" Tag="Search: restaurant, pharmacy, Lidl, a street…" KeyDown="SearchKey" />
+
+                <DockPanel DockPanel.Dock="Top" Margin="4,14,2,6">
+                    <Button x:Name="BackButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Back to pins" FontSize="12"
+                            Padding="8,2" Click="BackToPins" Visibility="Collapsed" />
+                    <TextBlock x:Name="ListTitle" Style="{StaticResource Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+
+                <!-- The selected place or pin -->
+                <Border x:Name="Details" DockPanel.Dock="Bottom" Margin="0,10,0,0" Padding="14,12" CornerRadius="14"
+                        Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+                    <StackPanel>
+                        <TextBox x:Name="NameBox" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontSize="15" FontWeight="SemiBold"
+                                 Background="Transparent" BorderThickness="0" Padding="0,2" TextChanged="Edited" />
+                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Label}" TextWrapping="Wrap" Margin="2,2,0,0" />
+                        <Border Style="{StaticResource Pill}" HorizontalAlignment="Left" Margin="0,8,0,0" Background="#18FFFFFF" ToolTip="{Binding Hours}"
+                                Visibility="{Binding HasHours, Converter={StaticResource Vis}}">
+                            <TextBlock Text="{Binding OpenText}" Foreground="{Binding OpenBrush}" FontSize="12" FontWeight="SemiBold" />
+                        </Border>
+                        <Button Style="{StaticResource Ghost}" HorizontalAlignment="Left" Margin="-8,6,0,0" ToolTip="Copy" Click="CopyPhone"
+                                Visibility="{Binding HasPhone, Converter={StaticResource Vis}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE717;" FontFamily="{StaticResource Icons}" Foreground="{StaticResource Sub}" Margin="0,1,8,0" />
+                                <TextBlock Text="{Binding Phone}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource Ghost}" HorizontalAlignment="Left" Margin="-8,0,0,0" ToolTip="Open website" Click="OpenWebsite"
+                                Visibility="{Binding HasWebsite, Converter={StaticResource Vis}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE774;" FontFamily="{StaticResource Icons}" Foreground="{StaticResource Sub}" Margin="0,1,8,0" />
+                                <TextBlock Text="{Binding WebsiteHost}" Foreground="{StaticResource Accent}" />
+                            </StackPanel>
+                        </Button>
+
+                        <TextBox x:Name="NoteBox" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" Tag="Note…" Margin="0,10,0,0"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="90" VerticalScrollBarVisibility="Auto" TextChanged="Edited" />
+                        <ItemsControl x:Name="Swatches" Margin="0,10,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Tag="{Binding}" Click="SetColor" Cursor="Hand" Margin="0,0,8,0" ToolTip="Color">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Ellipse Width="18" Height="18" Fill="{Binding}" />
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button x:Name="PinButton" Style="{StaticResource Primary}" Content="Pin it" Margin="0,0,6,0" Click="PinIt" />
+                            <Button Style="{StaticResource Ghost}" Margin="0,0,2,0" ToolTip="Reviews, photos and directions on Google Maps" Click="OpenGoogle">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE734;" FontFamily="{StaticResource Icons}" Foreground="{StaticResource Amber}" Margin="0,1,6,0" />
+                                    <TextBlock Text="Reviews" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource Ghost}" Content="&#xE8C8;" FontFamily="{StaticResource Icons}" ToolTip="Copy coordinates"
+                                    Click="CopyCoords" />
+                            <Button x:Name="DeleteButton" Style="{StaticResource Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Icons}"
+                                    Foreground="{StaticResource Red}" ToolTip="Delete pin" Click="DeletePin" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock x:Name="Empty" DockPanel.Dock="Top" Style="{StaticResource Label}" TextWrapping="Wrap" Margin="4,4,4,0"
+                           Text="No pins yet. Right-click the map to drop one, or search a place and pin it." />
+                <ListBox x:Name="List" Style="{StaticResource Sidebar}" SelectionChanged="Selected">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel>
+                                <Ellipse DockPanel.Dock="Left" Width="10" Height="10" Fill="{Binding Brush}" Margin="0,0,12,0" VerticalAlignment="Center" />
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding OpenShort}" FontSize="11.5" FontWeight="SemiBold" Margin="8,0,0,0"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{Binding OpenBrush}" />
+                                            <Style.Triggers>
+                                                <!-- Red/green on the orange selection is unreadable -->
+                                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <wv2:WebView2 x:Name="Web" Grid.Column="1" Margin="6" />
+    </Grid>
+</UserControl>

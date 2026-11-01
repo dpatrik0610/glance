@@ -23,6 +23,7 @@ public partial class MainWindow : Window
         new("Network", "Monitor", "\uE839", () => new NetworkPage()),
         new("History", "Monitor", "\uE81C", () => new HistoryPage()),
         new("Weather", "Life", "\uE706", () => new WeatherPage()),
+        new("Map", "Life", "\uE707", () => new MapPage()),
         new("Exchange", "Life", "\uE8AB", () => new ExchangePage()),
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
         new("Notes", "Tools", "\uE70B", () => new NotesPage()),
@@ -80,7 +81,7 @@ public partial class MainWindow : Window
         Page.Content = page;
         PageTitle.Text = t.Name;
         // The terminal is a native window: it can't fade or move with WPF content, so it just appears.
-        if (page is not CliPage) Motion.Rise(Page, PageShift);
+        if (!IsWeb(page)) Motion.Rise(Page, PageShift);
     }
 
     /// Called when the window comes up from hidden: the content settles in.

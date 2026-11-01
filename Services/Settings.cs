@@ -25,6 +25,10 @@ public class Settings
     public string City { get; set; } = "";
     public double? Lat { get; set; }
     public double? Lon { get; set; }
+    /// The Map page is locked to this city or country (empty: the Weather hometown, once looked up).
+    public string MapArea { get; set; } = "";
+    /// South, west, north, east of MapArea.
+    public double[]? MapBounds { get; set; }
     public string MongoUrl { get; set; } = "mongodb://localhost:27017";
     public List<string> CliFolders { get; set; } =
     [

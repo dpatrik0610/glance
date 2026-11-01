@@ -63,6 +63,19 @@ static class SelfTest
             Task<string?> Nop() => Task.FromResult<string?>(null);
             Cmd[] cmds = [new("Network", "Page", "", Nop), new("Copy public IP", "Network", "", Nop), new("glance", "Repo", "", Nop, @"F:\Coding\glance"),
                 new("todo", "Note", "", Nop, "buy milk", true)];
+            // Opening hours. 2026-11-02 is a Monday.
+            string? H(string spec, int day, int h, int min = 0) => OpeningHours.Status(spec, new DateTime(2026, 11, 1 + day, h, min, 0), out _);
+            const string shop = "Mo-Fr 08:00-18:00; Sa 09:00-13:00; PH off";
+            Check(H(shop, 1, 10) == "Open · closes 18:00", "hours: weekday open");
+            Check(H(shop, 1, 7) == "Closed · opens 08:00", "hours: before opening");
+            Check(H(shop, 5, 19) == "Closed · opens tomorrow 09:00", "hours: friday evening");
+            Check(H(shop, 6, 14) == "Closed · opens Mon 08:00", "hours: saturday after close");
+            Check(H("Mo-Su 18:00-02:00", 2, 1) == "Open · closes 02:00", "hours: past midnight");
+            Check(H("Mo-Fr 09:00-17:00, Sa 10:00-12:00", 6, 11) == "Open · closes 12:00", "hours: comma-separated rules");
+            Check(H("Mo-Fr 11:00-14:30,17:00-22:00", 3, 15) == "Closed · opens 17:00", "hours: lunch break");
+            Check(H("24/7", 0, 3) == "Open 24/7" && H("sunrise-sunset", 1, 10) is null && H("", 1, 10) is null, "hours: 24/7, unknown syntax");
+            Check(Places.ShortName("12, Andrássy út, Terézváros, Budapest") == "12, Andrássy út", "place short name");
+
             Check(MainWindow.Match(cmds, "").Count == 3, "palette: notes only on search");
             Check(MainWindow.Match(cmds, "net").Select(c => c.Title).SequenceEqual(["Network", "Copy public IP"]), "palette: title prefix first");
             Check(MainWindow.Match(cmds, "coding gla").Single().Title == "glance" && MainWindow.Match(cmds, "milk").Single().Title == "todo", "palette: all words, extra text");
