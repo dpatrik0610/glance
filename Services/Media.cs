@@ -16,6 +16,14 @@ public sealed class Player
 {
     internal readonly Session Session;
     public string Source { get; }
+    /// The program whose mixer volume this player follows (a browser: the whole browser).
+    public string Exe { get; }
+    public bool IsBrowser => Source is "Chrome" or "Edge" or "Brave" or "Opera" or "Vivaldi" or "Firefox";
+
+    /// Mixer volume of the player's app; null when it has no audio session right now (or plays elsewhere).
+    public (float Level, bool Muted)? Volume => Audio.Get(Exe);
+    public void SetVolume(float level) => Audio.Set(Exe, level);
+    public void SetMuted(bool muted) => Audio.Mute(Exe, muted);
     public string Title { get; private set; } = "";
     public string Artist { get; private set; } = "";
     public string Album { get; private set; } = "";
@@ -41,6 +49,7 @@ public sealed class Player
     {
         Session = s;
         Source = SourceName(s.SourceAppUserModelId);
+        Exe = ExeName(s.SourceAppUserModelId, Source);
         settle = new DispatcherTimer(TimeSpan.FromMilliseconds(1200), DispatcherPriority.Background, (_, _) => Settled(), Application.Current.Dispatcher);
         settle.Stop();
     }
@@ -145,6 +154,17 @@ public sealed class Player
         ("firefox", "Firefox"), ("308046b0af4a39cb", "Firefox"), ("zunemusic", "Media Player"), ("zunevideo", "Movies & TV"),
         ("vlc", "VLC"), ("applemusic", "Apple Music"), ("tidal", "TIDAL"), ("deezer", "Deezer"),
     ];
+
+    /// Process name for the mixer: "Spotify.exe" → Spotify, the Chrome tab → chrome.
+    internal static string ExeName(string aumid, string source)
+    {
+        if (aumid.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) return Path.GetFileNameWithoutExtension(aumid);
+        return source switch
+        {
+            "Chrome" => "chrome", "Edge" => "msedge", "Firefox" => "firefox", "Media Player" => "Microsoft.Media.Player", "Movies & TV" => "Video.UI",
+            _ => source.ToLowerInvariant(),
+        };
+    }
 
     /// "Spotify.exe", "Chrome", "Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic" → a name people know.
     internal static string SourceName(string aumid)

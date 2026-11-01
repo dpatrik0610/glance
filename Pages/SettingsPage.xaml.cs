@@ -27,6 +27,7 @@ public partial class SettingsPage : UserControl
         FBox.IsChecked = s.Fahrenheit;
         BarBox.IsChecked = s.TopBar;
         BarFullscreenBox.IsChecked = s.BarHideFullscreen;
+        foreach (RadioButton r in BarSizes.Children) r.IsChecked = (string)r.Content == s.BarSize;
         TrackAlertsBox.IsChecked = s.TrackAlerts;
         AlertsBox.IsChecked = s.AlertsEnabled;
         HotkeyBox.Text = s.Hotkey;
@@ -67,6 +68,13 @@ public partial class SettingsPage : UserControl
         s.AlertsEnabled = AlertsBox.IsChecked == true;
         if (sender == AutoBox) Settings.AutoStart = AutoBox.IsChecked == true;
         if (sender == MenuBox) Settings.ExplorerMenu = MenuBox.IsChecked == true;
+        App.ApplySettings();
+    }
+
+    void BarSizeChecked(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return; // the initial check above
+        s.BarSize = (string)((RadioButton)sender).Content;
         App.ApplySettings();
     }
 

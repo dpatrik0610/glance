@@ -40,6 +40,7 @@ public partial class NowPlayingPage : UserControl
         PlayButton.IsEnabled = p.CanToggle;
         PrevButton.IsEnabled = p.CanPrev;
         NextButton.IsEnabled = p.CanNext;
+        Volume.Show(p);
 
         Timeline.Visibility = p.Duration > TimeSpan.Zero ? Visibility.Visible : Visibility.Collapsed;
         Seek.Maximum = p.Duration.TotalSeconds;

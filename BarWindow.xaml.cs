@@ -17,9 +17,9 @@ namespace Glance;
 /// no reminders, nothing playing) are skipped. Steps aside while a fullscreen app (game, video, slides) is in front.
 public partial class BarWindow : Window
 {
-    record View(string Name, string Tab, string Icon);
+    internal record View(string Name, string Tab, string Icon);
 
-    static readonly View[] Views =
+    internal static readonly View[] Views =
     [
         new("System", "System", ""),
         new("Network", "Network", ""),
@@ -32,6 +32,8 @@ public partial class BarWindow : Window
     static readonly TimeSpan WeatherAge = TimeSpan.FromMinutes(15), RatesAge = TimeSpan.FromHours(3);
 
     readonly Action<string?> drop;
+    MiniWindow? mini; // the panel the down arrow opens
+    bool mainDropped;
     readonly DispatcherTimer tick, fullscreen, progress;
     bool away; // stepped aside for a fullscreen app
     int index;
@@ -43,7 +45,7 @@ public partial class BarWindow : Window
     string? failed; // the view whose fetch failed, so it says so instead of "…"
     bool fetching;
 
-    /// drop: opens Glance under the bar at that tab; null (the down arrow) toggles it.
+    /// drop: opens Glance under the bar at that tab (null: the last one).
     public BarWindow(Action<string?> drop)
     {
         InitializeComponent();
@@ -51,8 +53,8 @@ public partial class BarWindow : Window
         index = Math.Max(0, Array.FindIndex(Views, v => v.Name == App.Settings.BarView));
 
         App.Sampled += OnSample;
-        App.SettingsChanged += ApplyOpacity;
-        ApplyOpacity();
+        App.SettingsChanged += ApplyLook;
+        ApplyLook();
         Media.Changed += OnMedia;
         SystemEvents.DisplaySettingsChanged += Moved;
         // Each half minute: relative times ("in 5 min") move on, and stale weather/rates refresh while shown.
@@ -66,7 +68,8 @@ public partial class BarWindow : Window
         Closed += (_, _) =>
         {
             App.Sampled -= OnSample;
-            App.SettingsChanged -= ApplyOpacity;
+            App.SettingsChanged -= ApplyLook;
+            mini?.Close();
             Media.Changed -= OnMedia;
             fullscreen.Stop();
             progress.Stop();
@@ -91,15 +94,28 @@ public partial class BarWindow : Window
         if (Views[index].Name == "Music") Render();
     }
 
-    // Background only, like the main window: the text stays fully readable.
-    void ApplyOpacity() =>
-        Pill.Background = new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255), 0x14, 0x14, 0x17));
+    /// The pill's background (opacity applies to it only, so text stays readable) and size; alerts and the panel share them.
+    public static Brush PillBrush => new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255), 0x14, 0x14, 0x17));
+    public static double Scale => App.Settings.BarSize switch { "Medium" => 1.2, "Large" => 1.4, _ => 1 };
 
-    /// Where the bar ends, for dropping Glance just below it.
-    public double Edge => Top + Pill.Margin.Top + Pill.ActualHeight;
+    void ApplyLook()
+    {
+        Pill.Background = PillBrush;
+        Pill.LayoutTransform = new ScaleTransform(Scale, Scale);
+    }
 
-    /// The down arrow turns up while Glance hangs under the bar.
-    public void Dropped(bool on) => Motion.To(Turn, RotateTransform.AngleProperty, on ? 180 : 0, 260);
+    /// Where the pill ends on screen, for things hung below it.
+    public double Edge => Top + Pill.TranslatePoint(new Point(0, Pill.ActualHeight), this).Y;
+    public double Center => Left + ActualWidth / 2;
+
+    /// The down arrow turns up while something hangs from the bar (the panel, or Glance itself).
+    public void Dropped(bool on)
+    {
+        mainDropped = on;
+        Turned();
+    }
+
+    void Turned() => Motion.To(Turn, RotateTransform.AngleProperty, mainDropped || mini is not null ? 180 : 0, 260);
 
     void SlideIn()
     {
@@ -116,6 +132,7 @@ public partial class BarWindow : Window
         if (hide)
         {
             // Hidden, not just transparent: a topmost window over a game can cost it its fullscreen fast path.
+            mini?.Away();
             Motion.To(Pill, OpacityProperty, 0, 180);
             Motion.To(Slide, TranslateTransform.YProperty, -Pill.ActualHeight - Pill.Margin.Top, 220, done: () => { if (away) Hide(); });
         }
@@ -143,7 +160,16 @@ public partial class BarWindow : Window
     void Wheel(object sender, MouseWheelEventArgs e) => Show(e.Delta > 0 ? -1 : +1);
 
     void OpenTab(object sender, MouseButtonEventArgs e) => drop(Views[index].Tab);
-    void Down(object sender, RoutedEventArgs e) => drop(null);
+    // The down arrow: the small panel (media, volume, the bar's views at once); again, or a click elsewhere, closes it.
+    void Down(object sender, RoutedEventArgs e)
+    {
+        if (mini is not null) { mini.Away(); return; }
+        mini = new MiniWindow(this, drop) { Owner = this }; // owned: stays above the bar's z-order, out of Alt+Tab
+        mini.Closed += (_, _) => { mini = null; Turned(); };
+        mini.Show();
+        mini.Activate();
+        Turned();
+    }
 
     /// Moves `step` views (0: stay), skipping views that have nothing to show.
     void Show(int step)
@@ -223,7 +249,7 @@ public partial class BarWindow : Window
     static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
 
     /// What a view shows as (dim label, bright value) pairs; null when it has nothing to show.
-    (string, string)[]? Read(View v)
+    internal (string, string)[]? Read(View v)
     {
         var s = App.Settings;
         switch (v.Name)
@@ -256,10 +282,11 @@ public partial class BarWindow : Window
         return null;
     }
 
-    // Weather and rates load only while their view is on screen, and only when stale.
-    async void Fetch()
+    void Fetch() => _ = Fetch(Views[index].Name);
+
+    // Weather and rates load only while their view is on screen (or the panel is open), and only when stale.
+    internal async Task Fetch(string v)
     {
-        var v = Views[index].Name;
         if (fetching) return;
         var s = App.Settings;
         fetching = true;

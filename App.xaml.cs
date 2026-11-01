@@ -273,14 +273,16 @@ public partial class App : Application
         }
     }
 
-    /// From the bar: Glance slides down under it, at that tab. The arrow (no tab) toggles it.
+    /// From the bar: Glance slides down under it, at that tab (null: where it was).
     void Drop(string? tab)
     {
-        if (tab is null && main!.IsVisible && main.Dropped) { main.Away(); return; }
         if (!main!.IsVisible || main.Dropped) main.DropUnder(bar!.Edge); // already open somewhere else: just switch tabs
         ShowMain();
         if (tab is not null) main.ShowTab(tab);
     }
+
+    /// Where alerts hang: just under the bar, or at the top edge when the bar is off or stepped aside.
+    internal static double AlertTop => ((App)Current).bar is { IsVisible: true } b ? b.Edge + 4 : SystemParameters.WorkArea.Top + 8;
 
     void ShowMain()
     {
