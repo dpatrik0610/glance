@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using System.Windows.Media;
 using Glance.Pages;
 
@@ -23,6 +24,9 @@ public sealed class Spark : FrameworkElement
     Pen pen = null!;
     Brush fill = null!, solid = null!;
     double? hoverX;
+    bool live; // filled by Push: glides between samples
+    readonly TranslateTransform glide = new();
+    readonly System.Diagnostics.Stopwatch sincePush = new();
 
     public Spark() => SetBrushes(Colors.White);
 
@@ -65,13 +69,37 @@ public sealed class Spark : FrameworkElement
         data[head] = v ?? float.NaN;
         head = (head + 1) % data.Length;
         count = Math.Min(count + 1, data.Length);
+        live = true;
+        Glide();
         InvalidateVisual();
     }
 
     void Set(float[] values)
     {
         (data, head, count) = (values, 0, values.Length);
+        live = false;
+        glide.BeginAnimation(TranslateTransform.XProperty, null);
+        glide.X = 0;
         InvalidateVisual();
+    }
+
+    // Instead of jumping a step per sample, the drawing starts one step to the right and slides left until the next
+    // sample is due, so the line moves at a steady speed. Only this transform animates: no re-render per frame.
+    void Glide()
+    {
+        var dt = sincePush.Elapsed;
+        sincePush.Restart();
+        var step = ActualWidth / (data.Length - 2);
+        if (count < 2 || step <= 0 || dt < TimeSpan.FromMilliseconds(100) || dt > TimeSpan.FromSeconds(3))
+        {
+            glide.BeginAnimation(TranslateTransform.XProperty, null); // first sample after a pause: no guess at the pace
+            glide.X = 0;
+            return;
+        }
+        // Start from wherever the last glide got to, so jitter in sample timing never makes the line jump.
+        var a = new DoubleAnimation(glide.X + step, 0, dt);
+        Timeline.SetDesiredFrameRate(a, 30); // a few px per second: 30 fps looks the same and costs half
+        glide.BeginAnimation(TranslateTransform.XProperty, a);
     }
 
     // Charts layered in one panel (CPU over GPU, down over up) hover together.
@@ -90,7 +118,8 @@ public sealed class Spark : FrameworkElement
 
     protected override void OnRender(DrawingContext dc)
     {
-        double w = ActualWidth, h = ActualHeight, step = w / (data.Length - 1);
+        // Live: one extra slot hangs off the left edge, so the gliding line never shows a gap there.
+        double w = ActualWidth, h = ActualHeight, step = w / (data.Length - (live ? 2 : 1));
         dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, w, h)); // hover anywhere, not just on the line
         if (count < 2) return;
         float lo = 0, hi = Max;
@@ -136,17 +165,23 @@ public sealed class Spark : FrameworkElement
         }
         line.Freeze();
         area.Freeze();
+        dc.PushClip(new RectangleGeometry(new Rect(-1, -2, w + 2, h + 4))); // the incoming point waits off the right edge
+        dc.PushTransform(glide);
         dc.DrawGeometry(fill, null, area);
         dc.DrawGeometry(null, pen, line);
+        dc.Pop();
+        dc.Pop();
 
         if (hoverX is { } hx) DrawHover(dc, hx, w, h, step, ValueAt, At);
     }
 
     void DrawHover(DrawingContext dc, double hx, double w, double h, double step, Func<int, float> valueAt, Func<int, float, Point> at)
     {
-        var i = (int)Math.Round((hx - (w - (count - 1) * step)) / step);
+        var shift = glide.X; // where the glide is right now
+        var i = (int)Math.Round((hx - shift - (w - (count - 1) * step)) / step);
         if (i < 0 || i >= count || valueAt(i) is var v && float.IsNaN(v)) return;
         var p = at(i, v);
+        p.X += shift;
         var layer = Layered.ToList().IndexOf(this);
         if (layer == 0) dc.DrawLine(Guide, new Point(p.X, 0), new Point(p.X, h));
         dc.DrawEllipse(solid, DotRing, p, 4, 4);
