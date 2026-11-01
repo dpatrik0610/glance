@@ -99,7 +99,8 @@
                             <Button DockPanel.Dock="Right" Content="Test" Click="TestAlert" />
                             <TextBlock Text="Alerts" Style="{StaticResource H}" VerticalAlignment="Center" />
                         </DockPanel>
-                        <CheckBox x:Name="AlertsBox" Style="{StaticResource Switch}" Content="Enabled" Margin="0,0,0,14" Click="Toggled" />
+                        <CheckBox x:Name="AlertsBox" Style="{StaticResource Switch}" Content="Enabled" Margin="0,0,0,12" Click="Toggled" />
+                        <CheckBox x:Name="SoundBox" Style="{StaticResource Switch}" Content="Sound (alerts and reminders)" Margin="0,0,0,14" Click="Toggled" />
                         <DockPanel x:Name="CpuLimitRow" Style="{StaticResource SliderRow}">
                             <TextBlock DockPanel.Dock="Right" Width="48" TextAlignment="Right" Style="{StaticResource Label}" />
                             <TextBlock Text="CPU temperature ≥" Style="{StaticResource RowLabel}" />

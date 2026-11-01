@@ -30,6 +30,7 @@ public partial class SettingsPage : UserControl
         foreach (RadioButton r in BarSizes.Children) r.IsChecked = (string)r.Content == s.BarSize;
         TrackAlertsBox.IsChecked = s.TrackAlerts;
         AlertsBox.IsChecked = s.AlertsEnabled;
+        SoundBox.IsChecked = s.AlertSound;
         HotkeyBox.Text = s.Hotkey;
         CityBox.Text = s.City;
         MongoBox.Text = s.MongoUrl;
@@ -66,6 +67,7 @@ public partial class SettingsPage : UserControl
         s.BarHideFullscreen = BarFullscreenBox.IsChecked == true;
         s.TrackAlerts = TrackAlertsBox.IsChecked == true;
         s.AlertsEnabled = AlertsBox.IsChecked == true;
+        s.AlertSound = SoundBox.IsChecked == true;
         if (sender == AutoBox) Settings.AutoStart = AutoBox.IsChecked == true;
         if (sender == MenuBox) Settings.ExplorerMenu = MenuBox.IsChecked == true;
         App.ApplySettings();

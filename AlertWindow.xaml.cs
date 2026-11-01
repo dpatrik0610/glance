@@ -9,8 +9,9 @@ namespace Glance;
 
 /// What an alert shows: Label (dim), Headline + Unit (bright), Detail (dim), then SideTitle + SideText at the end.
 /// Sticky alerts stay until clicked or closed; others drain away (paused while hovered). Art: a small picture instead of the dot.
+/// Quiet: no chime (song changes: it would play over the music).
 public record Toast(string Label, string Headline, string Unit, string SideTitle, string SideText, Color Color, bool Sticky,
-    ImageSource? Art = null, string Detail = "");
+    ImageSource? Art = null, string Detail = "", bool Quiet = false);
 
 /// Alerts as pills like the top bar's (same look, size and opacity), stacked downward under it.
 public partial class AlertWindow : Window
@@ -25,7 +26,11 @@ public partial class AlertWindow : Window
     readonly bool sticky;
     bool closing;
 
-    public static void Show(Toast t, Action onClick) => new AlertWindow(t, onClick).Show();
+    public static void Show(Toast t, Action onClick)
+    {
+        if (!t.Quiet && App.Settings.AlertSound) Chime.Play();
+        new AlertWindow(t, onClick).Show();
+    }
 
     AlertWindow(Toast t, Action onClick)
     {

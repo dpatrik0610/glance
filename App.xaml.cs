@@ -193,7 +193,7 @@ public partial class App : Application
     void ShowTrack(Player p)
     {
         if (!Settings.TrackAlerts) return;
-        AlertWindow.Show(new Toast($"Now playing · {p.Source}", p.Title, "", "", "", Color.FromRgb(0xFF, 0x6A, 0x3D), false, p.Cover, p.Artist),
+        AlertWindow.Show(new Toast($"Now playing · {p.Source}", p.Title, "", "", "", Color.FromRgb(0xFF, 0x6A, 0x3D), false, p.Cover, p.Artist, Quiet: true),
             () => Drop("Now Playing"));
     }
 
