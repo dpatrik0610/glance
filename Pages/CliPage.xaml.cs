@@ -179,7 +179,9 @@ public partial class CliPage : UserControl
         t.Starting = true;
         t.Pty.TerminalOutput += (_, e) => Output(t, e.Data);
         // --continue fails when the folder has no conversation yet; start a fresh one then.
-        var run = t.Resume ? $"{Claude} --continue; if (-not $?) {{ {Claude} }}" : t.Command;
+        // Claude tabs go through caveman's layer when it's installed (it forwards the arguments and the exit code).
+        var claude = t.Command == Claude && Shell.OnPath("caveman.cmd") ? "caveman claude" : Claude;
+        var run = t.Resume ? $"{claude} --continue; if (-not $?) {{ {claude} }}" : t.Command == Claude ? claude : t.Command;
         var script = run is null ? CwdHook : CwdHook + "\n" + run;
         var command = $"{Shell.PowerShell} -NoLogo -NoExit -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}";
         new Thread(() => // Start blocks for the shell's lifetime, pumping its output
