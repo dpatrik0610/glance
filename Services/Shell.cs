@@ -10,6 +10,9 @@ public static class Shell
     public static bool OnPath(string exe) => (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries)
         .Any(dir => System.IO.File.Exists(System.IO.Path.Combine(dir, exe)));
 
+    /// PowerShell 7 when installed, else the Windows PowerShell 5.1 every Windows has. Scripts run by it must suit both.
+    public static string PowerShell => OnPath("pwsh.exe") ? "pwsh.exe" : "powershell.exe";
+
     /// Runs a console tool hidden and captures its output. Throws Win32Exception if the exe isn't installed.
     public static async Task<Result> Run(string exe, params string[] args)
     {

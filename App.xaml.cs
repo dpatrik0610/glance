@@ -323,8 +323,7 @@ public partial class App : Application
     internal static void Rebuild()
     {
         if (DeployScript is null) return;
-        var shell = Shell.OnPath("pwsh.exe") ? "pwsh.exe" : "powershell.exe";
-        Process.Start(new ProcessStartInfo(shell, $"-NoProfile -ExecutionPolicy Bypass -File \"{DeployScript}\"") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(Shell.PowerShell, $"-NoProfile -ExecutionPolicy Bypass -File \"{DeployScript}\"") { UseShellExecute = true });
         Db.Info("rebuild requested");
     }
 

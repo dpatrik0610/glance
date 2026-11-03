@@ -76,7 +76,7 @@ public partial class CliPage : UserControl
     // the Windows Terminal convention. Original prompt first, so it still sees the last command's $?.
     const string CwdHook = """
         $global:GlancePrompt = $function:prompt
-        function global:prompt { $p = & $global:GlancePrompt; [Console]::Write("`e]9;9;`"$($PWD.ProviderPath)`"`e\"); $p }
+        function global:prompt { $p = & $global:GlancePrompt; [Console]::Write("$([char]27)]9;9;`"$($PWD.ProviderPath)`"$([char]27)\"); $p }
         """;
 
     [GeneratedRegex(@"\x1b\]9;9;""?([^""\x07\x1b]+)""?(?:\x07|\x1b\\)")]
@@ -179,9 +179,9 @@ public partial class CliPage : UserControl
         t.Starting = true;
         t.Pty.TerminalOutput += (_, e) => Output(t, e.Data);
         // --continue fails when the folder has no conversation yet; start a fresh one then.
-        var run = t.Resume ? $"{Claude} --continue || {Claude}" : t.Command;
+        var run = t.Resume ? $"{Claude} --continue; if (-not $?) {{ {Claude} }}" : t.Command;
         var script = run is null ? CwdHook : CwdHook + "\n" + run;
-        var command = $"pwsh.exe -NoLogo -NoExit -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}";
+        var command = $"{Shell.PowerShell} -NoLogo -NoExit -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}";
         new Thread(() => // Start blocks for the shell's lifetime, pumping its output
         {
             try { t.Pty.Start(command, cols, rows, false, null, t.Dir); }
