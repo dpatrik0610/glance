@@ -29,6 +29,8 @@ public class Settings
 
     public bool ClipboardHistory { get; set; } = true;
     public bool ClipboardImages { get; set; } = true;
+    /// The stickies are on the desktop (each also has its own switch).
+    public bool StickiesShown { get; set; } = true;
     /// The Color page's recent picks, newest first ("#RRGGBB").
     public List<string> RecentColors { get; set; } = [];
 

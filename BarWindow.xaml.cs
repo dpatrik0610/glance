@@ -331,7 +331,7 @@ public partial class BarWindow : Window
                 return [("EUR", $"{r.Eur:0.00} Ft"), ("USD", $"{r.Usd:0.00} Ft")];
             case "Reminder":
                 var now = DateTime.Now;
-                var next = NoteStore.Notes.SelectMany(n => n.Items).Where(i => !i.Done && i.Due is not null).MinBy(i => i.Due);
+                var next = NoteStore.Everything.SelectMany(n => n.Items).Where(i => !i.Done && i.Due is not null).MinBy(i => i.Due);
                 return next is null ? null : [(Due.Format(next.Due!.Value, now), next.Text.Length > 0 ? next.Text : "(no text)")];
         }
         return null;

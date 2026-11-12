@@ -68,6 +68,10 @@ public partial class App : Application
 
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Open", null, (_, _) => ShowMain());
+        var stickies = new Forms.ToolStripMenuItem("Show stickies") { CheckOnClick = true };
+        stickies.Click += (_, _) => Stickies.SetShown(stickies.Checked);
+        menu.Opening += (_, _) => stickies.Checked = Settings.StickiesShown;
+        menu.Items.Add(stickies);
         if (!Native.IsAdmin) menu.Items.Add("Restart as admin (CPU temps)", null, (_, _) => RestartAsAdmin());
         if (DeployScript is not null) menu.Items.Add("Rebuild and restart", null, (_, _) => Rebuild());
         menu.Items.Add("Exit", null, (_, _) => Quit());
@@ -83,6 +87,7 @@ public partial class App : Application
         SettingsChanged += RegisterHotkey;
         ApplyBar();
         SettingsChanged += ApplyBar;
+        Stickies.Load(); // after the main window exists, so it stays Application.MainWindow
 
         Sampled += s => Dispatcher.BeginInvoke(() => tray.Update(s));
         alerts.Fired += a => Task.Run(async () =>
@@ -202,12 +207,12 @@ public partial class App : Application
     {
         foreach (var (note, item) in NoteStore.DueReminders(DateTime.Now).ToList())
         {
-            item.Reminded = true;
-            NoteStore.SaveSoon();
+            item.Reminded = true; // saved with its note
             Db.Info($"reminder {note.DisplayTitle}: {item.Text}");
             AlertWindow.Show(new Toast($"Reminder · {note.DisplayTitle}", item.Text.Length > 0 ? item.Text : "(no text)", "",
                 "Due", item.Due!.Value.ToString("HH:mm"), Color.FromRgb(0x5A, 0xA9, 0xFF), true), () =>
             {
+                if (note is Sticky sticky) { Stickies.Reveal(sticky); return; }
                 ShowMain();
                 main!.ShowTab("Notes");
                 NoteStore.RequestFocus(note);

@@ -1,0 +1,75 @@
+<UserControl x:Class="Glance.Pages.StickiesPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="clr-namespace:Glance">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <!-- Sticky list: each with its own on-the-desktop switch -->
+        <Border Style="{StaticResource Card}">
+            <DockPanel>
+                <CheckBox x:Name="AllBox" DockPanel.Dock="Top" Style="{StaticResource Switch}" Content="Stickies on the desktop" Margin="0,0,0,12"
+                          Click="AllToggled" ToolTip="Hides or brings back all of them (also in the tray menu)" />
+                <UniformGrid DockPanel.Dock="Top" Columns="2" Margin="0,0,0,12">
+                    <Button Margin="0,0,4,0" Click="NewText" ToolTip="New sticky note">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE70B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Note" />
+                        </StackPanel>
+                    </Button>
+                    <Button Margin="4,0,0,0" Click="NewChecklist" ToolTip="New sticky checklist">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE9D5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Checklist" />
+                        </StackPanel>
+                    </Button>
+                </UniformGrid>
+                <ListBox x:Name="List" Style="{StaticResource Sidebar}" SelectionChanged="Selected">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel Width="196">
+                                <Ellipse DockPanel.Dock="Left" Width="10" Height="10" Fill="{Binding Dot}" Margin="2,6,12,0" VerticalAlignment="Top" />
+                                <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding Shown}" VerticalAlignment="Center"
+                                          ToolTip="On the desktop" />
+                                <StackPanel>
+                                    <TextBlock Text="{Binding DisplayTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                    <TextBlock Text="{Binding Summary}" FontSize="11.5" Opacity="0.75" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Editor (DataContext = selected sticky): the same note on the desktop and here -->
+        <Border x:Name="Editor" Grid.Column="1" Style="{StaticResource Card}">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Icons}"
+                            ToolTip="Delete sticky" Click="DeleteSticky" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Show on desktop" Margin="0,0,6,0" Click="RevealClick" />
+                    <TextBox x:Name="TitleBox" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Tag="Title"
+                             FontSize="20" FontWeight="SemiBold" Background="Transparent" BorderThickness="0" Padding="0,4" />
+                </DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <StackPanel x:Name="ColorDots" Orientation="Horizontal" DockPanel.Dock="Left" Margin="0,0,16,0" />
+                    <TextBlock x:Name="SolidText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Style="{StaticResource Label}"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="Solid" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Slider x:Name="Solid" Minimum="0.3" Maximum="1" VerticalAlignment="Center" ValueChanged="SolidChanged" />
+                </DockPanel>
+                <g:NoteEditor x:Name="Body" />
+            </DockPanel>
+        </Border>
+
+        <TextBlock x:Name="Empty" Grid.Column="1" Style="{StaticResource Label}" FontSize="14" TextAlignment="Center"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Text="No stickies yet. Make one on the left: it goes on your desktop, always on top." />
+    </Grid>
+</UserControl>

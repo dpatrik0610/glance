@@ -30,15 +30,15 @@ public enum NoteKind { Text, Checklist }
 public class TodoItem : Bindable
 {
     string text = "";
-    bool done, remind;
+    bool done, remind, reminded;
     DateTime? due;
 
     public string Text { get => text; set => Set(ref text, value); }
     public bool Done { get => done; set { if (Set(ref done, value)) Raise(nameof(IsOverdue)); } }
     public DateTime? Due { get => due; set { if (Set(ref due, value)) { Raise(nameof(DueText)); Raise(nameof(IsOverdue)); } } }
     public bool Remind { get => remind; set => Set(ref remind, value); }
-    /// Set once the reminder has shown, so it fires once (also across restarts).
-    public bool Reminded { get; set; }
+    /// Set once the reminder has shown, so it fires once (also across restarts). Notifies, so its note gets saved.
+    public bool Reminded { get => reminded; set => Set(ref reminded, value); }
 
     /// What the due box shows and accepts. Unparseable input is ignored (the box snaps back).
     [JsonIgnore]
@@ -91,59 +91,78 @@ public class Note : Bindable
     public void Touch() => Raise(nameof(Summary));
 }
 
-/// All notes, persisted to %AppData%\Glance\notes.json. Any edit schedules a debounced save; exit flushes.
-public static class NoteStore
+
+/// A note that lives on the desktop: always on top, with its own tint, see-through amount and place.
+public class Sticky : Note
 {
-    static readonly string File_ = Path.Combine(Settings.Dir, "notes.json");
-    static readonly string LegacyFile = Path.Combine(Settings.Dir, "notes.txt");
+    /// Dark tints, so the text stays as readable as everywhere else in Glance. The dot shows the bright version.
+    public static readonly (string Name, string Tint, string Dot)[] Colors =
+    [
+        ("Graphite", "#1E1E22", "#9C9CA3"), ("Orange", "#3A2016", "#FF6A3D"), ("Yellow", "#3A3214", "#F5C53D"),
+        ("Green", "#16301F", "#4CC37A"), ("Blue", "#152A40", "#5AA9FF"), ("Purple", "#2A1D40", "#B07CFF"),
+    ];
+
+    string color = "Yellow";
+    double opacity = 0.85, width = 280, height = 240;
+    double? left, top; // null until placed
+    bool shown = true;
+
+    public string Color { get => color; set { if (Set(ref color, value)) Raise(nameof(Dot)); } }
+    /// How solid the tint is over the blurred desktop (0.3..1).
+    public double Opacity { get => opacity; set => Set(ref opacity, value); }
+    public double? Left { get => left; set => Set(ref left, value); }
+    public double? Top { get => top; set => Set(ref top, value); }
+    public double Width { get => width; set => Set(ref width, value); }
+    public double Height { get => height; set => Set(ref height, value); }
+    /// On the desktop (when stickies are shown at all: Settings.StickiesShown).
+    public bool Shown { get => shown; set => Set(ref shown, value); }
+
+    [JsonIgnore] public (string Name, string Tint, string Dot) Palette => Colors.FirstOrDefault(c => c.Name == color, Colors[2]);
+    [JsonIgnore] public string Dot => Palette.Dot;
+}
+
+/// A list saved as JSON in %AppData%\Glance. Any edit (to an item, its checklist or the list) saves after a short pause;
+/// exit flushes. A file that can't be read is set aside, never overwritten.
+public sealed class JsonStore<T> where T : Note
+{
     static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
-    static readonly DispatcherTimer saveTimer = new() { Interval = TimeSpan.FromMilliseconds(800) };
+    readonly string file;
+    readonly DispatcherTimer saveTimer = new() { Interval = TimeSpan.FromMilliseconds(800) };
 
-    public static ObservableCollection<Note> Notes { get; private set; } = [];
+    public ObservableCollection<T> Items { get; private set; } = [];
 
-    /// Raised when something (a reminder click) wants a note shown.
-    public static event Action<Note>? FocusRequested;
-    public static void RequestFocus(Note n) => FocusRequested?.Invoke(n);
+    public JsonStore(string name) => file = Path.Combine(Settings.Dir, name);
 
-    public static void Load()
+    /// missing: what to start with when there's no file yet (null: empty). Returns whether that happened.
+    public bool Load(Func<IEnumerable<T>?>? missing = null)
     {
-        var migrated = false;
-        try { Notes = JsonSerializer.Deserialize<ObservableCollection<Note>>(File.ReadAllText(File_), Json) ?? []; }
+        var created = false;
+        try { Items = JsonSerializer.Deserialize<ObservableCollection<T>>(File.ReadAllText(file), Json) ?? []; }
         catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException)
         {
-            // First run of multi-note: import the old single pad.
-            if (File.Exists(LegacyFile))
-            {
-                Notes = [new Note { Title = "Notes", Text = File.ReadAllText(LegacyFile) }];
-                migrated = true;
-            }
+            Items = new(missing?.Invoke() ?? []);
+            created = true;
         }
         catch (JsonException e)
         {
-            // Never overwrite a file we couldn't read: park it next to the new one.
-            var parked = $"{File_}.unreadable-{DateTime.Now:yyyyMMdd-HHmmss}";
-            File.Move(File_, parked);
-            Db.Error($"notes.json unreadable, moved to {parked}", e);
-            Notes = [];
+            var parked = $"{file}.unreadable-{DateTime.Now:yyyyMMdd-HHmmss}";
+            File.Move(file, parked);
+            Db.Error($"{Path.GetFileName(file)} unreadable, moved to {parked}", e);
+            Items = [];
         }
 
-        foreach (var n in Notes) Watch(n);
-        Notes.CollectionChanged += (_, e) =>
+        foreach (var n in Items) Watch(n);
+        Items.CollectionChanged += (_, e) =>
         {
-            foreach (Note n in e.NewItems ?? Array.Empty<Note>()) Watch(n);
+            foreach (T n in e.NewItems ?? Array.Empty<T>()) Watch(n);
             SaveSoon();
         };
         saveTimer.Tick += (_, _) => Flush();
         Application.Current.Exit += (_, _) => Flush();
-
-        if (migrated)
-        {
-            Flush();
-            File.Move(LegacyFile, LegacyFile + ".imported", true);
-        }
+        return created;
     }
 
-    static void Watch(Note n)
+    void Watch(T n)
     {
         n.PropertyChanged += (_, _) => SaveSoon();
         n.Items.CollectionChanged += (_, e) =>
@@ -154,28 +173,57 @@ public static class NoteStore
         foreach (var i in n.Items) WatchItem(n, i);
     }
 
-    static void WatchItem(Note n, TodoItem i) => i.PropertyChanged += (_, _) => n.Touch();
+    static void WatchItem(T n, TodoItem i) => i.PropertyChanged += (_, _) => n.Touch();
 
-    public static void SaveSoon()
+    public void SaveSoon()
     {
         saveTimer.Stop();
         saveTimer.Start();
     }
 
-    public static void Flush()
+    public void Flush()
     {
         saveTimer.Stop();
-        try { Settings.WriteAtomic(File_, JsonSerializer.Serialize(Notes, Json)); }
+        try { Settings.WriteAtomic(file, JsonSerializer.Serialize(Items, Json)); }
         catch (IOException e)
         {
-            Db.Error("notes save", e);
+            Db.Error(Path.GetFileName(file) + " save", e);
             saveTimer.Start(); // retry; the data is still in memory
         }
     }
+}
+
+/// All notes, in notes.json.
+public static class NoteStore
+{
+    static readonly JsonStore<Note> store = new("notes.json");
+    static readonly string LegacyFile = Path.Combine(Settings.Dir, "notes.txt");
+
+    public static ObservableCollection<Note> Notes => store.Items;
+
+    /// Raised when something (a reminder click) wants a note shown.
+    public static event Action<Note>? FocusRequested;
+    public static void RequestFocus(Note n) => FocusRequested?.Invoke(n);
+
+    public static void Load()
+    {
+        // First run of multi-note: import the old single pad.
+        var legacy = File.Exists(LegacyFile);
+        if (store.Load(() => legacy ? [new Note { Title = "Notes", Text = File.ReadAllText(LegacyFile) }] : null) && legacy)
+        {
+            store.Flush();
+            File.Move(LegacyFile, LegacyFile + ".imported", true);
+        }
+    }
+
+    public static void SaveSoon() => store.SaveSoon();
+
+    /// Notes and stickies: everything that can hold checklist items with due dates.
+    public static IEnumerable<Note> Everything => Notes.Concat<Note>(Stickies.Items);
 
     /// Items whose reminder is due now and hasn't shown yet.
     public static IEnumerable<(Note Note, TodoItem Item)> DueReminders(DateTime now) =>
-        from n in Notes
+        from n in Everything
         from i in n.Items
         where i.Remind && !i.Done && !i.Reminded && i.Due <= now
         select (n, i);

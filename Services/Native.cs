@@ -20,6 +20,9 @@ public static class Native
         SetWindowLongPtr(hwnd, ExStyle, GetWindowLongPtr(hwnd, ExStyle) | NoActivate | ToolWindow);
     }
 
+    /// Out of Alt+Tab (WS_EX_TOOLWINDOW), but it can still take focus to type in.
+    public static void ToolWindow(IntPtr hwnd) => SetWindowLongPtr(hwnd, -20, GetWindowLongPtr(hwnd, -20) | 0x80);
+
     [DllImport("shell32.dll")] static extern int SHQueryUserNotificationState(out int state);
 
     /// A game, fullscreen video or presentation is in front (Windows' own "don't disturb" signal, the one toasts respect).

@@ -98,7 +98,10 @@ public partial class MainWindow
             Task.FromResult<string?>(ClipboardHistory.CopySecret(Passwords.Generate(20, true, true, true, true, true).Password, TimeSpan.FromSeconds(30))
                 ? "Copied a 20-character password · clipboard clears in 30s" : "Clipboard busy, try again.")));
 
-        list.Add(new("Pick color from screen", "Color", "", async () =>
+        list.Add(new("New sticky", "Stickies", "\uE840", Do(() => { Go("Stickies"); Stickies.Add(NoteKind.Text); })));
+        list.Add(new(App.Settings.StickiesShown ? "Hide stickies" : "Show stickies", "Stickies", "\uE840",
+            Do(() => Stickies.SetShown(!App.Settings.StickiesShown))));
+        list.Add(new("Pick color from screen", "Color", "\uE790", async () =>
         {
             if (await Eyedropper.Pick() is not { } c) return "Cancelled.";
             ((ColorPage)ShowTab("Color")).Use(c, remember: true);

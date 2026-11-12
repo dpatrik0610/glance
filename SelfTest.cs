@@ -68,6 +68,25 @@ static class SelfTest
                 .Frames[0].CopyPixels(back, 8, 0);
             Check(back.SequenceEqual(px), "clipboard image: png keeps pixels and alpha");
 
+            // Stickies: everything a sticky holds survives a save and load (an absolute name keeps it out of AppData)
+            var tmp = Path.Combine(Path.GetTempPath(), $"glance-selftest-{Environment.ProcessId}.json");
+            try
+            {
+                var store = new JsonStore<Sticky>(tmp);
+                Check(store.Load(), "store: no file yet");
+                var sticky = new Sticky { Title = "t", Kind = NoteKind.Checklist, Color = "Blue", Opacity = 0.5, Left = -10, Width = 300, Shown = false };
+                sticky.Items.Add(new TodoItem { Text = "a", Done = true, Due = new DateTime(2026, 1, 2, 3, 4, 0), Remind = true, Reminded = true });
+                store.Items.Add(sticky);
+                store.Items.Add(new Sticky()); // never placed: no position yet
+                store.Flush();
+                var reread = new JsonStore<Sticky>(tmp);
+                Check(!reread.Load() && reread.Items.Count == 2, "store: reload");
+                Check(reread.Items[0] is { Title: "t", Kind: NoteKind.Checklist, Color: "Blue", Opacity: 0.5, Left: -10, Top: null, Width: 300, Shown: false }
+                      && reread.Items[0].Items[0] is { Text: "a", Done: true, Remind: true, Reminded: true } && reread.Items[1].Left is null,
+                    "store: sticky round-trip");
+            }
+            finally { File.Delete(tmp); }
+
             // Images: crop, resize, every format, EXIF rotation
             var grad = new byte[200 * 100 * 4];
             for (var i = 0; i < grad.Length; i += 4) (grad[i], grad[i + 1], grad[i + 2], grad[i + 3]) = ((byte)(i / 4 % 200), (byte)(i / 800), 128, 255);
