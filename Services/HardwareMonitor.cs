@@ -12,8 +12,8 @@ public record Drive(string Name, double UsedGb, double TotalGb)
     public string Text => $"{UsedGb:0} / {TotalGb:0} GB";
 }
 
-/// All processes sharing a name (chrome × 34), summed.
-public record Proc(string Name, double Cpu, double MemMb, int Count)
+/// All processes sharing a name (chrome × 34), summed. Disk: bytes/s read + written.
+public record Proc(string Name, double Cpu, double MemMb, int Count, double Disk)
 {
     public bool CanKill => HardwareMonitor.CanKill(Name);
     public string CpuText => $"{Cpu:0.0}%";
@@ -37,7 +37,8 @@ public sealed class HardwareMonitor
     int nicAge = 30; // forces an adapter scan on the first read
     long lastRx, lastTx;
     TimeSpan lastNetAt, lastProcAt;
-    Dictionary<int, TimeSpan> lastCpu = [];
+    Dictionary<int, Native.ProcInfo> lastProcs = [], minuteProcs = [];
+    TimeSpan minuteAt;
 
     public HardwareMonitor()
     {
@@ -136,33 +137,59 @@ public sealed class HardwareMonitor
     Proc[] Procs()
     {
         var now = clock.Elapsed;
-        var cur = new Dictionary<int, TimeSpan>(lastCpu.Count);
-        var procs = Group(lastCpu, cur, (now - lastProcAt).TotalMilliseconds);
-        (lastCpu, lastProcAt) = (cur, now);
+        var cur = new Dictionary<int, Native.ProcInfo>(lastProcs.Count);
+        var procs = Group(lastProcs, cur, (now - lastProcAt).TotalMilliseconds);
+        (lastProcs, lastProcAt) = (cur, now);
         return procs;
     }
 
-    /// CPU % of each name since `prev` was filled (0 for processes it hasn't seen) and working set; records this pass's CPU times in `cur`.
-    static Proc[] Group(Dictionary<int, TimeSpan> prev, Dictionary<int, TimeSpan> cur, double elapsedMs)
+    public record Use(string Name, double Value);
+
+    /// For the history: per resource ("cpu" %, "ram" MB, "gpu" %, "disk" bytes/s), the 5 apps that used the most of it,
+    /// averaged since the last call (RAM: right now); and the disk total. Runs whether or not the UI is looking.
+    public (double? Disk, Dictionary<string, Use[]> Top) Minute()
+    {
+        var now = clock.Elapsed;
+        var first = minuteProcs.Count == 0; // nothing to measure rates against yet
+        var cur = new Dictionary<int, Native.ProcInfo>(minuteProcs.Count);
+        var procs = Group(minuteProcs, cur, (now - minuteAt).TotalMilliseconds);
+        (minuteProcs, minuteAt) = (cur, now);
+        var gpu = new Dictionary<string, double>();
+        foreach (var (pid, pct) in Native.GpuByPid())
+            if (cur.TryGetValue(pid, out var p)) gpu[p.Name] = gpu.GetValueOrDefault(p.Name) + pct;
+
+        static Use[] Top(IEnumerable<Use> all) => all.Where(u => u.Value > 0).OrderByDescending(u => u.Value).Take(5).ToArray();
+        return (first ? null : procs.Sum(p => p.Disk), new()
+        {
+            ["cpu"] = Top(procs.Select(p => new Use(p.Name, p.Cpu))),
+            ["ram"] = Top(procs.Select(p => new Use(p.Name, p.MemMb))),
+            ["gpu"] = Top(gpu.Select(kv => new Use(kv.Key, kv.Value))),
+            ["disk"] = Top(procs.Select(p => new Use(p.Name, p.Disk))),
+        });
+    }
+
+    /// CPU % and disk rate of each name since `prev` was filled (0 for processes it hasn't seen) and working set; records this pass in `cur`.
+    static Proc[] Group(Dictionary<int, Native.ProcInfo> prev, Dictionary<int, Native.ProcInfo> cur, double elapsedMs)
     {
         var budgetMs = elapsedMs * Environment.ProcessorCount;
-        var byName = new Dictionary<string, (double cpu, long mem, int count)>();
+        var byName = new Dictionary<string, (double cpu, long mem, int count, double io)>();
         foreach (var p in Native.Processes())
         {
             if (p.Pid == 0) continue; // "Idle" is the CPU time nobody used
-            cur[p.Pid] = p.Cpu;
-            // A reused pid starts over below the old one's total: counts as new, not negative.
-            var c = prev.TryGetValue(p.Pid, out var before) && p.Cpu >= before ? (p.Cpu - before).TotalMilliseconds / budgetMs * 100 : 0;
+            cur[p.Pid] = p;
+            // A reused pid starts over below the old one's totals: counts as new, not negative.
+            var (c, io) = prev.TryGetValue(p.Pid, out var b) && p.Cpu >= b.Cpu && p.Io >= b.Io
+                ? ((p.Cpu - b.Cpu).TotalMilliseconds / budgetMs * 100, (p.Io - b.Io) * 1000 / elapsedMs) : (0, 0);
             byName.TryGetValue(p.Name, out var a);
-            byName[p.Name] = (a.cpu + c, a.mem + p.WorkingSet, a.count + 1);
+            byName[p.Name] = (a.cpu + c, a.mem + p.WorkingSet, a.count + 1, a.io + io);
         }
-        return byName.Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0, kv.Value.count)).ToArray();
+        return byName.Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0, kv.Value.count, kv.Value.io)).ToArray();
     }
 
     /// The heaviest process right now, for naming the culprit in an alert. CPU needs a second look a second later.
     public static async Task<Proc?> Top(bool byMemory)
     {
-        var first = new Dictionary<int, TimeSpan>();
+        var first = new Dictionary<int, Native.ProcInfo>();
         var procs = Group([], first, 1);
         if (!byMemory)
         {

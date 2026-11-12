@@ -10,7 +10,8 @@ namespace Glance.Pages;
 
 public partial class HistoryPage : UserControl
 {
-    public record Chart(string Title, string Stats, string From, float[] Series, Color Color, float Max, string Format, TimeSpan Step);
+    public record Chart(string Title, string Stats, string From, float[] Series, Color Color, float Max, string Format, TimeSpan Step,
+        Func<int, string?>? Detail);
 
     // ~60–360 points per chart regardless of range; Mongo does the averaging.
     static readonly (string Label, TimeSpan Span, int Bucket)[] Ranges =
@@ -66,25 +67,56 @@ public partial class HistoryPage : UserControl
             return a;
         }
 
-        Chart Make(string title, string field, string format, int rgb, float max)
+        // resource: which apps' use explains this chart, shown on hover (null: Windows doesn't count it per app).
+        Chart Make(string title, string field, string format, int rgb, float max, string? resource = null)
         {
             var a = Col(field);
             var stats = Summary(a) is { } s ? $"avg {Spark.Text(format, s.Avg)} · peak {Spark.Text(format, s.Peak)}" : "no data";
             return new(title, stats, "−" + label, a, Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb), max,
-                format, TimeSpan.FromMinutes(bucket));
+                format, TimeSpan.FromMinutes(bucket), resource is null ? null : i => apps.GetValueOrDefault((i, resource)));
         }
 
         Charts.ItemsSource = charts = new[]
         {
-            Make("CPU load", "cpu", "{0:0}%", 0xFF6A3D, 100),
-            Make("GPU load", "gpu", "{0:0}%", 0x4CC37A, 100),
-            Make("CPU temperature", "cpuTemp", "{0:0}°C", 0xFF4D5E, 100),
-            Make("GPU temperature", "gpuTemp", "{0:0}°C", 0xF5B83D, 100),
-            Make("Memory", "ramGb", "{0:0.0} GB", 0xB07CFF, 0),
+            Make("CPU load", "cpu", "{0:0}%", 0xFF6A3D, 100, "cpu"),
+            Make("GPU load", "gpu", "{0:0}%", 0x4CC37A, 100, "gpu"),
+            Make("CPU temperature", "cpuTemp", "{0:0}°C", 0xFF4D5E, 100, "cpu"),
+            Make("GPU temperature", "gpuTemp", "{0:0}°C", 0xF5B83D, 100, "gpu"),
+            Make("Memory", "ramGb", "{0:0.0} GB", 0xB07CFF, 0, "ram"),
+            Make("Disk I/O", "disk", "rate", 0x3DD6C6, 0, "disk"),
             Make("Download", "netDown", "rate", 0x5AA9FF, 0),
+            Make("Upload", "netUp", "rate", 0xE879C6, 0),
         };
         ShowSpotlight();
+        LoadApps(span, bucket, from);
     }
+
+    // (chart point, resource) → the apps behind it, one per line. Filled after the charts so they never wait on it.
+    Dictionary<(int, string), string> apps = [];
+
+    async void LoadApps(TimeSpan span, int bucket, DateTime from)
+    {
+        apps = [];
+        List<BsonDocument> rows;
+        try { rows = await Db.TopApps(span, bucket); }
+        catch (Exception e) when (e is MongoException or TimeoutException) { return; } // the charts still work without it
+        if (Ranges[range].Span != span) return; // another range was picked meanwhile
+        var map = new Dictionary<(int, string), string>();
+        foreach (var row in rows)
+        {
+            var (b, r) = (row["_id"]["b"].ToUniversalTime(), row["_id"]["r"].AsString);
+            map[((int)((b - from).TotalMinutes / bucket), r)] = string.Join("\n", row["apps"].AsBsonArray.Select(a =>
+                a["n"].AsString + "  " + Amount(r, a["v"].ToDouble())));
+        }
+        apps = map;
+    }
+
+    static string Amount(string resource, double v) => resource switch
+    {
+        "ram" => v >= 1024 ? $"{v / 1024:0.0} GB" : $"{v:0} MB",
+        "disk" => SystemPage.Rate(v),
+        _ => $"{v:0.#}%",
+    };
 
     Chart[] charts = [];
     string? spotlight;

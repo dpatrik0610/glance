@@ -48,6 +48,10 @@ public sealed class Spark : FrameworkElement
     public static readonly DependencyProperty StepProperty = DependencyProperty.Register(nameof(Step), typeof(TimeSpan), typeof(Spark),
         new FrameworkPropertyMetadata(TimeSpan.Zero));
 
+    /// Extra lines under the hover label for point i of a Series (e.g. which apps were behind it); null for none.
+    public static readonly DependencyProperty DetailProperty = DependencyProperty.Register(nameof(Detail), typeof(Func<int, string?>), typeof(Spark));
+
+    public Func<int, string?>? Detail { get => (Func<int, string?>?)GetValue(DetailProperty); set => SetValue(DetailProperty, value); }
     public Color Color { get => (Color)GetValue(ColorProperty); set => SetValue(ColorProperty, value); }
     public float Max { get => (float)GetValue(MaxProperty); set => SetValue(MaxProperty, value); }
     // IReadOnlyList, not float[]: the XAML compiler rejects array-typed properties inside templates.
@@ -189,14 +193,16 @@ public sealed class Spark : FrameworkElement
         var text = Text(Format, v);
         if (Step > TimeSpan.Zero)
             text += "  ·  " + (DateTime.Now - Step * (count - 1 - i)).ToString(Step >= TimeSpan.FromHours(1) ? "ddd HH:mm" : "HH:mm");
+        if (!live && Detail?.Invoke(i) is { } more) text += "\n" + more;
         var ft = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Face, 11.5, LabelText,
             VisualTreeHelper.GetDpi(this).PixelsPerDip);
         var bw = ft.Width + 24;
         var bh = ft.Height + 6;
+        var lineH = ft.Height / (text.Count(c => c == '\n') + 1);
         var x = p.X + 10 + bw > w ? p.X - 10 - bw : p.X + 10; // flip left near the right edge
         var box = new Rect(Math.Max(0, x), 2 + layer * (bh + 4), bw, bh);
-        dc.DrawRoundedRectangle(LabelBg, null, box, bh / 2, bh / 2);
-        dc.DrawEllipse(solid, null, new Point(box.X + 8, box.Y + bh / 2), 2.5, 2.5);
+        dc.DrawRoundedRectangle(LabelBg, null, box, lineH / 2 + 3, lineH / 2 + 3); // one line: a pill
+        dc.DrawEllipse(solid, null, new Point(box.X + 8, box.Y + 3 + lineH / 2), 2.5, 2.5);
         dc.DrawText(ft, new Point(box.X + 14, box.Y + 3));
     }
 

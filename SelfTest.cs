@@ -34,6 +34,11 @@ static class SelfTest
             Check(self.Name == me.ProcessName && self.Cpu > TimeSpan.Zero && self.Cpu <= me.TotalProcessorTime + TimeSpan.FromSeconds(1)
                 && Math.Abs(self.WorkingSet - me.WorkingSet64) < 64 << 20, $"process list: {self} vs {me.ProcessName} {me.TotalProcessorTime} {me.WorkingSet64}");
             Check(procs.Any(p => p.Pid == 4 && p.Name == "System") && procs.Any(p => p.Name == "svchost"), "process list: names without .exe");
+            Check(procs.Sum(p => p.Io) > 0, "process list: I/O counters");
+            Native.GpuByPid(); // the first sample only sets the baseline
+            Thread.Sleep(300);
+            var gpu = Native.GpuByPid();
+            Check(gpu.Count > 0 && gpu.Values.All(v => v is >= 0 and <= 100), $"gpu per process: {gpu.Count} pids"); // dwm always has engines
             Check(Native.Connections().All(c => c.Port is > 0 and < 65536 && !c.Remote.StartsWith("127.")), "tcp table: connections");
 
             var now = new DateTime(2026, 10, 31, 20, 0, 0); // a Saturday evening

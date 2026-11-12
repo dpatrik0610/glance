@@ -250,7 +250,7 @@ public partial class App : Application
                 alerts.Check(s, Settings, DateTime.UtcNow);
                 if (sw.Elapsed >= nextMetric)
                 {
-                    Db.Metric(s);
+                    Db.Metric(s, hw.Minute());
                     nextMetric = sw.Elapsed + TimeSpan.FromMinutes(1);
                 }
             }
