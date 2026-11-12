@@ -21,6 +21,7 @@ public partial class ColorPage : UserControl
         HueBar.SizeChanged += (_, _) => Place();
         Use(App.Settings.RecentColors.Select(Parse).FirstOrDefault(c => c is not null) ?? Color.FromRgb(0xFF, 0x6A, 0x3D));
         ShowRecent();
+        IsVisibleChanged += (_, e) => { if ((bool)e.NewValue) ShowRecent(); }; // picks from the bar land in Recent too
     }
 
     static Color? Parse(string s) => ColorMath.TryParse(s, out var c) ? c : null;
@@ -31,7 +32,7 @@ public partial class ColorPage : UserControl
         (hue, sat, val) = ColorMath.ToHsv(c);
         color = c;
         Show();
-        if (remember) Remember();
+        if (remember) Keep();
     }
 
     void FromHsv()
@@ -142,7 +143,7 @@ public partial class ColorPage : UserControl
     void DragEnd(object sender, MouseButtonEventArgs e)
     {
         ((UIElement)sender).ReleaseMouseCapture();
-        Remember();
+        Keep();
     }
 
     void HexKey(object sender, KeyEventArgs e)
@@ -174,19 +175,27 @@ public partial class ColorPage : UserControl
     void Copy(string text)
     {
         Status.Text = ClipboardHistory.Copy(text) ? "Copied " + text : "Clipboard busy, try again.";
-        Remember();
+        Keep();
     }
 
-    void Remember()
+    void CopyHex(object sender, RoutedEventArgs e) => Copy(ColorMath.Hex(color));
+
+    void Keep()
     {
-        var hex = ColorMath.Hex(color);
+        Remember(color);
+        ShowRecent();
+    }
+
+    /// First in Recent (the last 12), wherever it was picked.
+    public static void Remember(Color c)
+    {
+        var hex = ColorMath.Hex(c);
         var list = App.Settings.RecentColors;
         if (list.FirstOrDefault() == hex) return;
         list.Remove(hex);
         list.Insert(0, hex);
         if (list.Count > 12) list.RemoveRange(12, list.Count - 12);
         App.ApplySettings();
-        ShowRecent();
     }
 
     void ShowRecent()

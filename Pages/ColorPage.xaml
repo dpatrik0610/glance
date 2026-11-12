@@ -62,8 +62,12 @@
                             <Border x:Name="Swatch" Width="52" Height="52" CornerRadius="12" BorderBrush="{StaticResource Line}" BorderThickness="1"
                                     Margin="0,0,12,0" />
                             <StackPanel VerticalAlignment="Center">
-                                <TextBox x:Name="HexBox" FontFamily="{StaticResource Mono}" FontSize="15" KeyDown="HexKey" LostFocus="HexCommit"
-                                         ToolTip="Hex (#ff6a3d, #f60) or RGB (255 106 61). Enter applies." />
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" Content="&#xE8C8;"
+                                            Margin="6,0,0,0" ToolTip="Copy hex" Click="CopyHex" />
+                                    <TextBox x:Name="HexBox" FontFamily="{StaticResource Mono}" FontSize="15" KeyDown="HexKey" LostFocus="HexCommit"
+                                             ToolTip="Hex (#ff6a3d, #f60) or RGB (255 106 61). Enter applies." />
+                                </DockPanel>
                                 <Button Content="Pick from screen" Margin="0,8,0,0" Click="PickClick" ToolTip="Click anywhere on screen; Esc cancels" />
                             </StackPanel>
                         </DockPanel>

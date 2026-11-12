@@ -89,6 +89,9 @@
                     <RotateTransform x:Name="Turn" />
                 </Button.Tag>
             </Button>
+            <!-- Eyedropper: the picked color's hex goes straight to the clipboard -->
+            <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" FontSize="10" Content="&#xE790;" ToolTip="Pick a color from screen (copies its hex)"
+                    Click="PickColor" />
             <Border DockPanel.Dock="Right" Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
             <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE76C;" ToolTip="Next" Click="Next" />
             <!-- Music controls (Music view only) -->

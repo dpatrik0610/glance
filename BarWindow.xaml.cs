@@ -210,6 +210,20 @@ public partial class BarWindow : Window
     void Wheel(object sender, MouseWheelEventArgs e) => Show(e.Delta > 0 ? -1 : +1);
 
     void OpenGlance(object sender, RoutedEventArgs e) => drop(Views[index].Tab);
+
+    // Pick → hex on the clipboard, an alert in that color; clicking the alert opens the Color page on it.
+    async void PickColor(object sender, RoutedEventArgs e)
+    {
+        if (await Eyedropper.Pick() is not { } c) return;
+        var hex = ColorMath.Hex(c);
+        var copied = ClipboardHistory.Copy(hex);
+        ColorPage.Remember(c);
+        AlertWindow.Show(new Toast(copied ? "Color · copied" : "Color · clipboard busy", hex, "", "RGB", $"{c.R} {c.G} {c.B}", c, false, Quiet: true), () =>
+        {
+            drop("Color");
+            ((ColorPage)((MainWindow)Application.Current.MainWindow).ShowTab("Color")).Use(c);
+        });
+    }
     // The down arrow: the player under the pill; again, or a click elsewhere, closes it.
     void Down(object sender, RoutedEventArgs e)
     {
