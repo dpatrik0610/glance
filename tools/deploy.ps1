@@ -11,6 +11,14 @@ function Fail($msg) {
     exit 1
 }
 
+# A Glance started from bin\build itself locks the exe the build writes there: close it first (it's replaced anyway).
+$build = Join-Path $root 'bin\build'
+Get-Process Glance -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$build\*" } | ForEach-Object {
+    Write-Host 'Closing the Glance running from bin\build...' -ForegroundColor DarkGray
+    Start-Process $_.Path '--exit' -Wait
+    $_ | Wait-Process -Timeout 15 -ErrorAction SilentlyContinue
+}
+
 Write-Host 'Building...' -ForegroundColor DarkGray
 # publish, not build: only publish precompiles (ReadyToRun), so Glance starts without compiling itself first.
 # Its intermediate build goes to bin\build: the default output folder is the one the running Glance is in.
