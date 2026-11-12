@@ -39,6 +39,8 @@ public partial class BarWindow : Window
     bool away; // stepped aside for a fullscreen app
     bool slim; // shrunk to the line over a maximized window
     readonly DispatcherTimer peek; // hover delay before the line opens up
+    readonly DispatcherTimer menuLeave;
+    bool menuOpen; // the Glance icon's menu (Open Glance + a button per view)
     int index;
     Snapshot? snap;
     Weather.Current? weather;
@@ -70,6 +72,12 @@ public partial class BarWindow : Window
         progress.Stop();
         peek = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Normal, (_, _) => { peek!.Stop(); Slim(false); }, Dispatcher);
         peek.Stop();
+        // The menu shuts a moment after the mouse leaves the bar (not at once: a slip past the edge shouldn't close it).
+        menuLeave = new DispatcherTimer(TimeSpan.FromMilliseconds(900), DispatcherPriority.Normal, (_, _) => ShowMenu(false), Dispatcher);
+        menuLeave.Stop();
+        MouseLeave += (_, _) => { if (menuOpen) menuLeave.Start(); };
+        MouseEnter += (_, _) => menuLeave.Stop();
+        BuildMenu();
         Closed += (_, _) =>
         {
             App.Sampled -= OnSample;
@@ -79,6 +87,7 @@ public partial class BarWindow : Window
             fullscreen.Stop();
             progress.Stop();
             peek.Stop();
+            menuLeave.Stop();
             SystemEvents.DisplaySettingsChanged -= Moved;
             tick.Stop();
         };
@@ -205,11 +214,63 @@ public partial class BarWindow : Window
 
     // ---- Switching ----
 
-    void Prev(object sender, RoutedEventArgs e) => Show(-1);
-    void Next(object sender, RoutedEventArgs e) => Show(+1);
     void Wheel(object sender, MouseWheelEventArgs e) => Show(e.Delta > 0 ? -1 : +1);
 
-    void OpenGlance(object sender, RoutedEventArgs e) => drop(Views[index].Tab);
+    void OpenGlance(object sender, RoutedEventArgs e)
+    {
+        ShowMenu(false);
+        drop(Views[index].Tab);
+    }
+
+    void GlanceClick(object sender, RoutedEventArgs e) => ShowMenu(!menuOpen);
+
+    // A button per view, in the menu. Arrow's template uses Tag as the glyph's transform, so nothing else goes there.
+    void BuildMenu()
+    {
+        for (var i = 0; i < Views.Length; i++)
+        {
+            var at = i;
+            var b = new Button { Style = (Style)Resources["Arrow"], Content = Views[i].Icon, FontSize = 11, ToolTip = Views[i].Name, Margin = new(1, 0, 1, 0) };
+            b.Click += (_, _) =>
+            {
+                ShowMenu(false);
+                if (at != index) Show(at - index);
+            };
+            ViewButtons.Children.Add(b);
+        }
+    }
+
+    /// Slides the menu open or shut: its width from 0 to the row's own, the row fading in.
+    void ShowMenu(bool open)
+    {
+        if (open == menuOpen) return;
+        menuOpen = open;
+        menuLeave.Stop();
+        if (open)
+        {
+            MarkMenu();
+            Menu.Visibility = Visibility.Visible;
+            MenuRow.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Motion.To(Menu, WidthProperty, MenuRow.DesiredSize.Width, 280);
+            Motion.To(MenuRow, OpacityProperty, 1, 240);
+        }
+        else
+        {
+            Motion.To(MenuRow, OpacityProperty, 0, 150);
+            Motion.To(Menu, WidthProperty, 0, 220, done: () => { if (!menuOpen) Menu.Visibility = Visibility.Collapsed; });
+        }
+    }
+
+    // The shown view in the accent color; views with nothing to show dimmed.
+    void MarkMenu()
+    {
+        for (var i = 0; i < Views.Length; i++)
+        {
+            var b = (Button)ViewButtons.Children[i];
+            b.IsEnabled = i == index || Read(Views[i]) is not null;
+            b.Foreground = (Brush)FindResource(i == index ? "Accent" : "Text");
+        }
+    }
 
     // Pick → hex on the clipboard, an alert in that color; clicking the alert opens the Color page on it.
     async void PickColor(object sender, RoutedEventArgs e)
@@ -247,6 +308,7 @@ public partial class BarWindow : Window
             Motion.To(Shift, TranslateTransform.XProperty, 0, 260, from: 14 * dir);
         }
         index = i;
+        if (menuOpen) MarkMenu();
         if (App.Settings.BarView != Views[i].Name)
         {
             App.Settings.BarView = Views[i].Name;

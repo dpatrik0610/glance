@@ -64,8 +64,8 @@
             </Border>
         </Grid>
         <DockPanel Margin="5,0">
-            <!-- The Glance icon: the only thing on the bar that opens the app -->
-            <Button DockPanel.Dock="Left" Cursor="Hand" Focusable="False" ToolTip="Open Glance" Click="OpenGlance" Margin="0,0,1,0">
+            <!-- The Glance icon: slides the menu open (Open Glance, then a button per view) -->
+            <Button DockPanel.Dock="Left" Cursor="Hand" Focusable="False" ToolTip="Views · Open Glance" Click="GlanceClick" Margin="0,0,1,0">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Grid Width="22" Height="22" Background="Transparent">
@@ -83,7 +83,16 @@
                     </ControlTemplate>
                 </Button.Template>
             </Button>
-            <Button DockPanel.Dock="Left" Style="{StaticResource Arrow}" Content="&#xE76B;" ToolTip="Previous" Click="Prev" />
+            <!-- The menu: its width animates open and shut; the row inside keeps its size and is clipped meanwhile -->
+            <Border x:Name="Menu" DockPanel.Dock="Left" Width="0" ClipToBounds="True" Visibility="Collapsed">
+                <StackPanel x:Name="MenuRow" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0">
+                    <Button Style="{StaticResource Arrow}" FontSize="10" Foreground="{StaticResource Text}" Content="&#xE8A7;" ToolTip="Open Glance"
+                            Click="OpenGlance" />
+                    <Border Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
+                    <StackPanel x:Name="ViewButtons" Orientation="Horizontal" />
+                    <Border Width="1" Height="11" Background="#24FFFFFF" Margin="3,0,2,0" />
+                </StackPanel>
+            </Border>
             <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Player" Click="Down">
                 <Button.Tag>
                     <RotateTransform x:Name="Turn" />
@@ -93,7 +102,6 @@
             <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" FontSize="10" Content="&#xE790;" ToolTip="Pick a color from screen (copies its hex)"
                     Click="PickColor" />
             <Border DockPanel.Dock="Right" Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
-            <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE76C;" ToolTip="Next" Click="Next" />
             <!-- Music controls (Music view only) -->
             <StackPanel x:Name="Controls" DockPanel.Dock="Right" Orientation="Horizontal" Margin="2,0,4,0" Visibility="Collapsed">
                 <Button x:Name="PrevTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE892;"
