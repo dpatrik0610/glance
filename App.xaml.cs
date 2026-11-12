@@ -103,6 +103,9 @@ public partial class App : Application
         Task.Run(SampleLoop);
         new DispatcherTimer(TimeSpan.FromSeconds(15), DispatcherPriority.Background, (_, _) => CheckReminders(), Dispatcher);
         Dispatcher.BeginInvoke(CheckReminders, DispatcherPriority.ApplicationIdle); // catch up right after start
+        // Google Calendar's next two days, for its reminder popups (nothing happens until it's connected).
+        new DispatcherTimer(TimeSpan.FromMinutes(5), DispatcherPriority.Background, (_, _) => _ = GoogleCalendar.RefreshUpcoming(), Dispatcher);
+        _ = GoogleCalendar.RefreshUpcoming();
         // Re-point the registry at this exe, in case the folder moved.
         if (Settings.ExplorerMenu) Settings.ExplorerMenu = true;
         if (Settings.AutoStart) Settings.AutoStart = true;
@@ -216,6 +219,17 @@ public partial class App : Application
                 ShowMain();
                 main!.ShowTab("Notes");
                 NoteStore.RequestFocus(note);
+            });
+        }
+        foreach (var (ev, minutes) in GoogleCalendar.DueAlerts(DateTime.Now))
+        {
+            Db.Info($"calendar reminder: {ev.Title}");
+            var when = ev.AllDay ? ev.Start.ToString("ddd d MMM") : minutes == 0 ? "Now" : ev.Start.ToString("HH:mm");
+            AlertWindow.Show(new Toast($"Calendar · {ev.Calendar.Name}", ev.Title, "", ev.AllDay ? "All day" : "Starts", when, ev.Calendar.Color, true,
+                Detail: ev.Location), () =>
+            {
+                ShowMain();
+                main!.ShowTab("Calendar");
             });
         }
     }

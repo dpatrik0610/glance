@@ -29,6 +29,10 @@ public class Settings
 
     public bool ClipboardHistory { get; set; } = true;
     public bool ClipboardImages { get; set; } = true;
+    /// Your own Google OAuth client ("Desktop app" type) for the Calendar page. Google treats a desktop client's secret as
+    /// not secret; the sign-in itself is kept encrypted elsewhere (GoogleCalendar).
+    public string GoogleClientId { get; set; } = "";
+    public string GoogleClientSecret { get; set; } = "";
     /// The stickies are on the desktop (each also has its own switch).
     public bool StickiesShown { get; set; } = true;
     /// The Color page's recent picks, newest first ("#RRGGBB").

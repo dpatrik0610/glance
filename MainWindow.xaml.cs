@@ -29,6 +29,7 @@ public partial class MainWindow : Window
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
         new("Notes", "Tools", "\uE70B", () => new NotesPage()),
         new("Stickies", "Tools", "\uE840", () => new StickiesPage()),
+        new("Calendar", "Tools", "\uE787", () => new CalendarPage()),
         new("Password", "Tools", "\uE8D7", () => new PasswordPage()),
         new("Color", "Tools", "\uE790", () => new ColorPage()),
         new("Images", "Tools", "\uEB9F", () => new ImagePage()),

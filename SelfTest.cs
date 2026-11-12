@@ -87,6 +87,17 @@ static class SelfTest
             }
             finally { File.Delete(tmp); }
 
+            // Calendar: which days an event shows on (overnight, all-day with Google's exclusive end, zero-length)
+            var cal = new CalInfo("c", "c", System.Windows.Media.Colors.Red, true, true, []);
+            CalEvent Ev(DateTime s, DateTime e, bool allDay) => new("e", cal, "t", s, e, allDay, "", "", [], true, false);
+            DateTime d1 = new(2026, 3, 10), d2 = d1.AddDays(1), d3 = d1.AddDays(2);
+            var night = Ev(d1.AddHours(23), d2.AddHours(1), false);
+            var allDay2 = Ev(d1, d3, true); // the 10th and 11th
+            var point = Ev(d2, d2, false);
+            Check(night.On(d1) && night.On(d2) && !night.On(d3), "calendar: overnight event");
+            Check(allDay2.On(d1) && allDay2.On(d2) && !allDay2.On(d3) && !allDay2.On(d1.AddDays(-1)), "calendar: all-day end is exclusive");
+            Check(point.On(d2) && !point.On(d1), "calendar: zero-length event");
+
             // Images: crop, resize, every format, EXIF rotation
             var grad = new byte[200 * 100 * 4];
             for (var i = 0; i < grad.Length; i += 4) (grad[i], grad[i + 1], grad[i + 2], grad[i + 3]) = ((byte)(i / 4 % 200), (byte)(i / 800), 128, 255);
