@@ -29,7 +29,10 @@ if ($LASTEXITCODE) { Fail 'Build failed. The running Glance was left alone.' }
 
 # Glance is a GUI exe: Start-Process -Wait is what makes PowerShell wait for it and see its exit code.
 Write-Host 'Selftest...' -ForegroundColor DarkGray
-$test = Start-Process "$stage\Glance.exe" '--selftest' -Wait -PassThru
+$log = Join-Path $env:TEMP 'glance-selftest.txt'
+$test = Start-Process "$stage\Glance.exe" '--selftest' -Wait -PassThru -RedirectStandardError $log
+$color = if ($test.ExitCode) { 'Red' } else { 'Green' }
+Get-Content $log -ErrorAction SilentlyContinue | Write-Host -ForegroundColor $color
 if ($test.ExitCode) { Fail 'Selftest failed. The running Glance was left alone.' }
 
 $running = @(Get-Process Glance -ErrorAction SilentlyContinue)

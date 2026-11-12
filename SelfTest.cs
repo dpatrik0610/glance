@@ -1,5 +1,6 @@
 using System.IO;
 using System.Net.Http;
+using System.Windows;
 using Glance.Services;
 
 namespace Glance;
@@ -213,6 +214,9 @@ static class SelfTest
             Gpu(70, 1, TimeSpan.FromMinutes(2));
             Gpu(90, 3, TimeSpan.FromMinutes(11));
             Check(fired == 2, "re-fires after cooldown");
+
+            CompareChecks();
+            Console.Error.WriteLine($"selftest: all {checks} checks passed");
             return 0;
         }
         catch (Exception e)
@@ -222,10 +226,99 @@ static class SelfTest
         }
     }
 
+    // Compare page: byte compare, diff parsing, folder compare, duplicates, and the guard that keeps recycling from taking a last copy
+    static void CompareChecks()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"glance-selftest-cmp-{Environment.ProcessId}");
+        string Put(string rel, byte[] bytes)
+        {
+            var p = Path.Combine(root, rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(p)!);
+            File.WriteAllBytes(p, bytes);
+            return p;
+        }
+        string W(string rel, string text) => Put(rel, System.Text.Encoding.UTF8.GetBytes(text));
+        try
+        {
+            var big = new byte[200_000];
+            new Random(1).NextBytes(big);
+            var x = Put("x.bin", big);
+            Check(Compare.FirstDifference(x, Put("x2.bin", big)) == -1, "compare: identical across 64 KB blocks");
+            var y = (byte[])big.Clone();
+            y[70_000] ^= 1;
+            Check(Compare.FirstDifference(x, Put("y.bin", y)) == 70_000, "compare: first difference in the second block");
+            Check(Compare.FirstDifference(x, Put("short.bin", big[..65_536])) == 65_536, "compare: shorter file differs where it ends");
+            Check(Compare.FirstDifference(Put("e1", []), Put("e2", [])) == -1, "compare: two empty files");
+            Check(!Compare.IsText(x) && Compare.IsText(W("t.txt", "hello")), "compare: binary vs text");
+
+            var d = Compare.ParseUnified(string.Join('\n', "diff --git a/a b/b", "index 1..2 100644", "--- a/a.txt", "+++ b/b.txt",
+                "@@ -1,7 +1,6 @@", " one", "-two", "-three x", "+three y", " four", "-gone line", "-also gone", "+new line", " five", "+six",
+                "@@ -40,2 +39,2 @@", "-x", @"\ No newline at end of file", "+y", ""));
+            var kinds = new string(d.Select(l => l.Kind).ToArray());
+            Check(kinds == " --+ --+ +@-+", "diff: line kinds " + kinds);
+            Check(d[2] is { Left: 3, Right: null } && d[3] is { Left: null, Right: 2 } && d[9] is { Left: null, Right: 6 }, "diff: line numbers");
+            Check(d[11] is { Left: 40, Right: null } && d[12] is { Left: null, Right: 39 }, "diff: second hunk numbering");
+            Check(d[1].Segs is [{ Kind: '-', Text: "two" }], "diff: unlike lines stay unpaired (two vs three y)");
+            Check(d[2].Segs is [{ Kind: ' ', Text: "three " }, { Kind: '-', Text: "x" }] && d[3].Segs is [{ Kind: ' ' }, { Kind: '+', Text: "y" }],
+                "diff: an edited line marks only what changed");
+            Check(d[5].Segs is [{ Kind: '-', Text: "gone" }, { Kind: ' ', Text: " line" }] && d[6].Segs is [{ Kind: '-', Text: "also gone" }],
+                "diff: pairs the similar removed line, not just the first");
+            if (Shell.OnPath("git.exe"))
+            {
+                // Off the UI thread: blocking on it here would deadlock with the await inside Shell.Run.
+                List<DiffLine> Diff(string a, string b) => Task.Run(() => Compare.Diff(a, b)).Result;
+                var real = Diff(W("a.txt", "one\r\ntwo\r\nthree\r\n"), W("b.txt", "one\ntwo!\nthree\n"));
+                Check(real.Count(l => l.Kind == '-') == 1 && real.Single(l => l.Kind == '+') is { Right: 2, Segs: [_, { Text: "!" }] },
+                    "diff: real git run, CRLF vs LF ignored");
+                Check(Diff(W("c.txt", "a\r\nb\r\n"), W("d.txt", "a\nb\n")).Count == 0, "diff: only line endings differ → no lines");
+            }
+
+            W(@"L\same.txt", "same"); W(@"R\same.txt", "same");
+            W(@"L\sub\edit.txt", "aaaa"); W(@"R\SUB\edit.txt", "aaab"); // same size; paths match ignoring case
+            W(@"L\size.txt", "a"); W(@"R\size.txt", "ab");
+            W(@"L\gone.txt", "x"); W(@"R\new.txt", "y");
+            File.SetAttributes(W(@"R\hidden.txt", "h"), FileAttributes.Hidden);
+            var (items, same) = Compare.Folders(Path.Combine(root, "L"), Path.Combine(root, "R"), default);
+            var got = string.Join(",", items.Select(i => $"{i.Kind}{i.Path}"));
+            Check(same == 1 && got == @"<gone.txt,>new.txt,≠size.txt,≠sub\edit.txt", "folders: " + got);
+
+            W(@"D\a\one.txt", "dup content");
+            File.SetLastWriteTime(W(@"D\b\two.txt", "dup content"), DateTime.Now.AddDays(1));
+            W(@"D\b\other.txt", "dup contenu"); // same size, other bytes
+            W(@"D\e1.txt", ""); W(@"D\e2.txt", "");
+            var dups = Compare.Duplicates([Path.Combine(root, "D"), Path.Combine(root, @"D\a")], null, default); // overlapping roots
+            Check(dups is [{ Files.Count: 2, Wasted: 11 }] && dups[0].Files[0].Path.EndsWith("one.txt"),
+                "duplicates: one set, oldest first, no file listed twice, empty files left out");
+            var (keep, copy) = (dups[0].Files[0].Path, dups[0].Files[1].Path);
+            Check(!Compare.StillDuplicate(keep, keep), "recycle guard: a file is never its own copy");
+            Check(Compare.StillDuplicate(copy, keep), "recycle guard: a true copy");
+            File.WriteAllText(copy, "dup CONTENT");
+            Check(!Compare.StillDuplicate(copy, keep), "recycle guard: edited since the scan");
+            File.Delete(keep);
+            Check(!Compare.StillDuplicate(copy, keep), "recycle guard: the copy that stays is gone");
+            Check(Compare.Size(1536) == "2 KB" && Compare.Size(5L << 30) == "5.0 GB", "size text");
+
+            // The page and every row template build and lay out (a bad resource name only shows up at runtime)
+            var page = new Pages.ComparePage();
+            page.DiffList.ItemsSource = d;
+            page.FolderList.ItemsSource = items;
+            page.DupeList.ItemsSource = new Pages.ComparePage.DupRow[] { new(dups[0], null), new(dups[0], dups[0].Files[1]) };
+            foreach (var view in new UIElement[] { page.FilesView, page.FoldersView, page.DupesView }) view.Visibility = Visibility.Visible;
+            page.Measure(new Size(1000, 700));
+            page.Arrange(new Rect(0, 0, 1000, 700));
+            page.UpdateLayout();
+            Check(page.DiffList.ItemContainerGenerator.ContainerFromIndex(2) is not null, "compare page: diff rows built");
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
     static Snapshot Snap(float gpuTemp) => new("", 0, null, null, null, "", 0, gpuTemp, null, null, null, null, null, null, 0, 0, [], []);
+
+    static int checks;
 
     static void Check(bool ok, string what)
     {
+        checks++;
         if (!ok) throw new Exception("selftest failed: " + what);
     }
 }
