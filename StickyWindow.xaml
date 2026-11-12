@@ -9,16 +9,19 @@
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" GlassFrameThickness="-1" ResizeBorderThickness="6" UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
-    <Border x:Name="Tint">
+    <!-- Drag from any empty spot, like a paper note (buttons and text boxes keep their clicks) -->
+    <Border x:Name="Tint" MouseLeftButtonDown="DragDown">
         <DockPanel Margin="10,6,10,10">
-            <!-- Header: drag anywhere on it. Color and see-through in the dot's menu, ✕ takes it off the desktop. -->
-            <DockPanel DockPanel.Dock="Top" Background="Transparent" MouseLeftButtonDown="HeaderDown" Margin="0,0,0,6">
+            <!-- Header: color and see-through in the dot's menu, ✕ takes it off the desktop -->
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
                 <Button x:Name="DotButton" DockPanel.Dock="Left" Style="{StaticResource Ghost}" Padding="6" Click="DotClick" ToolTip="Color and see-through">
                     <Ellipse x:Name="Dot" Width="11" Height="11" />
                 </Button>
                 <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="✕" FontSize="11" ToolTip="Take off the desktop (it stays in Stickies)"
                         Click="HideClick" />
+                <!-- Only as wide as the title, so the rest of the header drags -->
                 <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Tag="Title" FontWeight="SemiBold" FontSize="13"
+                         HorizontalAlignment="Left" MinWidth="60"
                          Background="Transparent" BorderThickness="0" Padding="2,4" VerticalAlignment="Center" />
             </DockPanel>
             <g:NoteEditor x:Name="Editor" Compact="True" />

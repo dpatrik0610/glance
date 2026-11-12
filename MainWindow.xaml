@@ -25,7 +25,9 @@
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
 
-            <!-- Top bar: drag area -->
+            <!-- Drag area: the top bar's row out to the window's edges (the body's margin and the gap under the bar too) -->
+            <Border Grid.ColumnSpan="2" Background="Transparent" MouseLeftButtonDown="Drag" Margin="-14,-14,-14,0" />
+            <!-- Top bar -->
             <Grid Grid.ColumnSpan="2" Background="Transparent" MouseLeftButtonDown="Drag" Margin="0,0,6,10">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="NavToggle" Style="{StaticResource Ghost}" Width="44" Content="&#xE700;" FontFamily="{StaticResource Icons}"

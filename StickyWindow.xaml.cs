@@ -75,7 +75,7 @@ public partial class StickyWindow : Window
         Dot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(sticky.Dot));
     }
 
-    void HeaderDown(object sender, MouseButtonEventArgs e)
+    void DragDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
     }
