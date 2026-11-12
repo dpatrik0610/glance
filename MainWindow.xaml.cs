@@ -94,7 +94,7 @@ public partial class MainWindow : Window
     // Focus went elsewhere (not to one of our own dialogs): a dropped Glance goes back up.
     void LostToOutside()
     {
-        if (Dropped && IsVisible && !IsActive && !OwnedWindows.Cast<Window>().Any(w => w.IsActive)) Away();
+        if (!App.Settings.StayOpen && Dropped && IsVisible && !IsActive && !OwnedWindows.Cast<Window>().Any(w => w.IsActive)) Away();
     }
 
     void Undrop()
@@ -123,6 +123,9 @@ public partial class MainWindow : Window
         Topmost = s.Topmost;
         Nav.Tag = !s.NavCollapsed; // item labels and group headers bind to this
         SetCompact(s.Compact);
+        PinButton.Content = s.StayOpen ? "\uE842" : "\uE718"; // pinned (filled) : pin
+        PinButton.Foreground = s.StayOpen ? (Brush)FindResource("Accent") : (Brush)FindResource("Text");
+        PinButton.ToolTip = s.StayOpen ? "Stays open when you click elsewhere" : "Hides when you click elsewhere (click to keep open)";
         Native.SetBlur(hwnd, s.Blur);
     }
 
@@ -146,6 +149,14 @@ public partial class MainWindow : Window
         CompactButton.Content = on ? "\uE740" : "\uE73F";
         CompactButton.ToolTip = on ? "Full layout" : "Compact mode";
         if (Dropped) Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - Width) / 2; // stay centered under the bar
+    }
+
+    void PinClick(object sender, RoutedEventArgs e) => SetStayOpen(!App.Settings.StayOpen);
+
+    public static void SetStayOpen(bool on)
+    {
+        App.Settings.StayOpen = on;
+        App.ApplySettings();
     }
 
     void CompactClick(object sender, RoutedEventArgs e)

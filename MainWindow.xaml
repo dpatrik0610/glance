@@ -52,6 +52,8 @@
                     </ListBox>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="PinButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
+                            Content="&#xE718;" Click="PinClick" />
                     <Button x:Name="CompactButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
                             Content="&#xE73F;" ToolTip="Compact mode"
                             Click="CompactClick" />
