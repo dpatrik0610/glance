@@ -43,8 +43,11 @@ public partial class BarWindow : Window
     bool menuOpen; // the Glance icon's menu (Open Glance + a button per view)
     int index;
     Snapshot? snap;
-    Weather.Current? weather;
+    Weather.Forecast? forecast;
+    Weather.Current? weather => forecast?.Current;
     DateTime weatherAt, ratesAt;
+    float[]? eurDays, usdDays; // the last week, for the panel
+    readonly List<float> downs = [], ups = []; // the last minute of network rates, for the panel
     string? weatherFor; // hometown + units the weather was fetched for
     (float Eur, float Usd)? rates;
     string? failed; // the view whose fetch failed, so it says so instead of "…"
@@ -101,8 +104,26 @@ public partial class BarWindow : Window
     void OnSample(Snapshot s) => Dispatcher.BeginInvoke(() =>
     {
         snap = s;
+        foreach (var (list, v) in new[] { (downs, s.NetDown), (ups, s.NetUp) })
+        {
+            list.Add((float)v);
+            if (list.Count > 60) list.RemoveAt(0);
+        }
         if (Views[index].Name is "System" or "Network") Render();
     });
+
+    // ---- For the panel (MiniWindow): what the shown view knows ----
+
+    internal string ViewName => Views[index].Name;
+    internal string ViewTab => Views[index].Tab;
+    internal string ViewIcon => Views[index].Icon;
+    internal Snapshot? Snap => snap;
+    internal Weather.Forecast? Forecast => forecast;
+    internal (float[] Eur, float[] Usd)? Week => eurDays is null ? null : (eurDays, usdDays!);
+    internal IReadOnlyList<float> Downs => downs;
+    internal IReadOnlyList<float> Ups => ups;
+    internal bool Failed => failed == ViewName;
+    internal void Refresh() => Render();
 
     void OnMedia()
     {
@@ -234,7 +255,7 @@ public partial class BarWindow : Window
             b.Click += (_, _) =>
             {
                 ShowMenu(false);
-                if (at != index) Show(at - index);
+                if (at != index) Show(at - index, skip: false);
             };
             ViewButtons.Children.Add(b);
         }
@@ -265,15 +286,10 @@ public partial class BarWindow : Window
         });
     }
 
-    // The shown view in the accent color; views with nothing to show dimmed.
+    // The shown view in the accent color.
     void MarkMenu()
     {
-        for (var i = 0; i < Views.Length; i++)
-        {
-            var b = (Button)ViewButtons.Children[i];
-            b.IsEnabled = i == index || Read(Views[i]) is not null;
-            b.Foreground = (Brush)FindResource(i == index ? "Accent" : "Text");
-        }
+        for (var i = 0; i < Views.Length; i++) ((Button)ViewButtons.Children[i]).Foreground = (Brush)FindResource(i == index ? "Accent" : "Text");
     }
 
     // Pick → hex on the clipboard, an alert in that color; clicking the alert opens the Color page on it.
@@ -290,8 +306,11 @@ public partial class BarWindow : Window
             ((ColorPage)((MainWindow)Application.Current.MainWindow).ShowTab("Color")).Use(c);
         });
     }
-    // The down arrow: the player under the pill; again, or a click elsewhere, closes it.
-    void Down(object sender, RoutedEventArgs e)
+    // The down arrow or a click on the view: its panel under the pill; again, or a click elsewhere, closes it.
+    void Down(object sender, RoutedEventArgs e) => TogglePanel();
+    void BodyClick(object sender, MouseButtonEventArgs e) => TogglePanel();
+
+    void TogglePanel()
     {
         if (mini is not null) { mini.Away(); return; }
         mini = new MiniWindow(this, drop) { Owner = this }; // owned: stays above the bar's z-order, out of Alt+Tab
@@ -301,12 +320,12 @@ public partial class BarWindow : Window
         Turned();
     }
 
-    /// Moves `step` views (0: stay), skipping views that have nothing to show.
-    void Show(int step)
+    /// Moves `step` views (0: stay); skip: past views with nothing to show (the wheel, and at start).
+    void Show(int step, bool skip = true)
     {
         var dir = step == 0 ? 1 : Math.Sign(step);
         var i = (index + step + Views.Length) % Views.Length;
-        for (var n = 0; n < Views.Length && Read(Views[i]) is null; n++) i = (i + dir + Views.Length) % Views.Length;
+        for (var n = 0; skip && n < Views.Length && Empty(Views[i]); n++) i = (i + dir + Views.Length) % Views.Length;
         if (step != 0 && i != index)
         {
             Motion.To(Body, OpacityProperty, 1, 220, from: 0);
@@ -320,6 +339,7 @@ public partial class BarWindow : Window
             App.Settings.Save();
         }
         Render();
+        mini?.Render(); // an open panel follows to the new view
         Fetch();
     }
 
@@ -330,9 +350,10 @@ public partial class BarWindow : Window
     void Render()
     {
         var v = Views[index];
-        if (Read(v) is not { } segs) { Show(1); return; } // e.g. the last reminder was ticked off
+        var segs = Read(v);
         Glyph.Text = v.Icon;
         ShowMusic(v.Name == "Music" ? Media.Current : null);
+        if (v.Name != "Music") mini?.Render(); // the music panel keeps its own time
         // Samples mostly repeat the last numbers: only rebuild the text when it changed.
         var text = string.Join('\n', segs.Select(s => s.Item1 + '\t' + s.Item2));
         if (text == shown) return;
@@ -384,8 +405,17 @@ public partial class BarWindow : Window
 
     static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
 
-    /// What a view shows as (dim label, bright value) pairs; null when it has nothing to show.
-    (string, string)[]? Read(View v)
+    /// Nothing to show: no song, no hometown, no reminder. Still pickable from the menu; the wheel passes them by.
+    static bool Empty(View v) => v.Name switch
+    {
+        "Music" => Media.Current is not { Title.Length: > 0 },
+        "Weather" => App.Settings.Lat is null,
+        "Reminder" => !NoteStore.Everything.SelectMany(n => n.Items).Any(i => !i.Done && i.Due is not null),
+        _ => false,
+    };
+
+    /// What a view shows as (dim label, bright value) pairs.
+    (string, string)[] Read(View v)
     {
         var s = App.Settings;
         switch (v.Name)
@@ -400,10 +430,10 @@ public partial class BarWindow : Window
             case "Network":
                 return snap is null ? [("", "…")] : [("↓", SystemPage.Rate(snap.NetDown)), ("↑", SystemPage.Rate(snap.NetUp))];
             case "Music":
-                if (Media.Current is not { Title.Length: > 0 } p) return null;
+                if (Media.Current is not { Title.Length: > 0 } p) return [("", "Nothing playing")];
                 return [(p.Artist, p.Title)];
             case "Weather":
-                if (s.Lat is null) return null; // no hometown set on the Weather page
+                if (s.Lat is null) return [("Weather", "no hometown set")];
                 var place = s.City.Length > 0 ? s.City : "Weather";
                 if (weather is not { } w) return [(place, failed == v.Name ? "can't reach Open-Meteo" : "…")];
                 return [(place, $"{w.Temp:0}°"), ("", Weather.Describe(w.Code, w.IsDay == 1).Text)];
@@ -413,9 +443,9 @@ public partial class BarWindow : Window
             case "Reminder":
                 var now = DateTime.Now;
                 var next = NoteStore.Everything.SelectMany(n => n.Items).Where(i => !i.Done && i.Due is not null).MinBy(i => i.Due);
-                return next is null ? null : [(Due.Format(next.Due!.Value, now), next.Text.Length > 0 ? next.Text : "(no text)")];
+                return next is null ? [("", "No reminders")] : [(Due.Format(next.Due!.Value, now), next.Text.Length > 0 ? next.Text : "(no text)")];
         }
-        return null;
+        return [];
     }
 
     void Fetch() => _ = Fetch(Views[index].Name);
@@ -431,14 +461,15 @@ public partial class BarWindow : Window
             if (v == "Weather" && s.Lat is { } lat && s.Lon is { } lon
                 && (DateTime.Now - weatherAt > WeatherAge || weatherFor != $"{lat},{lon},{s.Fahrenheit}"))
             {
-                weather = (await Weather.Get(lat, lon, s.Fahrenheit))?.Current;
+                forecast = await Weather.Get(lat, lon, s.Fahrenheit);
                 weatherAt = DateTime.Now;
                 weatherFor = $"{lat},{lon},{s.Fahrenheit}";
             }
             else if (v == "Exchange" && DateTime.Now - ratesAt > RatesAge)
             {
                 var (_, huf) = await Rates.Get(7);
-                rates = (huf["EUR"][^1], huf["USD"][^1]);
+                (eurDays, usdDays) = (huf["EUR"], huf["USD"]);
+                rates = (eurDays[^1], usdDays[^1]);
                 ratesAt = DateTime.Now;
             }
             else return;

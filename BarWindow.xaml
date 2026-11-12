@@ -87,7 +87,7 @@
                  width glides from one to the other (ShowMenu) -->
             <Grid x:Name="Swap" ClipToBounds="True">
                 <DockPanel x:Name="Normal">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Player" Click="Down">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Details" Click="Down">
                         <Button.Tag>
                             <RotateTransform x:Name="Turn" />
                         </Button.Tag>
@@ -101,7 +101,8 @@
                         <Button x:Name="NextTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE893;"
                                 ToolTip="Next song" Click="TrackNext" />
                     </StackPanel>
-                    <StackPanel x:Name="Body" Orientation="Horizontal" Margin="4,0" Background="Transparent">
+                    <StackPanel x:Name="Body" Orientation="Horizontal" Margin="4,0" Background="Transparent" Cursor="Hand" ToolTip="Details"
+                                MouseLeftButtonUp="BodyClick">
                         <StackPanel.RenderTransform>
                             <TranslateTransform x:Name="Shift" />
                         </StackPanel.RenderTransform>

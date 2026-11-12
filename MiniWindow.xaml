@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:g="clr-namespace:Glance"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize" SizeToContent="Height"
-        Topmost="True" ShowInTaskbar="False" Title="Glance player"
+        Topmost="True" ShowInTaskbar="False" Title="Glance details"
         FontFamily="Segoe UI Variable Text, Segoe UI" Foreground="{StaticResource Text}" TextOptions.TextFormattingMode="Display"
         Typography.NumeralAlignment="Tabular">
     <!-- As wide as the pill above it (set in code); the margin leaves room for the shadow -->
@@ -45,7 +45,8 @@
                 </StackPanel>
               </StackPanel>
             </DockPanel>
-            <TextBlock x:Name="Empty" Text="Nothing is playing" Style="{StaticResource Label}" HorizontalAlignment="Center" Margin="0,2,0,6" />
+            <!-- Every other view: built in code (header like the player's, then the view's details) -->
+            <StackPanel x:Name="Info" Visibility="Collapsed" />
         </Grid>
     </Border>
 </Window>
