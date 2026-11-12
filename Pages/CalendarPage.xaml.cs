@@ -57,6 +57,7 @@ public partial class CalendarPage : UserControl
             if (id != loadId) return; // another month was picked meanwhile
             (events, syncedAt) = (list, DateTime.Now);
             Status.Text = $"Synced {syncedAt:HH:mm}";
+            ShowCalendars();
         }
         catch (Exception e) when (GoogleCalendar.IsGoogleError(e))
         {
@@ -74,6 +75,34 @@ public partial class CalendarPage : UserControl
         DisconnectButton.Visibility = RefreshButton.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         AddButton.IsEnabled = on;
         if (!on) Status.Text = "";
+        if (!on) CalendarsPanel.Visibility = Visibility.Collapsed;
+    }
+
+    // One switch per calendar. Off: its events go at once; on: they come with the next sync, started right away.
+    void ShowCalendars()
+    {
+        CalendarList.Children.Clear();
+        foreach (var c in GoogleCalendar.Calendars)
+        {
+            var label = new StackPanel { Orientation = Orientation.Horizontal };
+            label.Children.Add(new Ellipse { Width = 9, Height = 9, Fill = new SolidColorBrush(c.Color), Margin = new(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
+            label.Children.Add(new TextBlock { Text = c.Name, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = c.Writable ? c.Name : c.Name + " (read-only)" });
+            var toggle = new CheckBox { Style = (Style)FindResource("Switch"), Content = label, IsChecked = c.Shown, Margin = new(0, 0, 0, 6) };
+            toggle.Click += (_, _) =>
+            {
+                App.Settings.CalendarsShown[c.Id] = toggle.IsChecked == true;
+                App.ApplySettings();
+                if (toggle.IsChecked != true)
+                {
+                    events.RemoveAll(e => e.Calendar.Id == c.Id);
+                    Render();
+                }
+                Changed();
+            };
+            CalendarList.Children.Add(toggle);
+        }
+        CalendarsPanel.Visibility = GoogleCalendar.Calendars.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     static IEnumerable<(Note Note, TodoItem Item)> DueOn(DateTime d) =>

@@ -16,7 +16,11 @@ using Google.Apis.Util.Store;
 
 namespace Glance.Services;
 
-public record CalInfo(string Id, string Name, Color Color, bool Writable, bool Primary, int[] DefaultPopups);
+/// Selected: ticked in Google Calendar's own list (Glance's default for showing it).
+public record CalInfo(string Id, string Name, Color Color, bool Writable, bool Primary, int[] DefaultPopups, bool Selected = true)
+{
+    public bool Shown => App.Settings.CalendarsShown.TryGetValue(Id, out var on) ? on : Selected;
+}
 
 /// One occurrence (repeating events come expanded). All-day: Start and End are dates, End exclusive, as Google has them.
 /// Popups: minutes before Start that a reminder pops up.
@@ -94,14 +98,16 @@ public static class GoogleCalendar
 
     public static CalInfo[] Calendars { get; private set; } = [];
 
-    /// Every event of the calendars ticked in Google Calendar's own list, between the two times.
+    /// Every event of the calendars shown in Glance (CalInfo.Shown), between the two times. Calendars gets all of them,
+    /// shared ones included, even those hidden in Google's own list.
     public static async Task<List<CalEvent>> Events(DateTime from, DateTime to)
     {
         var s = service ?? throw new InvalidOperationException("Google Calendar isn't connected.");
-        var list = await s.CalendarList.List().ExecuteAsync();
-        Calendars = (list.Items ?? []).Where(c => c.Selected == true && c.Hidden != true).Select(Info)
-            .OrderByDescending(c => c.Primary).ThenBy(c => c.Name).ToArray();
-        var found = await Task.WhenAll(Calendars.Select(async c =>
+        var req = s.CalendarList.List();
+        req.ShowHidden = true;
+        var list = await req.ExecuteAsync();
+        Calendars = (list.Items ?? []).Select(Info).OrderByDescending(c => c.Primary).ThenByDescending(c => c.Writable).ThenBy(c => c.Name).ToArray();
+        var found = await Task.WhenAll(Calendars.Where(c => c.Shown).Select(async c =>
         {
             var events = new List<CalEvent>();
             string? page = null;
@@ -120,7 +126,7 @@ public static class GoogleCalendar
 
     static CalInfo Info(CalendarListEntry c) => new(c.Id, c.SummaryOverride ?? c.Summary ?? c.Id,
         (Color)ColorConverter.ConvertFromString(c.BackgroundColor ?? "#5AA9FF"), c.AccessRole is "owner" or "writer", c.Primary == true,
-        (c.DefaultReminders ?? []).Where(r => r.Method == "popup").Select(r => r.Minutes ?? 0).ToArray());
+        (c.DefaultReminders ?? []).Where(r => r.Method == "popup").Select(r => r.Minutes ?? 0).ToArray(), c.Selected == true && c.Hidden != true);
 
     static CalEvent Convert(Event e, CalInfo c)
     {

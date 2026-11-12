@@ -33,6 +33,8 @@ public class Settings
     /// not secret; the sign-in itself is kept encrypted elsewhere (GoogleCalendar).
     public string GoogleClientId { get; set; } = "";
     public string GoogleClientSecret { get; set; } = "";
+    /// Calendar id → shown in Glance. Calendars not in here follow their tick in Google Calendar's own list.
+    public Dictionary<string, bool> CalendarsShown { get; set; } = [];
     /// The stickies are on the desktop (each also has its own switch).
     public bool StickiesShown { get; set; } = true;
     /// The Color page's recent picks, newest first ("#RRGGBB").

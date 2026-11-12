@@ -28,6 +28,13 @@
                         <TextBlock x:Name="DaySub" Style="{StaticResource Label}" Margin="0,2,0,0" />
                     </StackPanel>
                 </DockPanel>
+                <!-- Which calendars show, shared ones included -->
+                <StackPanel x:Name="CalendarsPanel" DockPanel.Dock="Bottom" Margin="0,12,0,0" Visibility="Collapsed">
+                    <TextBlock Text="Calendars" Style="{StaticResource Label}" Margin="0,0,0,6" />
+                    <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="CalendarList" />
+                    </ScrollViewer>
+                </StackPanel>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="Agenda" />
                 </ScrollViewer>

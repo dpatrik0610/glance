@@ -21,10 +21,10 @@ public partial class EventDialog : Window
     /// True when something was saved or deleted.
     public static bool Edit(CalEvent? existing, DateTime day)
     {
-        var writable = GoogleCalendar.Calendars.Where(c => c.Writable).ToArray();
+        var writable = GoogleCalendar.Calendars.Where(c => c.Writable && c.Shown).ToArray();
         if (existing is null && writable.Length == 0)
         {
-            Dialog.Info("Calendar", "No calendar you can add to", "Every calendar shown is read-only for this Google account.");
+            Dialog.Info("Calendar", "No calendar you can add to", "Every calendar switched on is read-only for this Google account.");
             return false;
         }
         var d = new EventDialog(existing, day, writable);
