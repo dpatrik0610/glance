@@ -98,6 +98,13 @@ public partial class MainWindow
             Task.FromResult<string?>(ClipboardHistory.CopySecret(Passwords.Generate(20, true, true, true, true, true).Password, TimeSpan.FromSeconds(30))
                 ? "Copied a 20-character password · clipboard clears in 30s" : "Clipboard busy, try again.")));
 
+        list.Add(new("Pick color from screen", "Color", "", async () =>
+        {
+            if (await Eyedropper.Pick() is not { } c) return "Cancelled.";
+            ((ColorPage)ShowTab("Color")).Use(c, remember: true);
+            var hex = ColorMath.Hex(c);
+            return ClipboardHistory.Copy(hex) ? $"Copied {hex}" : "Clipboard busy, try again.";
+        }));
         list.Add(new(App.Settings.StayOpen ? "Stay open: turn off" : "Stay open: turn on", "Glance", "\uE718",
             Do(() => SetStayOpen(!App.Settings.StayOpen))));
         if (App.DeployScript is not null) list.Add(new("Rebuild and restart Glance", "Glance", "\uE72C", Do(App.Rebuild)));

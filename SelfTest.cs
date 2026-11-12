@@ -68,6 +68,26 @@ static class SelfTest
                 .Frames[0].CopyPixels(back, 8, 0);
             Check(back.SequenceEqual(px), "clipboard image: png keeps pixels and alpha");
 
+            // Color math
+            var rnd = new Random(7);
+            for (var i = 0; i < 300; i++)
+            {
+                var c = System.Windows.Media.Color.FromRgb((byte)rnd.Next(256), (byte)rnd.Next(256), (byte)rnd.Next(256));
+                var (h, s, v) = ColorMath.ToHsv(c);
+                var (hh, ss, ll) = ColorMath.ToHsl(c);
+                Check(ColorMath.FromHsv(h, s, v) == c && ColorMath.FromHsl(hh, ss, ll) == c, $"color round-trip {ColorMath.Hex(c)}");
+                Check(ColorMath.TryParse(ColorMath.Hex(c), out var back2) && back2 == c, "hex round-trip");
+            }
+            Check(ColorMath.TryParse("#f60", out var f60) && f60 == System.Windows.Media.Color.FromRgb(255, 102, 0)
+                && ColorMath.TryParse("rgb(1, 2, 3)", out var rgb) && rgb.B == 3 && !ColorMath.TryParse("#12345", out _)
+                && !ColorMath.TryParse("300 0 0", out _), "color parse");
+            Check(Math.Abs(ColorMath.Contrast(System.Windows.Media.Colors.Black, System.Windows.Media.Colors.White) - 21) < 1e-9
+                && ColorMath.Grade(4.5) == "AA" && ColorMath.Grade(2.9) == "Fail", "wcag contrast");
+            var (ol, oc, oh) = ColorMath.ToOklch(System.Windows.Media.Color.FromRgb(255, 0, 0));
+            Check(Math.Abs(ol - 0.628) < 0.001 && Math.Abs(oc - 0.2577) < 0.001 && Math.Abs(oh - 29.23) < 0.05, $"oklch red: {ol} {oc} {oh}");
+            var tri = ColorMath.Palettes(System.Windows.Media.Color.FromRgb(255, 0, 0)).First(p => p.Name == "Triadic").Colors;
+            Check(tri.Select(ColorMath.Hex).SequenceEqual(["#FF0000", "#00FF00", "#0000FF"]), "triadic: 120° apart");
+
             Check(App.CliArg(["--cli", "C:\""]) == @"C:\" && App.CliArg(["--cli", @"F:\Coding"]) == @"F:\Coding", "explorer drive-root quirk");
             Check(App.CliArg(["--tray"]) is null, "no --cli");
 

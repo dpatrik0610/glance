@@ -29,6 +29,8 @@ public class Settings
 
     public bool ClipboardHistory { get; set; } = true;
     public bool ClipboardImages { get; set; } = true;
+    /// The Color page's recent picks, newest first ("#RRGGBB").
+    public List<string> RecentColors { get; set; } = [];
 
     public bool Fahrenheit { get; set; }
     /// The always-on-top strip at the top of the screen, and which view it was left on.
