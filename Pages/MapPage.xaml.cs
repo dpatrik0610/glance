@@ -22,6 +22,7 @@ public partial class MapPage : UserControl
     List<Pin> results = [];
     Places.Area? view; // the part of the map on screen
     bool ready, showingResults, fromMap;
+    Microsoft.Web.WebView2.Wpf.WebView2? Web; // null while the page is hidden
 
     static Places.Area? Area => App.Settings.MapBounds is [var s, var w, var n, var e] ? new(App.Settings.MapArea, s, w, n, e) : null;
 
@@ -42,25 +43,48 @@ public partial class MapPage : UserControl
         AreaName.Text = Area?.Name ?? "Not set";
         ShowPins();
         ShowDetails(null);
-        InitWeb();
+        // The map's browser view only lives while the page is on screen: leaving the tab (or hiding Glance) closes it
+        // and frees its memory; coming back loads it again with the same area, pins and results.
+        IsVisibleChanged += (_, e) => { if ((bool)e.NewValue) OpenWeb(); else CloseWeb(); };
     }
 
-    async void InitWeb()
+    void OpenWeb()
+    {
+        if (Web is not null) return;
+        Web = new Microsoft.Web.WebView2.Wpf.WebView2 { Margin = new Thickness(6) };
+        Grid.SetColumn(Web, 1);
+        ((Grid)Content).Children.Add(Web);
+        InitWeb(Web);
+    }
+
+    void CloseWeb()
+    {
+        if (Web is null) return;
+        ready = false;
+        view = null;
+        queued.Clear(); // "ready" sends the whole state again
+        ((Grid)Content).Children.Remove(Web);
+        Web.Dispose();
+        Web = null;
+    }
+
+    async void InitWeb(Microsoft.Web.WebView2.Wpf.WebView2 web)
     {
         try
         {
-            await WebHost.Open(Web, "glance.map", "Map", "map.html", core =>
+            await WebHost.Open(web, "glance.map", "Map", "map.html", core =>
             {
                 core.WebMessageReceived += (_, e) => Receive(JsonSerializer.Deserialize<Msg>(e.WebMessageAsJson, Json)!);
                 core.NewWindowRequested += (_, e) => { e.Handled = true; Browse(e.Uri); }; // attribution links
             });
         }
+        catch (Exception) when (web != Web) { } // closed again before it finished loading
         catch (Exception e) { Db.Error("map webview", e); } // e.g. WebView2 runtime missing
     }
 
     void Post(object message)
     {
-        if (!ready) { queued.Add(message); return; }
+        if (!ready || Web is null) { queued.Add(message); return; }
         Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(message, Json));
     }
 
@@ -74,8 +98,10 @@ public partial class MapPage : UserControl
                 else if (App.Settings.City is { Length: > 0 } city) SetArea(city); // first visit: the Weather hometown
                 else ChangeArea(this, new());
                 SendPins();
+                if (showingResults) SendResults(); // reopened with a search still listed
                 foreach (var q in queued) Post(q);
                 queued.Clear();
+                if (List.SelectedItem is Pin sel) Post(new { t = "select", id = sel.Id, fly = true });
                 break;
             case "view":
                 view = new("", m.S, m.W, m.N, m.E);

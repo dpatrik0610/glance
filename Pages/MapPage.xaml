@@ -126,6 +126,6 @@
             </DockPanel>
         </Border>
 
-        <wv2:WebView2 x:Name="Web" Grid.Column="1" Margin="6" />
+        <!-- The map itself (a WebView2) is added to column 1 while the page is on screen: see OpenWeb -->
     </Grid>
 </UserControl>
