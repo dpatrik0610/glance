@@ -56,18 +56,23 @@ public static class Git
         {
             var status = Shell.Run("git", "-C", dir, "status", "--porcelain=v2", "--branch");
             var log = Shell.Run("git", "-C", dir, "log", "-1", "--format=%ct%x1f%cr%x1f%s");
-            var remote = Shell.Run("git", "-C", dir, "remote", "get-url", "origin");
+            // The origin URL all but never changes: asked once per repo, not on every load (a third fewer git runs).
+            var known = webUrls.TryGetValue(dir, out var web);
+            var remote = known ? null : Shell.Run("git", "-C", dir, "remote", "get-url", "origin");
             var s = await status;
             if (s.Code != 0) { Db.Warn($"git status {dir}: {s.Err.Trim()}"); return null; }
             var (branch, ahead, behind, tracked, changes) = ParseStatus(s.Out);
             var l = (await log).Out.Trim().Split('\x1f');
-            var r = await remote;
+            // Only a found origin is remembered, so one added later still shows up.
+            if (remote is not null && await remote is { Code: 0 } r) webUrls[dir] = web = WebUrl(r.Out.Trim());
             return new Repo(name, dir, branch, ahead, behind, tracked, changes,
-                l.Length == 3 ? long.Parse(l[0]) : 0, l.Length == 3 ? l[1] : "", l.Length == 3 ? l[2] : "",
-                r.Code == 0 ? WebUrl(r.Out.Trim()) : null);
+                l.Length == 3 ? long.Parse(l[0]) : 0, l.Length == 3 ? l[1] : "", l.Length == 3 ? l[2] : "", web);
         }
         catch (Exception e) { Db.Warn($"git {dir}: {e.Message}"); return null; }
     }
+
+    // Touched only from the UI thread (Repos is awaited there).
+    static readonly Dictionary<string, string?> webUrls = new(StringComparer.OrdinalIgnoreCase);
 
     public static (string Branch, int Ahead, int Behind, bool Tracked, int Changes) ParseStatus(string porcelain)
     {

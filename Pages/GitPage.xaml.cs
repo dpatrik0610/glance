@@ -10,11 +10,15 @@ public partial class GitPage : UserControl
     public GitPage()
     {
         InitializeComponent();
-        IsVisibleChanged += (_, e) => { if ((bool)e.NewValue) Load(); };
+        // Coming back within half a minute shows what's there; the Refresh button always reloads.
+        IsVisibleChanged += (_, e) => { if ((bool)e.NewValue && DateTime.Now - loadedAt > TimeSpan.FromSeconds(30)) Load(); };
     }
+
+    DateTime loadedAt;
 
     async void Load()
     {
+        loadedAt = DateTime.Now;
         var repos = await Git.Repos();
         Repos.ItemsSource = repos;
         Count.Text = $"{repos.Count} in quick folders";
