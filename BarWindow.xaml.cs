@@ -244,12 +244,18 @@ public partial class BarWindow : Window
 
     // ---- Content ----
 
+    string? shown; // the text Segs holds now
+
     void Render()
     {
         var v = Views[index];
         if (Read(v) is not { } segs) { Show(1); return; } // e.g. the last reminder was ticked off
         Glyph.Text = v.Icon;
         ShowMusic(v.Name == "Music" ? Media.Current : null);
+        // Samples mostly repeat the last numbers: only rebuild the text when it changed.
+        var text = string.Join('\n', segs.Select(s => s.Item1 + '\t' + s.Item2));
+        if (text == shown) return;
+        shown = text;
         Segs.Children.Clear();
         foreach (var (dim, bright) in segs)
         {
