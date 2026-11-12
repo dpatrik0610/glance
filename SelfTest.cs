@@ -27,6 +27,13 @@ static class SelfTest
 
             Check(Native.Port(0x5000) == 80 && Native.Port(0x901F) == 8080, "port byte order");
             Check(Native.ListeningPorts().Any(p => p.Port == 135 && p.Process == "svchost"), "tcp table: RPC on 135"); // always listening on Windows
+            var procs = Native.Processes();
+            var me = System.Diagnostics.Process.GetCurrentProcess();
+            Check(procs.Count > 20 && procs.Count(p => p.Pid == Environment.ProcessId) == 1, "process list: has this process once");
+            var self = procs.First(p => p.Pid == Environment.ProcessId);
+            Check(self.Name == me.ProcessName && self.Cpu > TimeSpan.Zero && self.Cpu <= me.TotalProcessorTime + TimeSpan.FromSeconds(1)
+                && Math.Abs(self.WorkingSet - me.WorkingSet64) < 64 << 20, $"process list: {self} vs {me.ProcessName} {me.TotalProcessorTime} {me.WorkingSet64}");
+            Check(procs.Any(p => p.Pid == 4 && p.Name == "System") && procs.Any(p => p.Name == "svchost"), "process list: names without .exe");
             Check(Native.Connections().All(c => c.Port is > 0 and < 65536 && !c.Remote.StartsWith("127.")), "tcp table: connections");
 
             var now = new DateTime(2026, 10, 31, 20, 0, 0); // a Saturday evening

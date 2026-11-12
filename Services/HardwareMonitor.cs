@@ -119,10 +119,19 @@ public sealed class HardwareMonitor
         return r;
     }
 
-    static Drive[] Drives() => DriveInfo.GetDrives()
-        .Where(d => d.DriveType == DriveType.Fixed && d.IsReady)
-        .Select(d => new Drive(d.Name.TrimEnd('\\'), (d.TotalSize - d.TotalFreeSpace) / 1e9, d.TotalSize / 1e9))
-        .ToArray();
+    Drive[] drives = [];
+    TimeSpan drivesAt = TimeSpan.FromDays(-1);
+
+    // Free space moves slowly: asked every 10 s, not on every live sample.
+    Drive[] Drives()
+    {
+        if (clock.Elapsed - drivesAt < TimeSpan.FromSeconds(10)) return drives;
+        drivesAt = clock.Elapsed;
+        return drives = DriveInfo.GetDrives()
+            .Where(d => d.DriveType == DriveType.Fixed && d.IsReady)
+            .Select(d => new Drive(d.Name.TrimEnd('\\'), (d.TotalSize - d.TotalFreeSpace) / 1e9, d.TotalSize / 1e9))
+            .ToArray();
+    }
 
     Proc[] Procs()
     {
@@ -138,20 +147,14 @@ public sealed class HardwareMonitor
     {
         var budgetMs = elapsedMs * Environment.ProcessorCount;
         var byName = new Dictionary<string, (double cpu, long mem, int count)>();
-        foreach (var p in Process.GetProcesses())
+        foreach (var p in Native.Processes())
         {
-            using (p)
-            {
-                try
-                {
-                    var t = p.TotalProcessorTime;
-                    cur[p.Id] = t;
-                    var c = prev.TryGetValue(p.Id, out var before) ? (t - before).TotalMilliseconds / budgetMs * 100 : 0;
-                    byName.TryGetValue(p.ProcessName, out var a);
-                    byName[p.ProcessName] = (a.cpu + c, a.mem + p.WorkingSet64, a.count + 1);
-                }
-                catch (Exception e) when (e is Win32Exception or InvalidOperationException) { } // protected or exited
-            }
+            if (p.Pid == 0) continue; // "Idle" is the CPU time nobody used
+            cur[p.Pid] = p.Cpu;
+            // A reused pid starts over below the old one's total: counts as new, not negative.
+            var c = prev.TryGetValue(p.Pid, out var before) && p.Cpu >= before ? (p.Cpu - before).TotalMilliseconds / budgetMs * 100 : 0;
+            byName.TryGetValue(p.Name, out var a);
+            byName[p.Name] = (a.cpu + c, a.mem + p.WorkingSet, a.count + 1);
         }
         return byName.Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0, kv.Value.count)).ToArray();
     }

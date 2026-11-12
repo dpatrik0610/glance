@@ -149,11 +149,45 @@ public static class Native
         return new IPAddress(ip);
     }
 
-    static Dictionary<int, string> ProcessNames()
+    static Dictionary<int, string> ProcessNames() => Processes().ToDictionary(p => p.Pid, p => p.Name);
+
+    // ---- Every process in one system call: no handle opened per process, and protected ones are included ----
+
+    [DllImport("ntdll.dll")] static extern int NtQuerySystemInformation(int infoClass, IntPtr info, int length, out int needed);
+
+    public record struct ProcInfo(int Pid, string Name, TimeSpan Cpu, long WorkingSet);
+
+    static int procBytes = 1 << 20; // what the list needed last time, plus slack
+
+    /// Name (as Process.ProcessName gives it: no ".exe"), total CPU time and working set of every process.
+    public static List<ProcInfo> Processes()
     {
-        var names = new Dictionary<int, string>();
-        foreach (var p in Process.GetProcesses()) using (p) names[p.Id] = p.ProcessName;
-        return names;
+        var list = new List<ProcInfo>(512);
+        var size = procBytes;
+        var buf = Marshal.AllocHGlobal(size);
+        try
+        {
+            int status;
+            // 5 = SystemProcessInformation; the list can outgrow the buffer between calls.
+            while ((status = NtQuerySystemInformation(5, buf, size, out var needed)) == unchecked((int)0xC0000004) /* STATUS_INFO_LENGTH_MISMATCH */)
+            {
+                procBytes = size = needed + (64 << 10);
+                buf = Marshal.ReAllocHGlobal(buf, size);
+            }
+            if (status != 0) return list;
+            // SYSTEM_PROCESS_INFORMATION, x64 offsets (Glance is win-x64 only).
+            for (var at = buf; ; at += Marshal.ReadInt32(at))
+            {
+                var pid = (int)Marshal.ReadInt64(at + 80);
+                var name = pid == 0 ? "Idle" : Marshal.PtrToStringUni(Marshal.ReadIntPtr(at + 64), Marshal.ReadInt16(at + 56) / 2) ?? "";
+                if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) name = name[..^4];
+                list.Add(new(pid, name, new TimeSpan(Marshal.ReadInt64(at + 40) + Marshal.ReadInt64(at + 48)) /* user + kernel, 100 ns */,
+                    Marshal.ReadInt64(at + 144)));
+                if (Marshal.ReadInt32(at) == 0) break; // NextEntryOffset 0: last one
+            }
+        }
+        finally { Marshal.FreeHGlobal(buf); }
+        return list;
     }
 
     static string Show(IPAddress ip) => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? $"[{ip}]" : ip.ToString();
