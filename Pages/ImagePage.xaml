@@ -1,0 +1,61 @@
+<UserControl x:Class="Glance.Pages.ImagePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AllowDrop="True" Drop="Dropped" DragOver="DraggedOver">
+    <DockPanel>
+        <!-- Settings: crop, resize, output -->
+        <Border DockPanel.Dock="Right" Style="{StaticResource Card}" Width="300">
+            <StackPanel x:Name="Controls" IsEnabled="False">
+                <TextBlock Text="Crop" Style="{StaticResource H}" Margin="0,0,0,10" />
+                <WrapPanel x:Name="Ratios" Margin="0,0,0,6" />
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Reset" Click="ResetCrop" />
+                    <TextBlock x:Name="CropText" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <TextBlock Text="Resize" Style="{StaticResource H}" Margin="0,18,0,10" />
+                <DockPanel>
+                    <TextBox x:Name="WidthBox" Width="86" KeyDown="SizeKey" LostFocus="SizeCommit" ToolTip="Width in pixels" />
+                    <TextBlock Text="×" Margin="8,0" VerticalAlignment="Center" Style="{StaticResource Label}" />
+                    <TextBox x:Name="HeightBox" Width="86" KeyDown="SizeKey" LostFocus="SizeCommit" ToolTip="Height in pixels" />
+                    <TextBlock Text="px" Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource Label}" />
+                </DockPanel>
+                <CheckBox x:Name="LockBox" Style="{StaticResource Switch}" Content="Keep proportions" IsChecked="True" Margin="0,10,0,8" />
+                <WrapPanel x:Name="Scales" />
+
+                <TextBlock Text="Save as" Style="{StaticResource H}" Margin="0,18,0,10" />
+                <WrapPanel x:Name="FormatChips" Margin="0,0,0,6" />
+                <DockPanel x:Name="QualityRow" Margin="0,4,0,0">
+                    <TextBlock x:Name="QualityText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Style="{StaticResource Label}" />
+                    <TextBlock Text="Quality" Width="56" VerticalAlignment="Center" />
+                    <Slider x:Name="Quality" Minimum="1" Maximum="100" Value="85" IsSnapToTickEnabled="True" TickFrequency="1"
+                            ValueChanged="QualityChanged" />
+                </DockPanel>
+                <TextBlock x:Name="SizeText" Style="{StaticResource Label}" Margin="0,10,0,0" TextWrapping="Wrap" />
+                <Button Style="{StaticResource Primary}" Content="Save as…" Margin="0,14,0,0" Click="Save" />
+                <TextBlock x:Name="Status" Style="{StaticResource Label}" Margin="0,10,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- The picture, with the crop frame over it -->
+        <Border Style="{StaticResource Card}">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <Button DockPanel.Dock="Right" Content="Open…" Click="OpenClick" />
+                    <TextBlock x:Name="FileText" Style="{StaticResource Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               Text="Open an image or drop one here: JPG, PNG, BMP, GIF, TIFF, ICO (WebP and HEIC too if Windows has their codecs)." />
+                </DockPanel>
+                <Grid x:Name="Stage" Background="Transparent" ClipToBounds="True" Cursor="Cross"
+                      MouseLeftButtonDown="StageDown" MouseMove="StageMove" MouseLeftButtonUp="StageUp" SizeChanged="StageSized">
+                    <Image x:Name="Picture" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <Canvas x:Name="Overlay" IsHitTestVisible="False">
+                        <Path x:Name="Shade" Fill="#A0000000" />
+                        <Rectangle x:Name="Frame" Stroke="White" StrokeThickness="1.5" />
+                    </Canvas>
+                    <TextBlock x:Name="DropHint" Text="&#xEB9F;" FontFamily="{StaticResource Icons}" FontSize="48" Foreground="{StaticResource Sub}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+                </Grid>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</UserControl>

@@ -68,6 +68,28 @@ static class SelfTest
                 .Frames[0].CopyPixels(back, 8, 0);
             Check(back.SequenceEqual(px), "clipboard image: png keeps pixels and alpha");
 
+            // Images: crop, resize, every format, EXIF rotation
+            var grad = new byte[200 * 100 * 4];
+            for (var i = 0; i < grad.Length; i += 4) (grad[i], grad[i + 1], grad[i + 2], grad[i + 3]) = ((byte)(i / 4 % 200), (byte)(i / 800), 128, 255);
+            var photo = System.Windows.Media.Imaging.BitmapSource.Create(200, 100, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, grad, 800);
+            var cut = ImageOps.Resize(ImageOps.Crop(photo, new System.Windows.Int32Rect(10, 10, 100, 50)), 50, 25);
+            Check(cut.PixelWidth == 50 && cut.PixelHeight == 25, "image crop + resize");
+            Check(ImageOps.Encode(photo, ImageOps.Formats[0], 30).Length < ImageOps.Encode(photo, ImageOps.Formats[0], 90).Length, "jpg quality");
+            foreach (var f in ImageOps.Formats)
+            {
+                var again = ImageOps.Load(new MemoryStream(ImageOps.Encode(cut, f, 80)));
+                Check(again.PixelWidth == 50 && again.PixelHeight == 25, $"image {f.Name} round-trip");
+            }
+            var exif = new System.Windows.Media.Imaging.BitmapMetadata("jpg");
+            exif.SetQuery("/app1/ifd/{ushort=274}", (ushort)6); // shot with the phone upright: stored sideways
+            var jpeg = new System.Windows.Media.Imaging.JpegBitmapEncoder();
+            jpeg.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(photo, null, exif, null));
+            var sideways = new MemoryStream();
+            jpeg.Save(sideways);
+            sideways.Position = 0;
+            var upright = ImageOps.Load(sideways);
+            Check(upright.PixelWidth == 100 && upright.PixelHeight == 200, $"exif orientation: {upright.PixelWidth}×{upright.PixelHeight}");
+
             // Color math
             var rnd = new Random(7);
             for (var i = 0; i < 300; i++)
