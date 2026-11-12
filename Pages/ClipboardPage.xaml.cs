@@ -15,8 +15,16 @@ public partial class ClipboardPage : UserControl
     {
         InitializeComponent();
         List.ItemsSource = view;
-        RecordBox.IsChecked = App.Settings.ClipboardHistory;
         view.Filter = o => Search.Text.Length == 0 || ((ClipItem)o).Text.Contains(Search.Text, StringComparison.OrdinalIgnoreCase);
+        ShowSwitches();
+        IsVisibleChanged += (_, _) => ShowSwitches(); // Settings has the same switches
+    }
+
+    void ShowSwitches()
+    {
+        RecordBox.IsChecked = App.Settings.ClipboardHistory;
+        ImagesBox.IsChecked = App.Settings.ClipboardImages;
+        ImagesBox.IsEnabled = App.Settings.ClipboardHistory;
     }
 
     void SearchChanged(object sender, TextChangedEventArgs e) => view.Refresh();
@@ -24,7 +32,18 @@ public partial class ClipboardPage : UserControl
     void CopyItem(object sender, MouseButtonEventArgs e)
     {
         var item = (ClipItem)((FrameworkElement)sender).DataContext;
-        Status.Text = ClipboardHistory.Copy(item.Text) ? "Copied." : "Clipboard busy, try again.";
+        var ok = item.IsImage ? ClipboardHistory.CopyImage(item) : ClipboardHistory.Copy(item.Text);
+        Status.Text = ok ? "Copied." : "Clipboard busy, try again.";
+    }
+
+    void OpenItem(object sender, RoutedEventArgs e)
+    {
+        try { ClipboardHistory.Open((ClipItem)((FrameworkElement)sender).DataContext); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            Status.Text = "Couldn't open it: " + ex.Message;
+        }
+        e.Handled = true; // don't also copy the row
     }
 
     void RemoveItem(object sender, RoutedEventArgs e)
@@ -38,6 +57,8 @@ public partial class ClipboardPage : UserControl
     void RecordToggled(object sender, RoutedEventArgs e)
     {
         App.Settings.ClipboardHistory = RecordBox.IsChecked == true;
+        App.Settings.ClipboardImages = ImagesBox.IsChecked == true;
+        ImagesBox.IsEnabled = App.Settings.ClipboardHistory;
         App.ApplySettings();
     }
 }

@@ -116,7 +116,7 @@ public partial class MainWindow
         foreach (var p in PinStore.Pins)
             list.Add(new(p.Name, "Pin", "\uE707", Do(() => ((MapPage)ShowTab("Map")).ShowPin(p)), $"{p.Note} {p.Address} {p.Kind}", true));
 
-        foreach (var c in ClipboardHistory.Items)
+        foreach (var c in ClipboardHistory.Items.Where(c => !c.IsImage))
         {
             var line = string.Join(" ", c.Text.Split((char[])['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries)).Trim();
             list.Add(new(line.Length > 90 ? line[..90] + "…" : line, $"Clipboard · {c.When}", "\uE77F",

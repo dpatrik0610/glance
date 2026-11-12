@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using Glance.Services;
 
@@ -58,6 +59,14 @@ static class SelfTest
                 var rounded = d.AddSeconds(-d.Second);
                 Check(D(Due.Format(rounded, now)) == rounded, $"round-trip {Due.Format(rounded, now)}");
             }
+
+            var px = new byte[] { 1, 2, 3, 255, 4, 5, 6, 128, 7, 8, 9, 0, 10, 11, 12, 255 };
+            var bmp = System.Windows.Media.Imaging.BitmapSource.Create(2, 2, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, px, 8);
+            var back = new byte[16];
+            System.Windows.Media.Imaging.BitmapDecoder.Create(new MemoryStream(ClipboardHistory.Encode(bmp)),
+                System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad)
+                .Frames[0].CopyPixels(back, 8, 0);
+            Check(back.SequenceEqual(px), "clipboard image: png keeps pixels and alpha");
 
             Check(App.CliArg(["--cli", "C:\""]) == @"C:\" && App.CliArg(["--cli", @"F:\Coding"]) == @"F:\Coding", "explorer drive-root quirk");
             Check(App.CliArg(["--tray"]) is null, "no --cli");

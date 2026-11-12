@@ -92,6 +92,15 @@
                         <CheckBox x:Name="TrackAlertsBox" Style="{StaticResource Switch}" Content="Show an alert when the song changes" Click="Toggled" />
                     </StackPanel>
                 </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Clipboard" Style="{StaticResource H}" Margin="0,0,0,14" />
+                        <CheckBox x:Name="ClipBox" Style="{StaticResource Switch}" Content="Keep a clipboard history (in memory only)" Click="Toggled" />
+                        <CheckBox x:Name="ClipImagesBox" Style="{StaticResource Switch}" Content="Include images (the newest 20)" Click="Toggled"
+                                  Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <StackPanel Width="490">

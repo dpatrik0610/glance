@@ -52,6 +52,9 @@ public partial class SettingsPage : UserControl
         {
             AutoBox.IsChecked = Settings.AutoStart; // re-read: may change outside the app
             MenuBox.IsChecked = Settings.ExplorerMenu;
+            ClipBox.IsChecked = s.ClipboardHistory; // the Clipboard page has the same switches
+            ClipImagesBox.IsChecked = s.ClipboardImages;
+            ClipImagesBox.IsEnabled = s.ClipboardHistory;
             HotkeyStatus.Text = App.HotkeyStatus;
         };
     }
@@ -83,6 +86,9 @@ public partial class SettingsPage : UserControl
         s.TrackAlerts = TrackAlertsBox.IsChecked == true;
         s.AlertsEnabled = AlertsBox.IsChecked == true;
         s.AlertSound = SoundBox.IsChecked == true;
+        s.ClipboardHistory = ClipBox.IsChecked == true;
+        s.ClipboardImages = ClipImagesBox.IsChecked == true;
+        ClipImagesBox.IsEnabled = s.ClipboardHistory;
         if (sender == AutoBox) Settings.AutoStart = AutoBox.IsChecked == true;
         if (sender == MenuBox) Settings.ExplorerMenu = MenuBox.IsChecked == true;
         App.ApplySettings();

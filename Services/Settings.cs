@@ -28,6 +28,7 @@ public class Settings
     public float DiskFreeLimit { get; set; } = 10;
 
     public bool ClipboardHistory { get; set; } = true;
+    public bool ClipboardImages { get; set; } = true;
 
     public bool Fahrenheit { get; set; }
     /// The always-on-top strip at the top of the screen, and which view it was left on.
