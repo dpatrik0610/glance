@@ -12,8 +12,12 @@ function Fail($msg) {
 }
 
 Write-Host 'Building...' -ForegroundColor DarkGray
-dotnet build "$root\Glance.csproj" -c Release -o $stage --nologo -v q -clp:ErrorsOnly
+# publish, not build: only publish precompiles (ReadyToRun), so Glance starts without compiling itself first.
+# Its intermediate build goes to bin\build: the default output folder is the one the running Glance is in.
+dotnet publish "$root\Glance.csproj" -c Release -o $stage "-p:OutDir=$root\bin\build\" --nologo -v q -clp:ErrorsOnly
 if ($LASTEXITCODE) { Fail 'Build failed. The running Glance was left alone.' }
+# The build signs its own copy of the exe; the published one is a fresh copy.
+& "$PSScriptRoot\sign.ps1" -Path "$stage\Glance.exe" | Out-Null
 
 # Glance is a GUI exe: Start-Process -Wait is what makes PowerShell wait for it and see its exit code.
 Write-Host 'Selftest...' -ForegroundColor DarkGray
