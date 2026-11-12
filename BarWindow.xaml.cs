@@ -240,25 +240,29 @@ public partial class BarWindow : Window
         }
     }
 
-    /// Slides the menu open or shut: its width from 0 to the row's own, the row fading in.
+    /// Swaps the bar's face for the menu, or back: the outgoing side fades out, the incoming one fades in, and the width
+    /// glides from one to the other so the pill never jumps. The width is let go afterwards, so the face can grow again.
     void ShowMenu(bool open)
     {
         if (open == menuOpen) return;
         menuOpen = open;
         menuLeave.Stop();
-        if (open)
+        if (open) MarkMenu();
+        var (gone, come) = open ? ((FrameworkElement)Normal, (FrameworkElement)MenuRow) : (MenuRow, Normal);
+        var start = Swap.ActualWidth;
+        come.Visibility = Visibility.Visible;
+        come.IsHitTestVisible = true;
+        gone.IsHitTestVisible = false;
+        come.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Motion.To(gone, OpacityProperty, 0, 140, done: () => { if (menuOpen == open) gone.Visibility = Visibility.Collapsed; });
+        Motion.To(come, OpacityProperty, 1, 260, from: 0);
+        if (open) Motion.To(MenuShift, TranslateTransform.XProperty, 0, 280, from: -10);
+        Motion.To(Swap, WidthProperty, come.DesiredSize.Width, 280, from: start, done: () =>
         {
-            MarkMenu();
-            Menu.Visibility = Visibility.Visible;
-            MenuRow.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Motion.To(Menu, WidthProperty, MenuRow.DesiredSize.Width, 280);
-            Motion.To(MenuRow, OpacityProperty, 1, 240);
-        }
-        else
-        {
-            Motion.To(MenuRow, OpacityProperty, 0, 150);
-            Motion.To(Menu, WidthProperty, 0, 220, done: () => { if (!menuOpen) Menu.Visibility = Visibility.Collapsed; });
-        }
+            if (menuOpen != open) return;
+            Swap.BeginAnimation(WidthProperty, null);
+            Swap.Width = double.NaN;
+        });
     }
 
     // The shown view in the accent color; views with nothing to show dimmed.
@@ -275,6 +279,7 @@ public partial class BarWindow : Window
     // Pick → hex on the clipboard, an alert in that color; clicking the alert opens the Color page on it.
     async void PickColor(object sender, RoutedEventArgs e)
     {
+        ShowMenu(false);
         if (await Eyedropper.Pick() is not { } c) return;
         var hex = ColorMath.Hex(c);
         var copied = ClipboardHistory.Copy(hex);

@@ -83,46 +83,52 @@
                     </ControlTemplate>
                 </Button.Template>
             </Button>
-            <!-- The menu: its width animates open and shut; the row inside keeps its size and is clipped meanwhile -->
-            <Border x:Name="Menu" DockPanel.Dock="Left" Width="0" ClipToBounds="True" Visibility="Collapsed">
-                <StackPanel x:Name="MenuRow" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0">
+            <!-- The normal face and the menu share one spot: opening the menu fades the face out and the icons in, while the
+                 width glides from one to the other (ShowMenu) -->
+            <Grid x:Name="Swap" ClipToBounds="True">
+                <DockPanel x:Name="Normal">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Player" Click="Down">
+                        <Button.Tag>
+                            <RotateTransform x:Name="Turn" />
+                        </Button.Tag>
+                    </Button>
+                    <Border DockPanel.Dock="Right" Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
+                    <!-- Music controls (Music view only) -->
+                    <StackPanel x:Name="Controls" DockPanel.Dock="Right" Orientation="Horizontal" Margin="2,0,4,0" Visibility="Collapsed">
+                        <Button x:Name="PrevTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE892;"
+                                ToolTip="Previous song" Click="TrackPrev" />
+                        <Button x:Name="PlayPause" Style="{StaticResource Arrow}" FontSize="10" Foreground="{StaticResource Text}" Click="TrackToggle" />
+                        <Button x:Name="NextTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE893;"
+                                ToolTip="Next song" Click="TrackNext" />
+                    </StackPanel>
+                    <StackPanel x:Name="Body" Orientation="Horizontal" Margin="4,0" Background="Transparent">
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform x:Name="Shift" />
+                        </StackPanel.RenderTransform>
+                        <TextBlock x:Name="Glyph" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="{StaticResource Accent}"
+                                   VerticalAlignment="Center" Margin="0,1,9,0" />
+                        <Border x:Name="CoverBox" Width="16" Height="16" CornerRadius="4" Margin="0,0,8,0" VerticalAlignment="Center" Visibility="Collapsed">
+                            <Border.Background>
+                                <ImageBrush x:Name="CoverArt" Stretch="UniformToFill" />
+                            </Border.Background>
+                        </Border>
+                        <StackPanel x:Name="Segs" Orientation="Horizontal" VerticalAlignment="Center" />
+                    </StackPanel>
+                </DockPanel>
+                <StackPanel x:Name="MenuRow" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0" Visibility="Collapsed">
+                    <StackPanel.RenderTransform>
+                        <TranslateTransform x:Name="MenuShift" />
+                    </StackPanel.RenderTransform>
                     <Button Style="{StaticResource Arrow}" FontSize="10" Foreground="{StaticResource Text}" Content="&#xE8A7;" ToolTip="Open Glance"
                             Click="OpenGlance" />
                     <Border Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
                     <StackPanel x:Name="ViewButtons" Orientation="Horizontal" />
-                    <Border Width="1" Height="11" Background="#24FFFFFF" Margin="3,0,2,0" />
+                    <Border Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
+                    <!-- Eyedropper: the picked color's hex goes straight to the clipboard -->
+                    <Button Style="{StaticResource Arrow}" FontSize="10" Foreground="{StaticResource Text}" Content="&#xE790;"
+                            ToolTip="Pick a color from screen (copies its hex)" Click="PickColor" Margin="0,0,2,0" />
                 </StackPanel>
-            </Border>
-            <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" Content="&#xE70D;" ToolTip="Player" Click="Down">
-                <Button.Tag>
-                    <RotateTransform x:Name="Turn" />
-                </Button.Tag>
-            </Button>
-            <!-- Eyedropper: the picked color's hex goes straight to the clipboard -->
-            <Button DockPanel.Dock="Right" Style="{StaticResource Arrow}" FontSize="10" Content="&#xE790;" ToolTip="Pick a color from screen (copies its hex)"
-                    Click="PickColor" />
-            <Border DockPanel.Dock="Right" Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
-            <!-- Music controls (Music view only) -->
-            <StackPanel x:Name="Controls" DockPanel.Dock="Right" Orientation="Horizontal" Margin="2,0,4,0" Visibility="Collapsed">
-                <Button x:Name="PrevTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE892;"
-                        ToolTip="Previous song" Click="TrackPrev" />
-                <Button x:Name="PlayPause" Style="{StaticResource Arrow}" FontSize="10" Foreground="{StaticResource Text}" Click="TrackToggle" />
-                <Button x:Name="NextTrack" Style="{StaticResource Arrow}" FontSize="9" Foreground="{StaticResource Text}" Content="&#xE893;"
-                        ToolTip="Next song" Click="TrackNext" />
-            </StackPanel>
-            <StackPanel x:Name="Body" Orientation="Horizontal" Margin="4,0" Background="Transparent">
-                <StackPanel.RenderTransform>
-                    <TranslateTransform x:Name="Shift" />
-                </StackPanel.RenderTransform>
-                <TextBlock x:Name="Glyph" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="{StaticResource Accent}"
-                           VerticalAlignment="Center" Margin="0,1,9,0" />
-                <Border x:Name="CoverBox" Width="16" Height="16" CornerRadius="4" Margin="0,0,8,0" VerticalAlignment="Center" Visibility="Collapsed">
-                    <Border.Background>
-                        <ImageBrush x:Name="CoverArt" Stretch="UniformToFill" />
-                    </Border.Background>
-                </Border>
-                <StackPanel x:Name="Segs" Orientation="Horizontal" VerticalAlignment="Center" />
-            </StackPanel>
+            </Grid>
         </DockPanel>
       </Grid>
     </Border>
