@@ -344,7 +344,7 @@ static class SelfTest
             Check(!Compare.StillDuplicate(copy, keep), "recycle guard: edited since the scan");
             File.Delete(keep);
             Check(!Compare.StillDuplicate(copy, keep), "recycle guard: the copy that stays is gone");
-            Check(Compare.Size(1536) == "2 KB" && Compare.Size(5L << 30) == "5.0 GB", "size text");
+            Check(Compare.Size(1536) == "2 KB" && Compare.Size(5L << 30) == "5.0 GB" && Compare.Size(1863L << 30) == "1.8 TB", "size text");
 
             // The page and every row template build and lay out (a bad resource name only shows up at runtime)
             var page = new Pages.ComparePage();

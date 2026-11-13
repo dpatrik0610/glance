@@ -45,7 +45,8 @@ public partial class ScanPage : UserControl
             var chip = new RadioButton
             {
                 Style = (Style)FindResource("Chip"), Tag = d.Name,
-                Content = $"{d.Name.TrimEnd('\\')}  {Compare.Size(d.AvailableFreeSpace)} free of {Compare.Size(d.TotalSize)}",
+                Content = $"{d.Name.TrimEnd('\\')}  {Compare.Size(d.AvailableFreeSpace)} free", Margin = new Thickness(0, 0, 0, 4),
+                ToolTip = $"{d.VolumeLabel} · {Compare.Size(d.AvailableFreeSpace)} free of {Compare.Size(d.TotalSize)}".TrimStart(' ', '·'),
             };
             chip.Checked += (_, _) => Pick(d.Name);
             Drives.Children.Add(chip);

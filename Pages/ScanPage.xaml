@@ -7,11 +7,14 @@
         <Border DockPanel.Dock="Top" Style="{StaticResource Card}">
             <StackPanel>
                 <DockPanel>
-                    <Button x:Name="ScanButton" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Scan" Margin="8,0,0,0" Click="Scan" />
-                    <Button x:Name="FastButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Fast scan" Click="FastScan"
-                            ToolTip="WinDirStat as administrator: it reads the drive's file table instead of walking every folder" />
-                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Folder…" Click="PickFolder" />
-                    <StackPanel x:Name="Drives" Orientation="Horizontal" />
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
+                        <Button Content="Folder…" Margin="0,0,6,0" Click="PickFolder" />
+                        <Button x:Name="FastButton" Content="Fast scan" Margin="0,0,6,0" Click="FastScan"
+                                ToolTip="WinDirStat as administrator: it reads the drive's file table instead of walking every folder" />
+                        <Button x:Name="ScanButton" Style="{StaticResource Primary}" Content="Scan" MinWidth="80" Click="Scan" />
+                    </StackPanel>
+                    <!-- Wraps to a second line rather than cutting a drive off -->
+                    <WrapPanel x:Name="Drives" />
                 </DockPanel>
                 <TextBlock x:Name="Summary" Style="{StaticResource Label}" Margin="0,8,0,0" TextTrimming="CharacterEllipsis" />
                 <!-- What the folder shown is made of, by file type -->

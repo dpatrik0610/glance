@@ -40,6 +40,7 @@ public static class Compare
 
     public static string Size(long b) => b switch
     {
+        >= 1L << 40 => $"{b / (double)(1L << 40):0.0} TB",
         >= 1L << 30 => $"{b / (double)(1L << 30):0.0} GB",
         >= 1 << 20 => $"{b / (double)(1 << 20):0.0} MB",
         >= 1 << 10 => $"{b / 1024.0:0} KB",
