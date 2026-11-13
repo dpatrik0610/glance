@@ -69,79 +69,90 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition />
+                <ColumnDefinition Width="0.9*" />
                 <ColumnDefinition Width="1.3*" />
+                <ColumnDefinition Width="1.2*" />
             </Grid.ColumnDefinitions>
 
-            <DockPanel>
-                <Border DockPanel.Dock="Bottom" Style="{StaticResource Card}">
-                    <DockPanel>
-                        <Button x:Name="SpeedButton" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Run test"
-                                VerticalAlignment="Center" Click="RunSpeed" />
-                        <StackPanel>
-                            <TextBlock Text="Speed test" Style="{StaticResource H}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-                                <TextBlock x:Name="DownArrow" Text="↓ " FontSize="20" Foreground="#5AA9FF" />
-                                <TextBlock x:Name="SpeedDown" Text="—" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text=" Mbps" Style="{StaticResource Label}" VerticalAlignment="Bottom" Margin="0,0,22,3" />
-                                <TextBlock x:Name="UpArrow" Text="↑ " FontSize="20" Foreground="#B07CFF" />
-                                <TextBlock x:Name="SpeedUp" Text="—" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text=" Mbps" Style="{StaticResource Label}" VerticalAlignment="Bottom" Margin="0,0,22,3" />
-                                <TextBlock Text="◷ " FontSize="20" Foreground="#4CC37A" />
-                                <TextBlock x:Name="SpeedPing" Text="—" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text=" ms" Style="{StaticResource Label}" VerticalAlignment="Bottom" Margin="0,0,0,3" />
-                            </StackPanel>
-                            <TextBlock x:Name="SpeedNote" Text="Cloudflare · about 15 s" Style="{StaticResource Label}" />
-                            <!-- Fills over each ~7 s phase while a test runs, in that phase's color -->
-                            <ProgressBar x:Name="SpeedBar" Height="3" Maximum="1" Margin="0,8,0,0" Visibility="Collapsed" />
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
-                <Border Style="{StaticResource Card}">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="Adapters" Style="{StaticResource H}" Margin="0,0,0,10" />
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <ItemsControl x:Name="Adapters">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="0,0,8,16">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource Label}" TextTrimming="CharacterEllipsis" Margin="0,0,0,6" />
-                                            <ItemsControl ItemsSource="{Binding Fields}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Grid>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="64" />
-                                                                <ColumnDefinition />
-                                                            </Grid.ColumnDefinitions>
-                                                            <TextBlock Text="{Binding Label}" Style="{StaticResource Label}" Margin="0,2,0,0" />
-                                                            <ItemsControl Grid.Column="1" ItemsSource="{Binding Values}">
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <Button Style="{StaticResource Copyable}" Tag="{Binding}" Click="CopyTag">
-                                                                            <TextBlock Text="{Binding}" FontFamily="{StaticResource Mono}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
-                                                                        </Button>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </DockPanel>
-                </Border>
-            </DockPanel>
+            <Border Style="{StaticResource Card}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Adapters" Style="{StaticResource H}" Margin="0,0,0,10" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="Adapters">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,8,16">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Label}" TextTrimming="CharacterEllipsis" Margin="0,0,0,6" />
+                                        <ItemsControl ItemsSource="{Binding Fields}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="64" />
+                                                            <ColumnDefinition />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding Label}" Style="{StaticResource Label}" Margin="0,2,0,0" />
+                                                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Values}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Button Style="{StaticResource Copyable}" Tag="{Binding}" Click="CopyTag">
+                                                                        <TextBlock Text="{Binding}" FontFamily="{StaticResource Mono}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                                                                    </Button>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
 
+            <!-- Speed test: the dial, results under it -->
             <Border Grid.Column="1" Style="{StaticResource Card}">
                 <DockPanel>
+                    <DockPanel DockPanel.Dock="Top">
+                        <TextBlock x:Name="SpeedNote" DockPanel.Dock="Right" Style="{StaticResource Label}" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="220" Margin="10,1,0,0" />
+                        <TextBlock Text="Speed test" Style="{StaticResource H}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <UniformGrid DockPanel.Dock="Bottom" Columns="3" Margin="-3,10,-3,0">
+                        <Border Background="#0CFFFFFF" CornerRadius="12" Padding="12,9" Margin="3,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Label}" FontSize="11.5"><Run Text="◷" Foreground="#4CC37A" /> Ping</TextBlock>
+                                <TextBlock Margin="0,2,0,0"><Run x:Name="SpeedPing" Text="—" FontSize="20" FontWeight="SemiBold" /><Run Text=" ms" Foreground="{StaticResource Sub}" FontSize="11.5" /></TextBlock>
+                                <TextBlock x:Name="SpeedJitter" Style="{StaticResource Label}" FontSize="11.5" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#0CFFFFFF" CornerRadius="12" Padding="12,9" Margin="3,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Label}" FontSize="11.5"><Run Text="↓" Foreground="#5AA9FF" /> Download</TextBlock>
+                                <TextBlock Margin="0,2,0,0"><Run x:Name="SpeedDown" Text="—" FontSize="20" FontWeight="SemiBold" /><Run Text=" Mbps" Foreground="{StaticResource Sub}" FontSize="11.5" /></TextBlock>
+                                <g:Spark x:Name="DownTrace" Format="{}{0:0.#} Mbps" Color="#5AA9FF" Max="0" Height="22" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#0CFFFFFF" CornerRadius="12" Padding="12,9" Margin="3,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Label}" FontSize="11.5"><Run Text="↑" Foreground="#B07CFF" /> Upload</TextBlock>
+                                <TextBlock Margin="0,2,0,0"><Run x:Name="SpeedUp" Text="—" FontSize="20" FontWeight="SemiBold" /><Run Text=" Mbps" Foreground="{StaticResource Sub}" FontSize="11.5" /></TextBlock>
+                                <g:Spark x:Name="UpTrace" Format="{}{0:0.#} Mbps" Color="#B07CFF" Max="0" Height="22" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+                    <g:SpeedGauge Margin="0,8,0,0" />
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource Card}">
+                <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                        <TextBox x:Name="Filter" DockPanel.Dock="Right" Width="180" Tag="Filter" VerticalAlignment="Center" TextChanged="FilterChanged" />
+                        <TextBox x:Name="Filter" DockPanel.Dock="Right" Width="140" Tag="Filter" VerticalAlignment="Center" TextChanged="FilterChanged" />
                         <TextBlock Text="Connections" Style="{StaticResource H}" VerticalAlignment="Center" />
                         <TextBlock x:Name="ConnCount" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,1,0,0" />
                     </DockPanel>

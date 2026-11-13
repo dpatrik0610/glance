@@ -1,12 +1,9 @@
 using System.Diagnostics;
-using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Glance.Services;
 
@@ -34,6 +31,8 @@ public partial class NetworkPage : UserControl
         timer.Tick += Tick;
         toastTimer.Tick += (_, _) => { toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
         NetworkChange.NetworkAddressChanged += (_, _) => stale = true;
+        SpeedRun.Changed += ShowSpeed; // the page lives as long as the app
+        ShowSpeed();
         // Everything here only runs while the page is on screen.
         IsVisibleChanged += (_, e) =>
         {
@@ -151,49 +150,19 @@ public partial class NetworkPage : UserControl
         toastTimer.Start();
     }
 
-    async void RunSpeed(object sender, RoutedEventArgs e)
+    /// The results under the dial; the dial draws itself.
+    void ShowSpeed()
     {
-        (SpeedButton.IsEnabled, SpeedButton.Content) = (false, "Testing…");
-        SpeedDown.Text = SpeedUp.Text = SpeedPing.Text = "—";
-        SpeedBar.Visibility = Visibility.Visible;
-        try
-        {
-            // Idle ping, before the line is loaded: middle of 5 so one slow reply doesn't skew it.
-            var rtts = new List<long>();
-            for (var i = 0; i < 5; i++) if (await Net.Ping(Internet) is { } ms) rtts.Add(ms);
-            SpeedPing.Text = rtts.Count > 0 ? rtts.Order().ElementAt(rtts.Count / 2).ToString() : "×";
-            Phase(DownArrow, "Testing download…");
-            SpeedDown.Text = Mbps(await Net.SpeedTest(false, v => SpeedDown.Text = Mbps(v)));
-            Phase(UpArrow, "Testing upload…");
-            SpeedUp.Text = Mbps(await Net.SpeedTest(true, v => SpeedUp.Text = Mbps(v)));
-            SpeedNote.Text = $"Cloudflare · tested {DateTime.Now:HH:mm}";
-            Db.Info($"speedtest down={SpeedDown.Text} up={SpeedUp.Text} Mbps ping={SpeedPing.Text} ms");
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
-        {
-            SpeedNote.Text = "Test failed: " + ex.Message;
-            Db.Error("speedtest", ex);
-        }
-        finally
-        {
-            Phase(null, null);
-            (SpeedButton.IsEnabled, SpeedButton.Content) = (true, "Run test");
-            SpeedBar.Visibility = Visibility.Collapsed;
-        }
+        SpeedNote.Text = SpeedRun.Note;
+        SpeedPing.Text = SpeedRun.Ping is { } p ? $"{p:0}" : "—";
+        SpeedJitter.Text = SpeedRun.Jitter is { } j ? $"jitter ±{j:0} ms" : "jitter —";
+        SpeedDown.Text = Figure(SpeedRun.Down, SpeedRun.Stage.Down);
+        SpeedUp.Text = Figure(SpeedRun.Up, SpeedRun.Stage.Up);
+        DownTrace.Series = SpeedRun.Downs.ToArray(); // a new array: Spark only redraws when Series changes
+        UpTrace.Series = SpeedRun.Ups.ToArray();
     }
 
-    /// The measured direction's arrow pulses and the bar fills in its color; null = test over.
-    void Phase(TextBlock? arrow, string? note)
-    {
-        DownArrow.BeginAnimation(OpacityProperty, null);
-        UpArrow.BeginAnimation(OpacityProperty, null);
-        if (arrow is null) return;
-        SpeedNote.Text = note;
-        arrow.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0.25, TimeSpan.FromMilliseconds(550))
-            { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
-        SpeedBar.Foreground = arrow.Foreground;
-        SpeedBar.BeginAnimation(RangeBase.ValueProperty, new DoubleAnimation(0, 1, TimeSpan.FromSeconds(7))); // SpeedTest's run time
-    }
-
-    static string Mbps(double v) => v >= 100 ? $"{v:0}" : $"{v:0.0}";
+    // The result, or the running figure while that direction is measured.
+    static string Figure(double? result, SpeedRun.Stage stage) =>
+        result is { } v ? SpeedRun.Mbps(v) : SpeedRun.Now == stage ? SpeedRun.Mbps(SpeedRun.Live) : "—";
 }

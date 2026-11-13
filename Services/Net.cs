@@ -149,3 +149,64 @@ public static partial class Net
         }
     }
 }
+
+/// The one speed test, shared by the Network page and the bar's panel: either can start it, both show it as it runs.
+/// Runs on the UI thread (started from a click), so Changed fires there too.
+public static class SpeedRun
+{
+    public enum Stage { Idle, Ping, Down, Up, Done, Failed }
+
+    static readonly IPAddress Internet = IPAddress.Parse("1.1.1.1");
+    public const double PhaseSeconds = 7; // Net.SpeedTest's run time
+
+    public static Stage Now { get; private set; }
+    public static DateTime Since { get; private set; } // when Now began
+    public static double? Ping, Jitter, Down, Up; // results so far (ms, ms, Mbps, Mbps)
+    public static double Live; // what's being measured right now: ms while pinging, else Mbps
+    public static List<float> Downs = [], Ups = []; // the running figure, 4 a second, per direction
+    public static string Note { get; private set; } = "Cloudflare · about 15 s";
+    public static bool Running => Now is Stage.Ping or Stage.Down or Stage.Up;
+    public static event Action? Changed;
+
+    public static async void Start()
+    {
+        if (Running) return;
+        (Ping, Jitter, Down, Up, Downs, Ups) = (null, null, null, null, [], []);
+        try
+        {
+            // Idle ping, before the line is loaded: the middle of 8 so one slow reply doesn't skew it. The gaps also give the
+            // dial time for its warm-up sweep.
+            Go(Stage.Ping, "Measuring latency…");
+            var rtts = new List<long>();
+            for (var i = 0; i < 8; i++)
+            {
+                if (await Net.Ping(Internet) is { } ms) { rtts.Add(ms); Live = ms; Changed?.Invoke(); }
+                await Task.Delay(150);
+            }
+            if (rtts.Count > 0)
+            {
+                Ping = rtts.Order().ElementAt(rtts.Count / 2);
+                Jitter = rtts.Count > 1 ? rtts.Zip(rtts.Skip(1), (a, b) => Math.Abs(a - b)).Average() : 0;
+            }
+            Go(Stage.Down, "Testing download…");
+            Down = await Net.SpeedTest(false, v => { Live = v; Downs.Add((float)v); Changed?.Invoke(); });
+            Go(Stage.Up, "Testing upload…");
+            Up = await Net.SpeedTest(true, v => { Live = v; Ups.Add((float)v); Changed?.Invoke(); });
+            Go(Stage.Done, $"Cloudflare · tested {DateTime.Now:HH:mm}");
+            Db.Info($"speedtest down={Mbps(Down.Value)} up={Mbps(Up.Value)} Mbps ping={Ping?.ToString("0") ?? "×"} ms");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            Go(Stage.Failed, "Test failed: " + ex.Message);
+            Db.Error("speedtest", ex);
+        }
+    }
+
+    static void Go(Stage s, string note)
+    {
+        (Now, Since, Note, Live) = (s, DateTime.Now, note, 0);
+        Changed?.Invoke();
+    }
+
+    public static string Mbps(double v) => v >= 100 ? $"{v:0}" : $"{v:0.0}";
+}

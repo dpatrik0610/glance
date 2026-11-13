@@ -43,6 +43,9 @@ static class SelfTest
             Check(gpu.Count > 0 && gpu.Values.All(v => v is >= 0 and <= 100), $"gpu per process: {gpu.Count} pids"); // dwm always has engines
             Check(Native.Connections().All(c => c.Port is > 0 and < 65536 && !c.Remote.StartsWith("127.")), "tcp table: connections");
 
+            Check(SpeedGauge.Fraction(0) == 0 && SpeedGauge.Fraction(-5) == 0 && SpeedGauge.Fraction(2500) == 1 && SpeedGauge.Fraction(9000) == 1, "dial: ends");
+            Check(Math.Abs(SpeedGauge.Fraction(100) - 0.5) < 1e-9 && Math.Abs(SpeedGauge.Fraction(75) - 0.4375) < 1e-9, "dial: steps");
+
             var now = new DateTime(2026, 10, 31, 20, 0, 0); // a Saturday evening
             DateTime? D(string s) => Due.Parse(s, now);
             Check(D("tomorrow 9") == new DateTime(2026, 11, 1, 9, 0, 0), "tomorrow 9");

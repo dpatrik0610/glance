@@ -22,6 +22,7 @@ public partial class MiniWindow : Window
     readonly BarWindow bar;
     readonly Action<string?> open;
     readonly DispatcherTimer tick; // while the player shows: song position and volume
+    SpeedGauge? gauge; // kept across renders: it animates on its own
     bool closing;
 
     public MiniWindow(BarWindow bar, Action<string?> open)
@@ -35,8 +36,9 @@ public partial class MiniWindow : Window
 
         tick = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Render(), Dispatcher);
         Media.Changed += OnMedia;
+        SpeedRun.Changed += OnSpeed;
         bar.SizeChanged += Fit; // the pill changes width with what it shows
-        Closed += (_, _) => { tick.Stop(); Media.Changed -= OnMedia; bar.SizeChanged -= Fit; };
+        Closed += (_, _) => { tick.Stop(); Media.Changed -= OnMedia; SpeedRun.Changed -= OnSpeed; bar.SizeChanged -= Fit; };
         Deactivated += (_, _) => Away();
         KeyDown += (_, e) => { if (e.Key == Key.Escape) Away(); };
         SizeChanged += (_, _) => Place();
@@ -52,6 +54,11 @@ public partial class MiniWindow : Window
     void OnMedia()
     {
         if (bar.ViewName == "Music") Render();
+    }
+
+    void OnSpeed()
+    {
+        if (bar.ViewName == "Network") Render();
     }
 
     void Fit(object? sender, EventArgs e)
@@ -117,6 +124,15 @@ public partial class MiniWindow : Window
         Add(Header(bar.ViewIcon, $"↓ {SystemPage.Rate(s.NetDown)}    ↑ {SystemPage.Rate(s.NetUp)}", "The last minute", "Network"));
         Add(Graph("Download", bar.Downs, Color.FromRgb(0x5A, 0xA9, 0xFF), "rate"));
         Add(Graph("Upload", bar.Ups, Color.FromRgb(0xB0, 0x7C, 0xFF), "rate"));
+        // The speed test: the page's dial, smaller; start it from either
+        gauge ??= new SpeedGauge { Height = 170, Margin = new(0, 12, 0, 0) };
+        Add(gauge);
+        var stats = new UniformGrid { Columns = 3 };
+        stats.Children.Add(Stat("Ping", SpeedRun.Ping is { } p ? $"{p:0} ms" : "—"));
+        stats.Children.Add(Stat("Download", SpeedRun.Down is { } d ? $"{SpeedRun.Mbps(d)} Mbps" : "—"));
+        stats.Children.Add(Stat("Upload", SpeedRun.Up is { } u ? $"{SpeedRun.Mbps(u)} Mbps" : "—"));
+        Add(stats);
+        Add(Line(SpeedRun.Note, 6));
     }
 
     void ShowWeather()
