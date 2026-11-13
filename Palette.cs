@@ -113,6 +113,7 @@ public partial class MainWindow
         list.Add(new(App.Settings.StayOpen ? "Stay open: turn off" : "Stay open: turn on", "Glance", "\uE718",
             Do(() => SetStayOpen(!App.Settings.StayOpen))));
         if (App.DeployScript is not null) list.Add(new("Rebuild and restart Glance", "Glance", "\uE72C", Do(App.Rebuild)));
+        else list.Add(new("Check for updates", "Glance", "", Do(App.CheckForUpdates)));
 
         foreach (var dir in App.Settings.CliFolders)
         {

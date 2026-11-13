@@ -74,6 +74,7 @@ public partial class App : Application
         menu.Items.Add(stickies);
         if (!Native.IsAdmin) menu.Items.Add("Restart as admin (CPU temps)", null, (_, _) => RestartAsAdmin());
         if (DeployScript is not null) menu.Items.Add("Rebuild and restart", null, (_, _) => Rebuild());
+        else menu.Items.Add("Check for updates", null, (_, _) => CheckUpdate(manual: true));
         menu.Items.Add("Exit", null, (_, _) => Quit());
         tray = new Tray(menu, () => ToggleMain(false));
 
@@ -354,16 +355,32 @@ public partial class App : Application
 
     Version? offered; // once per run per version: closing the alert means "not now"
 
-    async void CheckUpdate()
+    /// Settings, the tray and Ctrl+K: released builds only (a build from source updates by "Rebuild and restart").
+    internal static void CheckForUpdates() => ((App)Current).CheckUpdate(manual: true);
+
+    // Automatic: a newer release shows an alert, once per run per version. Asked for: straight to the update's
+    // confirmation, and it says so when there's nothing new or the check failed.
+    async void CheckUpdate(bool manual = false)
     {
         try
         {
-            if (await Updater.Check() is not { } r || r.Version == offered) return;
+            var r = await Updater.Check();
+            if (manual)
+            {
+                if (r is null) Dialog.Info("Update", "Glance is up to date", $"Version {Updater.Current}");
+                else Update(r);
+                return;
+            }
+            if (r is null || r.Version == offered) return;
             offered = r.Version;
             AlertWindow.Show(new Toast("Glance · update", $"Version {r.Version}", "", "You have", Updater.Current.ToString(),
                 Color.FromRgb(0xFF, 0x6A, 0x3D), true, Detail: "Click to update and restart"), () => Update(r));
         }
-        catch (Exception e) { Db.Warn($"update check: {e.Message}"); } // offline, rate-limited: try again tomorrow
+        catch (Exception e)
+        {
+            Db.Warn($"update check: {e.Message}"); // offline, rate-limited: try again tomorrow
+            if (manual) Dialog.Info("Update", "Couldn't check for updates", e.Message);
+        }
     }
 
     async void Update(Updater.Release r)

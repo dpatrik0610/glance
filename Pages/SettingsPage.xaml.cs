@@ -13,6 +13,10 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
+        // Released builds check here; a build from source updates by "Rebuild and restart".
+        var source = App.DeployScript is not null;
+        VersionText.Text = Updater.Current + (source ? " · built from source" : "");
+        UpdateButton.Visibility = source ? Visibility.Collapsed : Visibility.Visible;
         Bind(OpacityRow, s.Opacity, v => s.Opacity = Math.Round(v, 2), v => $"{v:P0}");
         Bind(BarOpacityRow, s.BarOpacity, v => s.BarOpacity = Math.Round(v, 2), v => $"{v:P0}");
         Bind(RefreshRow, s.RefreshMs, v => s.RefreshMs = (int)v, v => $"{v / 1000:0.##}s");
@@ -148,4 +152,6 @@ public partial class SettingsPage : UserControl
         Db.Init(s.MongoUrl);
         App.ApplySettings();
     }
+
+    void CheckUpdates(object sender, RoutedEventArgs e) => App.CheckForUpdates();
 }
