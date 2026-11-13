@@ -346,6 +346,7 @@ public partial class BarWindow : Window
     // ---- Content ----
 
     string? shown; // the text Segs holds now
+    string? sizedFor; // what Segs' grow-only width belongs to
 
     void Render()
     {
@@ -358,6 +359,10 @@ public partial class BarWindow : Window
         var text = string.Join('\n', segs.Select(s => s.Item1 + '\t' + s.Item2));
         if (text == shown) return;
         shown = text;
+        // Live numbers (System, Network) only push the bar wider, never back narrower, so it doesn't breathe with every
+        // sample. Anything else (a new view, song or reminder) starts from its own width.
+        var key = v.Name is "System" or "Network" ? v.Name : text;
+        if (sizedFor != key) { sizedFor = key; Segs.MinWidth = 0; }
         Segs.Children.Clear();
         foreach (var (dim, bright) in segs)
         {
@@ -370,6 +375,8 @@ public partial class BarWindow : Window
                 MaxWidth = 300, TextTrimming = TextTrimming.CharacterEllipsis, // long song titles
             });
         }
+        Segs.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Segs.MinWidth = Segs.DesiredSize.Width;
     }
 
     // Music view extras: cover instead of the icon, prev/play/next, and the progress line.

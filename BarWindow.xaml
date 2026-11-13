@@ -114,7 +114,7 @@
                                 <ImageBrush x:Name="CoverArt" Stretch="UniformToFill" />
                             </Border.Background>
                         </Border>
-                        <StackPanel x:Name="Segs" Orientation="Horizontal" VerticalAlignment="Center" />
+                        <StackPanel x:Name="Segs" Orientation="Horizontal" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular" />
                     </StackPanel>
                 </DockPanel>
                 <StackPanel x:Name="MenuRow" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0" Visibility="Collapsed">
