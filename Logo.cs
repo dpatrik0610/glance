@@ -1,22 +1,33 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 
 namespace Glance;
 
 /// The Glance mark drawn live (an open orange ring, the white pupil looking out through its gap), so it can move:
-/// Play() draws the ring in and glances left and right; as a loader the whole mark turns, the pupil following the gap;
-/// and the pupil morphs into the icon of whatever the mouse is over (Logo.Hint="close" on a button).
+/// - Play() draws the ring in and glances left and right; a click pokes it, and enough quick pokes annoy it (> <).
+/// - As a loader (Status) the whole mark turns, the pupil following the gap.
+/// - As a button icon (Icon="close") it rests as just that icon; hovering its button sweeps the ring around it
+///   while the icon folds into the pupil and opens back out.
 /// Glance.ico is the same mark on a dark tile (tools/make-icon.ps1).
 public sealed class Logo : FrameworkElement
 {
-    // In a 100×100 box: ring radius and width, where the arc starts and how far it runs clockwise (the gap is up and right).
-    const double R = 36, W = 15, Start = -20, Arc = 280;
-    static readonly Pen RingPen = Frozen(new Pen(new LinearGradientBrush(
-        [new(Color.FromRgb(0xFF, 0x9A, 0x6A), 0), new(Color.FromRgb(0xFF, 0x6A, 0x3D), 0.55), new(Color.FromRgb(0xE8, 0x44, 0x2A), 1)],
-        new Point(0, 0), new Point(100, 100)) { MappingMode = BrushMappingMode.Absolute }, W)
-    { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round });
+    // In a 100×100 box: where the ring's arc starts and how far it runs clockwise (the gap is up and right).
+    // A button icon gets a thinner, tighter ring with a bigger pupil inside, and draws past its own bounds (Overdraw).
+    const double Start = -20, Arc = 280, ButtonScale = 1.5, ButtonWidths = 1.35, Overdraw = 1.6;
+    static readonly Pen MarkPen = RingPen(15), ButtonPen = RingPen(8);
     static readonly IEasingFunction Ease = Frozen(new SineEase { EasingMode = EasingMode.EaseInOut });
+
+    static Pen RingPen(double width) => Frozen(new Pen(new LinearGradientBrush(
+        [new(Color.FromRgb(0xFF, 0x9A, 0x6A), 0), new(Color.FromRgb(0xFF, 0x6A, 0x3D), 0.55), new(Color.FromRgb(0xE8, 0x44, 0x2A), 1)],
+        new Point(0, 0), new Point(100, 100)) { MappingMode = BrushMappingMode.Absolute }, width)
+    { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round });
+
+    double R => Icon is null ? 36 : 33;
 
     // ---- Pupil shapes. Every shape is the same list of numbers, so any two blend into each other stroke by stroke:
     // its center, one ring (offset, radius, width; radius 0 = a filled dot) and Segs round-capped strokes (ends, width).
@@ -44,6 +55,8 @@ public sealed class Logo : FrameworkElement
             var a = i * Math.PI / 4;
             return (11 * Math.Cos(a), 11 * Math.Sin(a), 15 * Math.Cos(a), 15 * Math.Sin(a), 5.5);
         }).ToArray()),
+        // Squeezed-shut eyes, after one poke too many
+        ["annoyed"] = Shape(50, 50, NoRing, (-16, -7, -7, 0, 5), (-7, 0, -16, 7, 5), (16, -7, 7, 0, 5), (7, 0, 16, 7, 5)),
     };
 
     double[] from = Dot, to = Dot;
@@ -71,40 +84,86 @@ public sealed class Logo : FrameworkElement
 
     bool Busy => Status?.EndsWith('…') == true;
 
-    /// On any element: hovering it morphs the pupil of its window's hint logo (ShowsHints) into this shape.
-    public static readonly DependencyProperty HintProperty = DependencyProperty.RegisterAttached("Hint", typeof(string), typeof(Logo),
-        new(null, HintChanged));
-    public static string? GetHint(DependencyObject d) => (string?)d.GetValue(HintProperty);
-    public static void SetHint(DependencyObject d, string? v) => d.SetValue(HintProperty, v);
+    /// Makes this a button icon (a Shapes name). The nearest Button or ListBoxItem above it is what gets hovered.
+    public string? Icon { get; set; }
 
-    /// This logo answers its window's Hint hovers.
-    public bool ShowsHints { get; set; }
-    static readonly DependencyProperty HostProperty = DependencyProperty.RegisterAttached("Host", typeof(Logo), typeof(Logo));
-
-    static void HintChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is not UIElement u || e.OldValue is not null) return; // hook once
-        u.MouseEnter += (_, _) => HostOf(u)?.Become(GetHint(u));
-        u.MouseLeave += (_, _) => HostOf(u)?.Become(null);
-    }
-
-    static Logo? HostOf(DependencyObject d) => Window.GetWindow(d)?.GetValue(HostProperty) as Logo;
+    double[] Rest => Icon is not null && Shapes.TryGetValue(Icon, out var s) ? s : Dot;
+    bool Pokeable => Icon is null && Status is null;
+    int gen; // bumps on every morph, so a chained or delayed step that was overtaken doesn't run
+    int pokes;
+    DateTime lastPoke;
+    UIElement? host;
 
     public Logo()
     {
         IsVisibleChanged += (_, _) => UpdateSpin();
-        Loaded += (_, _) => { if (ShowsHints) Window.GetWindow(this)?.SetValue(HostProperty, this); };
+        Loaded += (_, _) =>
+        {
+            if (Icon is null || host is not null) return;
+            from = to = Rest;
+            Sweep = 0;
+            for (DependencyObject? d = this; d is not null; d = VisualTreeHelper.GetParent(d))
+                if (d is ButtonBase or ListBoxItem)
+                {
+                    host = (UIElement)d;
+                    host.MouseEnter += (_, _) => Hover(true);
+                    host.MouseLeave += (_, _) => Hover(false);
+                    break;
+                }
+        };
     }
 
-    /// Morphs the pupil into a Shapes icon, or back to the dot (null). Starts from wherever it is now, so quick hovers chain smoothly.
-    public void Become(string? shape)
+    /// Hovered: the ring sweeps around while the icon folds into the pupil and opens back out. Left: the ring withdraws.
+    void Hover(bool on)
     {
-        var next = shape is not null && Shapes.TryGetValue(shape, out var s) ? s : Dot;
-        if (next == to) return;
+        if (!SystemParameters.ClientAreaAnimation) { Sweep = on ? 1 : 0; return; }
+        BeginAnimation(SweepProperty, new DoubleAnimation(on ? 1 : 0, TimeSpan.FromMilliseconds(on ? 620 : 260)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        if (on) MorphTo(Dot, 200, () => MorphTo(Rest, 400));
+        else MorphTo(Rest, 220);
+    }
+
+    /// A click on the mark: it flinches, a little harder each time; the fifth quick poke annoys it for a moment.
+    protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+    {
+        base.OnMouseLeftButtonDown(e);
+        if (!Pokeable) return;
+        e.Handled = true; // not a window drag
+        var now = DateTime.Now;
+        pokes = now - lastPoke < TimeSpan.FromSeconds(2) ? pokes + 1 : 1;
+        lastPoke = now;
+        if (pokes >= 5)
+        {
+            pokes = 0;
+            MorphTo(Shapes["annoyed"], 220);
+            BeginAnimation(SpinProperty, Keys((0, 0), (70, -14), (150, 12), (230, -10), (310, 8), (400, 0)));
+            var g = gen;
+            var back = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1700) };
+            back.Tick += (_, _) => { back.Stop(); if (g == gen) MorphTo(Dot, 320); };
+            back.Start();
+            return;
+        }
+        var jolt = 3 + 2.5 * pokes;
+        BeginAnimation(PopProperty, Keys((0, 1), (80, 0.72), (280, 1)));
+        BeginAnimation(LookXProperty, Keys((0, 0), (80, -jolt), (180, jolt / 2), (320, 0)));
+        BeginAnimation(SpinProperty, Keys((0, 0), (70, -jolt), (170, jolt * 0.6), (280, 0)));
+    }
+
+    // The whole box takes pokes, not just the drawn strokes
+    protected override HitTestResult? HitTestCore(PointHitTestParameters p) =>
+        Pokeable ? new PointHitTestResult(this, p.HitPoint) : base.HitTestCore(p);
+
+    /// Morphs the pupil into a Shapes icon, or back to the dot (null). Starts from wherever it is now, so quick changes chain smoothly.
+    public void Become(string? shape) => MorphTo(shape is not null && Shapes.TryGetValue(shape, out var s) ? s : Dot, 320);
+
+    void MorphTo(double[] next, int ms, Action? then = null)
+    {
+        var g = ++gen;
         from = Current();
         to = next;
-        if (!SystemParameters.ClientAreaAnimation) { BeginAnimation(MorphProperty, null); Morph = 1; InvalidateVisual(); return; }
-        BeginAnimation(MorphProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(320)) { EasingFunction = new BackEase { Amplitude = 0.3, EasingMode = EasingMode.EaseOut } });
+        if (!SystemParameters.ClientAreaAnimation) { BeginAnimation(MorphProperty, null); Morph = 1; InvalidateVisual(); then?.Invoke(); return; }
+        var a = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(ms)) { EasingFunction = new BackEase { Amplitude = 0.3, EasingMode = EasingMode.EaseOut } };
+        if (then is not null) a.Completed += (_, _) => { if (g == gen) then(); };
+        BeginAnimation(MorphProperty, a);
     }
 
     double[] Current()
@@ -135,15 +194,16 @@ public sealed class Logo : FrameworkElement
     {
         if (Busy && IsVisible)
             BeginAnimation(SpinProperty, new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(1400)) { RepeatBehavior = RepeatBehavior.Forever });
-        else
+        else if (Status is not null)
             BeginAnimation(SpinProperty, null);
     }
 
     protected override void OnRender(DrawingContext dc)
     {
-        var scale = Math.Min(ActualWidth, ActualHeight) / 100;
+        var box = Math.Min(ActualWidth, ActualHeight) * (Icon is null ? 1 : Overdraw);
+        var scale = box / 100;
         if (scale <= 0) return;
-        dc.PushTransform(new TranslateTransform((ActualWidth - 100 * scale) / 2, (ActualHeight - 100 * scale) / 2));
+        dc.PushTransform(new TranslateTransform((ActualWidth - box) / 2, (ActualHeight - box) / 2));
         dc.PushTransform(new ScaleTransform(scale, scale));
         dc.PushTransform(new RotateTransform(Spin, 50, 50));
         var sweep = Arc * Sweep;
@@ -155,7 +215,7 @@ public sealed class Logo : FrameworkElement
                 c.BeginFigure(At(Start), false, false);
                 c.ArcTo(At(Start + sweep), new System.Windows.Size(R, R), 0, sweep > 180, SweepDirection.Clockwise, true, false);
             }
-            dc.DrawGeometry(null, RingPen, arc);
+            dc.DrawGeometry(null, Icon is null ? MarkPen : ButtonPen, arc);
         }
         DrawPupil(dc, Current());
         dc.Pop(); dc.Pop(); dc.Pop();
@@ -163,11 +223,12 @@ public sealed class Logo : FrameworkElement
 
     void DrawPupil(DrawingContext dc, double[] s)
     {
-        var k = Pop;
+        var k = Pop * (Icon is null ? 1 : ButtonScale);
+        var kw = Pop * (Icon is null ? 1 : ButtonWidths); // stroke widths grow less than shapes, so icons stay crisp
         if (k <= 0) return;
         double cx = s[0] + LookX, cy = s[1] + LookY;
         Point P(double x, double y) => new(cx + x * k, cy + y * k);
-        var (rho, rw) = (s[4] * k, s[5] * k);
+        var (rho, rw) = (s[4] * k, s[5] * kw);
         if (rw > 0.05)
         {
             if (rho <= rw / 2) dc.DrawEllipse(Brushes.White, null, P(s[2], s[3]), rho + rw / 2, rho + rw / 2); // solid: a dot
@@ -175,13 +236,13 @@ public sealed class Logo : FrameworkElement
         }
         for (var i = 6; i < Size; i += 5)
         {
-            var w = s[i + 4] * k;
+            var w = s[i + 4] * kw;
             if (w > 0.05)
                 dc.DrawLine(new Pen(Brushes.White, w) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round }, P(s[i], s[i + 1]), P(s[i + 2], s[i + 3]));
         }
     }
 
-    static Point At(double degrees)
+    Point At(double degrees)
     {
         var a = degrees * Math.PI / 180;
         return new(50 + R * Math.Cos(a), 50 + R * Math.Sin(a));
