@@ -10,6 +10,10 @@ public class Settings
     public bool Blur { get; set; } = true;
     public bool Topmost { get; set; }
     public bool NavCollapsed { get; set; }
+    /// Sidebar groups folded to their header.
+    public List<string> FoldedGroups { get; set; } = [];
+    /// Pages left out of the sidebar (and the compact strip); still in Ctrl+K and the "…" menu.
+    public List<string> HiddenTabs { get; set; } = [];
     /// Smaller window with the tabs as icons across the top instead of the sidebar.
     public bool Compact { get; set; }
     /// Glance stays up when focus goes to another window (normally a window dropped from the bar slides back up).

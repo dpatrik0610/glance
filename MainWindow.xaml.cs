@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -47,16 +48,30 @@ public partial class MainWindow : Window
     // Pages are built on first visit and kept, so switching back is instant and state survives.
     readonly Dictionary<Tab, UserControl> pages = [];
     IntPtr hwnd;
+    readonly ListCollectionView navView, stripView;
+
+    sealed class Conv(Func<object, object?> f) : IValueConverter
+    {
+        public object? Convert(object value, Type t, object p, CultureInfo c) => f(value);
+        public object ConvertBack(object value, Type t, object p, CultureInfo c) => throw new NotSupportedException();
+    }
+
+    /// Group name → folded. Read when the group's container is built, so changes go through RefreshNav.
+    public static readonly IValueConverter Folded = new Conv(v => v is string g && App.Settings.FoldedGroups.Contains(g));
+
+    static bool Shown(object o) => !App.Settings.HiddenTabs.Contains(((Tab)o).Name);
 
     public MainWindow()
     {
         InitializeComponent();
-        var view = new ListCollectionView(Tabs);
-        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(Tab.Group)));
-        Nav.ItemsSource = view;
+        navView = new ListCollectionView(Tabs) { Filter = Shown };
+        navView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(Tab.Group)));
+        Nav.ItemsSource = navView;
         Bottom.ItemsSource = new[] { SettingsTab };
-        Strip.ItemsSource = Tabs.Append(SettingsTab).ToArray();
-        Nav.SelectedIndex = 0;
+        stripView = new ListCollectionView(Tabs.Append(SettingsTab).ToList()) { Filter = o => (Tab)o == SettingsTab || Shown(o) };
+        Strip.ItemsSource = stripView;
+        MoreButton.Visibility = Tabs.Any(t => !Shown(t)) ? Visibility.Visible : Visibility.Collapsed;
+        if (Nav.Items.Count > 0) Nav.SelectedIndex = 0; else Open(Tabs.Length > 0 ? Tabs[0] : SettingsTab);
         App.SettingsChanged += ApplySettings;
         PreviewKeyDown += Shortcut;
         Deactivated += (_, _) => Dispatcher.BeginInvoke(LostToOutside, System.Windows.Threading.DispatcherPriority.Input);
@@ -174,8 +189,7 @@ public partial class MainWindow : Window
     // The strip only mirrors the sidebar lists, which stay the source of truth.
     void StripChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (Strip.SelectedItem is not Tab t) return;
-        if (t == SettingsTab) Bottom.SelectedItem = t; else Nav.SelectedItem = t;
+        if (Strip.SelectedItem is Tab t) Open(t);
     }
 
     // Shared by both sidebar lists; selecting in one clears the other so only one item is ever highlighted.
@@ -184,8 +198,24 @@ public partial class MainWindow : Window
         var list = (ListBox)sender;
         if (list.SelectedItem is not Tab t) return;
         (list == Nav ? Bottom : Nav).SelectedItem = null;
-        Strip.SelectedItem = t;
+        Show(t);
+    }
+
+    /// Every way to a page goes through here: a sidebar item when it has one, else the page alone (hidden from the sidebar).
+    void Open(Tab t)
+    {
+        if (t == SettingsTab) Bottom.SelectedItem = t;
+        else if (Nav.Items.Contains(t)) Nav.SelectedItem = t;
+        else { Nav.SelectedItem = Bottom.SelectedItem = null; Show(t); }
+    }
+
+    void Show(Tab t)
+    {
+        Strip.SelectedItem = Strip.Items.Contains(t) ? t : null;
+        // Reaching a page in a folded group (Ctrl+K, Ctrl+N) opens the group, so the highlight is visible.
+        if (Nav.Items.Contains(t) && App.Settings.FoldedGroups.Remove(t.Group)) Dispatcher.BeginInvoke(RefreshNav);
         if (!pages.TryGetValue(t, out var page)) pages[t] = page = t.Create();
+        if (Page.Content == page) return; // re-selected after a sidebar refresh
         Page.Content = page;
         PageTitle.Text = t.Name;
         // The terminal is a native window: it can't fade or move with WPF content, so it just appears.
@@ -198,8 +228,78 @@ public partial class MainWindow : Window
     public UserControl ShowTab(string name)
     {
         var t = Tabs.First(t => t.Name == name);
-        Nav.SelectedItem = t; // creates the page if needed
+        Open(t); // creates the page if needed
         return pages[t];
+    }
+
+    // ---- Folding groups and hiding pages: both saved in settings, then the views are rebuilt ----
+
+    void RefreshNav()
+    {
+        var current = pages.FirstOrDefault(p => p.Value == Page.Content).Key;
+        navView.Refresh();
+        stripView.Refresh();
+        MoreButton.Visibility = Tabs.Any(t => !Shown(t)) ? Visibility.Visible : Visibility.Collapsed;
+        if (current is not null && current != SettingsTab)
+        {
+            Nav.SelectedItem = Nav.Items.Contains(current) ? current : null;
+            Strip.SelectedItem = Strip.Items.Contains(current) ? current : null;
+        }
+        App.ApplySettings(); // saves
+    }
+
+    void GroupClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Nav.Tag is false || ((FrameworkElement)sender).DataContext is not CollectionViewGroup { Name: string g }) return;
+        if (!App.Settings.FoldedGroups.Remove(g)) App.Settings.FoldedGroups.Add(g);
+        RefreshNav();
+    }
+
+    Tab? menuTab; // the sidebar item the right-click menu is for
+
+    void NavMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        menuTab = (ItemsControl.ContainerFromElement(Nav, (DependencyObject)e.OriginalSource) as ListBoxItem)?.DataContext as Tab;
+        if (menuTab is null) { e.Handled = true; return; } // a group header or empty space
+        HideItem.Header = $"Hide {menuTab.Name} from sidebar";
+    }
+
+    void HideTab(object sender, RoutedEventArgs e)
+    {
+        if (menuTab is null) return;
+        App.Settings.HiddenTabs.Add(menuTab.Name);
+        RefreshNav();
+    }
+
+    // The hidden pages: click one to open it, the eye to put it back in the sidebar.
+    void MoreClick(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = MoreButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Top };
+        foreach (var t in Tabs.Where(t => !Shown(t)))
+        {
+            var eye = new TextBlock
+            {
+                Text = "", FontFamily = (FontFamily)FindResource("Icons"), Foreground = (Brush)FindResource("Sub"),
+                Margin = new Thickness(20, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Show in sidebar", Background = Brushes.Transparent,
+            };
+            var row = new DockPanel();
+            DockPanel.SetDock(eye, Dock.Right);
+            row.Children.Add(eye);
+            row.Children.Add(new TextBlock { Text = t.Icon, FontFamily = (FontFamily)FindResource("Icons"), Width = 26, VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(new TextBlock { Text = t.Name });
+            var item = new MenuItem { Header = row };
+            item.Click += (_, _) => Open(t);
+            eye.MouseLeftButtonUp += (_, ev) =>
+            {
+                ev.Handled = true; // not a click on the item: the menu stays open for more
+                App.Settings.HiddenTabs.Remove(t.Name);
+                menu.Items.Remove(item);
+                if (menu.Items.Count == 0) menu.IsOpen = false;
+                RefreshNav();
+            };
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
     }
 
     // Ctrl+K searches, Ctrl+1..9 jumps to a tab, Ctrl+Tab / Ctrl+Shift+Tab cycles, Ctrl+, opens Settings, Esc closes the palette or hides (not from a terminal).
@@ -210,13 +310,14 @@ public partial class MainWindow : Window
         // In a terminal Esc belongs to the shell: PSReadLine clears the typed line, Claude stops its reply.
         else if (e.Key == Key.Escape && !(Page.Content is CliPage && e.OriginalSource is Microsoft.Web.WebView2.Wpf.WebView2)) Away();
         else if (ctrl && e.Key == Key.K) OpenPalette();
-        else if (ctrl && e.Key is >= Key.D1 and <= Key.D9 && e.Key - Key.D1 < Tabs.Length) Nav.SelectedIndex = e.Key - Key.D1;
+        // Numbers and cycling follow the sidebar as shown (hidden pages left out).
+        else if (ctrl && e.Key is >= Key.D1 and <= Key.D9 && e.Key - Key.D1 < Nav.Items.Count) Nav.SelectedIndex = e.Key - Key.D1;
         else if (ctrl && e.Key == Key.OemComma) Bottom.SelectedIndex = 0;
-        else if (ctrl && e.Key == Key.Tab)
+        else if (ctrl && e.Key == Key.Tab && Nav.Items.Count > 0)
         {
             var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -1 : 1;
-            var from = Nav.SelectedIndex < 0 ? (step > 0 ? -1 : 0) : Nav.SelectedIndex; // from Settings: wrap to first/last
-            Nav.SelectedIndex = (from + step + Tabs.Length) % Tabs.Length;
+            var from = Nav.SelectedIndex < 0 ? (step > 0 ? -1 : 0) : Nav.SelectedIndex; // from Settings or a hidden page: wrap to first/last
+            Nav.SelectedIndex = (from + step + Nav.Items.Count) % Nav.Items.Count;
         }
         else return;
         e.Handled = true;

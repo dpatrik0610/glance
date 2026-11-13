@@ -166,10 +166,7 @@ public partial class MainWindow
 
     static Func<Task<string?>> Do(Action a) => () => { a(); return Task.FromResult<string?>(null); };
 
-    void Go(Tab t)
-    {
-        if (t == SettingsTab) Bottom.SelectedItem = t; else Nav.SelectedItem = t;
-    }
+    void Go(Tab t) => Open(t);
 
     void Go(string name) => ShowTab(name);
 

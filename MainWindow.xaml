@@ -1,6 +1,7 @@
 <Window x:Class="Glance.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Glance"
         Title="Glance" Icon="Glance.ico" Width="1180" Height="760" MinWidth="820" MinHeight="560"
         WindowStyle="None" Background="Transparent" ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen" FontFamily="Segoe UI Variable Text, Segoe UI" Foreground="{StaticResource Text}"
@@ -71,17 +72,54 @@
                     <RowDefinition />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <ListBox x:Name="Nav" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged">
+                <ListBox x:Name="Nav" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged" ContextMenuOpening="NavMenuOpening">
+                    <ListBox.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem x:Name="HideItem" Click="HideTab" />
+                        </ContextMenu>
+                    </ListBox.ContextMenu>
                     <ListBox.GroupStyle>
                         <GroupStyle>
+                            <!-- Fold state comes from App.Settings.FoldedGroups (re-read when the view refreshes);
+                                 icons-only ignores it, since a divider can't be clicked open -->
+                            <GroupStyle.ContainerStyle>
+                                <Style TargetType="GroupItem">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="GroupItem">
+                                                <StackPanel>
+                                                    <ContentPresenter />
+                                                    <ItemsPresenter x:Name="Items" />
+                                                </StackPanel>
+                                                <ControlTemplate.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding Name, Converter={x:Static local:MainWindow.Folded}}" Value="True" />
+                                                            <Condition Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter TargetName="Items" Property="Visibility" Value="Collapsed" />
+                                                    </MultiDataTrigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </GroupStyle.ContainerStyle>
                             <GroupStyle.HeaderTemplate>
-                                <!-- Group name when expanded, a thin divider when collapsed to icons -->
+                                <!-- Group name and a fold chevron when expanded (click to fold), a thin divider when collapsed to icons -->
                                 <DataTemplate>
-                                    <Grid Margin="12,10,12,4">
-                                        <TextBlock x:Name="Title" Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Sub}" />
+                                    <Grid Margin="12,10,12,4" Background="Transparent" Cursor="Hand" MouseLeftButtonUp="GroupClick">
+                                        <DockPanel x:Name="Title">
+                                            <TextBlock x:Name="Chevron" DockPanel.Dock="Right" Text="&#xE70D;" FontFamily="{StaticResource Icons}" FontSize="9"
+                                                       Foreground="{StaticResource Sub}" VerticalAlignment="Center" Opacity="0.7" />
+                                            <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Sub}" />
+                                        </DockPanel>
                                         <Border x:Name="Divider" Height="1" Background="{StaticResource Line}" Visibility="Collapsed" />
                                     </Grid>
                                     <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Name, Converter={x:Static local:MainWindow.Folded}}" Value="True">
+                                            <Setter TargetName="Chevron" Property="Text" Value="&#xE76C;" />
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="False">
                                             <Setter TargetName="Title" Property="Visibility" Value="Collapsed" />
                                             <Setter TargetName="Divider" Property="Visibility" Value="Visible" />
@@ -103,15 +141,19 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <ListBox x:Name="Bottom" Grid.Row="1" Style="{StaticResource Sidebar}" HorizontalAlignment="Left" Margin="0,8,0,0"
-                         SelectionChanged="NavChanged">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Icon}" ToolTip="{Binding Name}" FontFamily="{StaticResource Icons}" FontSize="16" Width="20"
-                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                    <ListBox x:Name="Bottom" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Icon}" ToolTip="{Binding Name}" FontFamily="{StaticResource Icons}" FontSize="16" Width="20"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <!-- Pages hidden from the sidebar (only shown when there are some) -->
+                    <Button x:Name="MoreButton" Style="{StaticResource Ghost}" Content="&#xE712;" FontFamily="{StaticResource Icons}" FontSize="16"
+                            Width="44" Height="40" Margin="4,0,0,4" VerticalAlignment="Top" ToolTip="Hidden pages" Click="MoreClick" Visibility="Collapsed" />
+                </StackPanel>
             </Grid>
 
             <ContentControl x:Name="Page" Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" Focusable="False">
