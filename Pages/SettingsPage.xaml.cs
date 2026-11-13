@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Glance.Services;
@@ -15,7 +16,7 @@ public partial class SettingsPage : UserControl
         InitializeComponent();
         // Released builds check here; a build from source updates by "Rebuild and restart".
         var source = App.DeployScript is not null;
-        VersionText.Text = Updater.Current + (source ? " · built from source" : "");
+        VersionText.Text = $"Version {Updater.Current}" + (source ? ", built from source" : "");
         UpdateButton.Visibility = source ? Visibility.Collapsed : Visibility.Visible;
         Bind(OpacityRow, s.Opacity, v => s.Opacity = Math.Round(v, 2), v => $"{v:P0}");
         Bind(BarOpacityRow, s.BarOpacity, v => s.BarOpacity = Math.Round(v, 2), v => $"{v:P0}");
@@ -58,16 +59,16 @@ public partial class SettingsPage : UserControl
             MenuBox.IsChecked = Settings.ExplorerMenu;
             ClipBox.IsChecked = s.ClipboardHistory; // the Clipboard page has the same switches
             ClipImagesBox.IsChecked = s.ClipboardImages;
-            ClipImagesBox.IsEnabled = s.ClipboardHistory;
-            HotkeyStatus.Text = App.HotkeyStatus;
+            ClipImagesRow.IsEnabled = s.ClipboardHistory;
+            ShowHotkeyStatus();
         };
     }
 
-    /// Row layout: [label][slider][value]. Wires the slider to a setting with live apply.
-    static void Bind(DockPanel row, double value, Action<double> set, Func<double, string> show)
+    /// Row layout: [slider][value]. Wires the slider to a setting with live apply.
+    static void Bind(Panel row, double value, Action<double> set, Func<double, string> show)
     {
-        var text = (TextBlock)row.Children[0];
-        var slider = (Slider)row.Children[2];
+        var slider = (Slider)row.Children[0];
+        var text = (TextBlock)row.Children[1];
         slider.Value = value;
         text.Text = show(slider.Value);
         slider.ValueChanged += (_, e) =>
@@ -92,7 +93,7 @@ public partial class SettingsPage : UserControl
         s.AlertSound = SoundBox.IsChecked == true;
         s.ClipboardHistory = ClipBox.IsChecked == true;
         s.ClipboardImages = ClipImagesBox.IsChecked == true;
-        ClipImagesBox.IsEnabled = s.ClipboardHistory;
+        ClipImagesRow.IsEnabled = s.ClipboardHistory;
         if (sender == AutoBox) Settings.AutoStart = AutoBox.IsChecked == true;
         if (sender == MenuBox) Settings.ExplorerMenu = MenuBox.IsChecked == true;
         App.ApplySettings();
@@ -109,7 +110,14 @@ public partial class SettingsPage : UserControl
     {
         s.Hotkey = HotkeyBox.Text.Trim();
         App.ApplySettings();
-        HotkeyStatus.Text = App.HotkeyStatus;
+        ShowHotkeyStatus();
+    }
+
+    void ShowHotkeyStatus() => HotkeyRow.Description = $"Shows or hides Glance from anywhere. {App.HotkeyStatus}".TrimEnd();
+
+    void HotkeyKey(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) SetHotkey(sender, e);
     }
 
     void PreviewSound(object sender, MouseButtonEventArgs e) => Chime.Play(preview: true);
@@ -126,22 +134,22 @@ public partial class SettingsPage : UserControl
     {
         var q = CityBox.Text.Trim();
         if (q.Length == 0) return;
-        CityStatus.Text = "Searching…";
+        CityRow.Description = "Searching…";
         try
         {
             if (await Weather.Find(q) is not { } p)
             {
-                CityStatus.Text = "Not found.";
+                CityRow.Description = "Not found.";
                 return;
             }
             (s.City, s.Lat, s.Lon) = (p.Name, p.Latitude, p.Longitude);
             CityBox.Text = p.Name;
-            CityStatus.Text = $"{p.Name}{(p.Country is null ? "" : ", " + p.Country)} · {p.Latitude:0.00}, {p.Longitude:0.00}";
+            CityRow.Description = $"{p.Name}{(p.Country is null ? "" : ", " + p.Country)} · {p.Latitude:0.00}, {p.Longitude:0.00}";
             App.ApplySettings();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            CityStatus.Text = "Lookup failed, check connection.";
+            CityRow.Description = "Lookup failed, check connection.";
             Db.Error("geocode", ex);
         }
     }
@@ -154,4 +162,31 @@ public partial class SettingsPage : UserControl
     }
 
     void CheckUpdates(object sender, RoutedEventArgs e) => App.CheckForUpdates();
+}
+
+/// One settings line: icon, title and a short description on the left, its control on the right.
+/// Rows after the first in a group draw a hairline above; the control is named after the title for screen readers.
+public sealed class SettingRow : ContentControl
+{
+    public static readonly DependencyProperty IconProperty = DependencyProperty.Register(nameof(Icon), typeof(string), typeof(SettingRow));
+    public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(nameof(Title), typeof(string), typeof(SettingRow));
+    public static readonly DependencyProperty DescriptionProperty = DependencyProperty.Register(nameof(Description), typeof(string), typeof(SettingRow));
+
+    public string Icon { get => (string)GetValue(IconProperty); set => SetValue(IconProperty, value); }
+    public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
+    public string? Description { get => (string?)GetValue(DescriptionProperty); set => SetValue(DescriptionProperty, value); }
+
+    protected override void OnVisualParentChanged(DependencyObject oldParent)
+    {
+        base.OnVisualParentChanged(oldParent);
+        BorderThickness = Parent is Panel p && p.Children.IndexOf(this) > 0 ? new Thickness(0, 1, 0, 0) : new Thickness(0);
+    }
+
+    protected override void OnInitialized(EventArgs e) // after XAML filled the content panel
+    {
+        base.OnInitialized(e);
+        IEnumerable<object> parts = Content is Panel p ? p.Children.Cast<object>() : [Content];
+        foreach (var c in parts.OfType<Control>().Where(c => c is not Button && AutomationProperties.GetName(c) == ""))
+            AutomationProperties.SetName(c, Title);
+    }
 }

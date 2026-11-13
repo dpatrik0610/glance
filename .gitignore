@@ -6,3 +6,6 @@ obj/
 *.pfx
 *.cer
 *.p12
+
+# graphify knowledge graph
+graphify-out/
