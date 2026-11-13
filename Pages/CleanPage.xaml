@@ -55,6 +55,10 @@
                                                 <DockPanel>
                                                     <CheckBox DockPanel.Dock="Left" Style="{StaticResource Check}" IsChecked="{Binding On}"
                                                               AutomationProperties.Name="{Binding Name}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                                    <!-- Cleans just this one, ticked or not; shows on hover -->
+                                                    <Button x:Name="One" DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}"
+                                                            Content="&#xE74D;" ToolTip="Clean only this" AutomationProperties.Name="Clean only this"
+                                                            IsEnabled="{Binding CanClean}" Opacity="0" VerticalAlignment="Center" Margin="4,0,0,0" Click="CleanOne" />
                                                     <TextBlock DockPanel.Dock="Right" Text="{Binding SizeText}" FontWeight="SemiBold" FontSize="14"
                                                                VerticalAlignment="Center" Margin="12,0,4,0" Typography.NumeralAlignment="Tabular" />
                                                     <StackPanel VerticalAlignment="Center">
@@ -66,6 +70,10 @@
                                             <DataTemplate.Triggers>
                                                 <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="Row" Property="Background" Value="{StaticResource Track}" />
+                                                    <Setter TargetName="One" Property="Opacity" Value="1" />
+                                                </Trigger>
+                                                <Trigger SourceName="One" Property="IsKeyboardFocused" Value="True">
+                                                    <Setter TargetName="One" Property="Opacity" Value="1" />
                                                 </Trigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>

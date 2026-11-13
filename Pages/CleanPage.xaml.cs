@@ -54,6 +54,8 @@ public partial class CleanPage : UserControl
         public string Note => Running ? $"{item.Name.Split(' ')[0]} is open: close it to clean this"
             : Freed is { } f ? (f > 0 ? $"✓ Freed {Compare.Size(f)}" : "✓ Cleaned") : item.Note;
         public Brush NoteBrush => Res(Running ? "Amber" : Freed is not null ? "Green" : "Sub");
+        /// Something to clean on its own: measured, not held by a browser, and not empty (unreadable may still hold some).
+        public bool CanClean => !Running && Found is { } f && (f.Bytes > 0 || f.Unreadable);
 
         public void Set(Cleaner.Found? found, bool running)
         {
@@ -166,12 +168,17 @@ public partial class CleanPage : UserControl
         row.On = !row.On;
     }
 
-    async void Clean(object sender, RoutedEventArgs e)
+    async void Clean(object sender, RoutedEventArgs e) => await Clean(rows.Where(r => r.On && !r.Running).ToArray());
+
+    async void CleanOne(object sender, RoutedEventArgs e)
     {
-        if (busy) return;
-        var picked = rows.Where(r => r.On && !r.Running).ToArray();
-        if (picked.Length == 0) return;
-        if (!Dialog.Confirm("Clean", $"Delete {Compare.Size(rows.Sum(r => r.Bytes))} for good?",
+        if (((FrameworkElement)sender).DataContext is Row { CanClean: true } r) await Clean([r]);
+    }
+
+    async Task Clean(Row[] picked)
+    {
+        if (busy || picked.Length == 0) return;
+        if (!Dialog.Confirm("Clean", $"Delete {Compare.Size(picked.Sum(r => r.Found?.Bytes ?? 0))} for good?",
                 string.Join(", ", picked.Select(r => r.Name)) + ". This does not go to the Recycle Bin.", "Clean")) return;
         busy = true;
         before = rows.Sum(r => r.Bytes);
