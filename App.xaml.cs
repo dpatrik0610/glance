@@ -48,6 +48,8 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         if (e.Args.Contains("--selftest")) { Shutdown(SelfTest.Run()); return; }
+        // The Clean page's elevated half: `--clean id,id`. The megabytes freed go back as the exit code.
+        if (Array.IndexOf(e.Args, "--clean") is >= 0 and var c) { Shutdown(Cleaner.Run(e.Args.ElementAtOrDefault(c + 1)?.Split(',') ?? [])); return; }
 
         bool first;
         try

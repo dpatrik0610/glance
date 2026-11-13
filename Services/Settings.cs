@@ -44,6 +44,10 @@ public class Settings
     /// The Color page's recent picks, newest first ("#RRGGBB").
     public List<string> RecentColors { get; set; } = [];
 
+    /// Disk page. Clean: item id → ticked, only where it differs from the item's default. Scan: the drive or folder last picked.
+    public Dictionary<string, bool> CleanItems { get; set; } = [];
+    public string ScanPath { get; set; } = "";
+
     public bool Fahrenheit { get; set; }
     /// The Stocks part of the Money page, and the symbols it follows.
     public bool StocksShown { get; set; } = true;

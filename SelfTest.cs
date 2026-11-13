@@ -229,6 +229,7 @@ static class SelfTest
             Check(fired == 2, "re-fires after cooldown");
 
             CompareChecks();
+            DiskChecks();
 
             static string Rel(string tag, string asset, string? digest) =>
                 $$"""{"tag_name":"{{tag}}","assets":[{"name":"{{asset}}","browser_download_url":"https://x/{{asset}}"{{(digest is null ? "" : $",\"digest\":\"{digest}\"")}}}]}""";
@@ -357,6 +358,110 @@ static class SelfTest
             Check(page.DiffList.ItemContainerGenerator.ContainerFromIndex(2) is not null, "compare page: diff rows built");
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    // The Disk page: the cleaner only ever takes old files from inside its root, and the scan adds up right.
+    static void DiskChecks()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"glance-selftest-disk-{Environment.ProcessId}");
+        var outside = root + "-outside";
+        var link = Path.Combine(root, "link");
+        string Put(string dir, string rel, int bytes, int ageHours = 48)
+        {
+            var p = Path.Combine(dir, rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(p)!);
+            File.WriteAllBytes(p, new byte[bytes]);
+            File.SetLastWriteTimeUtc(p, DateTime.UtcNow.AddHours(-ageHours));
+            return p;
+        }
+        try
+        {
+            var old = Put(root, "a.tmp", 1000);
+            Put(root, @"sub\deep\b.tmp", 2000);
+            var young = Put(root, @"keep\c.tmp", 4000, ageHours: 1);
+            var precious = Put(outside, "precious.txt", 500);
+            // A junction out of the sandbox (no privilege needed, unlike a symlink): what it points at must survive.
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{outside}\"")
+                { CreateNoWindow = true, UseShellExecute = false })!.WaitForExit();
+            Check(File.Exists(Path.Combine(link, "precious.txt")), "disk: junction made");
+
+            var tree = DiskScan.Walk(root);
+            Check(tree.Size == 7000 && tree.Kids!.Count == 3 && tree.Kids[0].Name == "keep" && tree.Kids[2] is { Lump: true, Size: 1000 },
+                $"disk walk: {tree.Size} in {tree.Kids!.Count}"); // keep, sub, small files; the junction is not followed
+            Check(Cleaner.Roots(new(Path.Combine(root, "*", "deep"))).SequenceEqual([Path.Combine(root, "sub", "deep")]), "clean: * is each folder");
+
+            var cutoff = DateTime.UtcNow.AddHours(-24);
+            long bytes = 0;
+            var skipped = 0;
+            Cleaner.Sweep(root, null, cutoff, false, true, ref bytes, ref skipped);
+            Check(bytes == 3000 && File.Exists(old), $"clean: estimate {bytes}");
+            bytes = 0;
+            Cleaner.Sweep(root, null, cutoff, true, true, ref bytes, ref skipped);
+            Check(bytes == 3000 && skipped == 0, $"clean: freed {bytes}, skipped {skipped}");
+            Check(!File.Exists(old) && !Directory.Exists(Path.Combine(root, "sub")) && File.Exists(young) && Directory.Exists(root),
+                "clean: old files and their empty folders go; young files and the root stay");
+            Check(File.Exists(precious) && Directory.Exists(link), "clean: nothing is reached through a junction");
+
+            var thumb = Put(root, "thumbcache_96.db", 10);
+            var other = Put(root, "other.db", 10);
+            Cleaner.Sweep(root, "thumbcache_*.db", DateTime.UtcNow, true, true, ref bytes, ref skipped);
+            Check(!File.Exists(thumb) && File.Exists(other) && File.Exists(young), "clean: a pattern takes only its files, from that folder only");
+
+            string Home(Environment.SpecialFolder f) => Environment.GetFolderPath(f);
+            Check(!Cleaner.Safe("D3DSCache") && !Cleaner.Safe(@"C:\") && !Cleaner.Safe(@"C:\Windows") && !Cleaner.Safe(@"C:\Windows\..\Users")
+                && !Cleaner.Safe(Home(Environment.SpecialFolder.UserProfile)) && !Cleaner.Safe(Home(Environment.SpecialFolder.LocalApplicationData))
+                && !Cleaner.Safe(@"C:\", pattern: true), "clean: refuses relative paths, drive roots and the profile folders");
+            Check(Cleaner.Safe(@"C:\Windows\Temp") && Cleaner.Safe(@"C:\Windows", pattern: true) && Cleaner.Safe(root), "clean: allows real targets");
+            Check(Cleaner.Items.Select(i => i.Id).Distinct().Count() == Cleaner.Items.Length, "clean: ids are unique");
+            Check(Cleaner.Items.All(i => i.Admin == (i.Group == "System")) && Cleaner.Run(["no-such-item"]) == 0, "clean: an unknown id cleans nothing");
+            Check(Cleaner.Estimate(Cleaner.Items.First(i => i.Id == Cleaner.Bin)).Bytes >= 0, "clean: recycle bin size");
+        }
+        finally
+        {
+            if (Directory.Exists(link)) Directory.Delete(link); // the junction itself, not what it points at
+            foreach (var d in new[] { root, outside }) if (Directory.Exists(d)) Directory.Delete(d, true);
+        }
+
+        var scan = DiskScan.Parse("""
+            "Name","Files","Folders","Logical Size","Physical Size","Attributes","Last Change","WinDirStat Attributes","Index"
+            "X:\",4,2,5000010,5005312,"",2026-11-13T16:59:02Z,0x30000004,0x0000000000000000
+            "X:\a",2,1,3000000,3002368,"",2026-11-13T16:59:02Z,0x20000004,0x0000000000000000
+            "X:\a\big, one.bin",0,0,2999000,3000000,"A",2026-11-13T16:59:02Z,0x20000008,0x0000000000000000
+            "X:\a\sub",1,0,1000,2368,"",2026-11-13T16:59:02Z,0x20000004,0x0000000000000000
+            "X:\a\sub\tiny.txt",0,0,1000,2368,"A",2026-11-13T16:59:02Z,0x20000008,0x0000000000000000
+            "X:\b.iso",0,0,2000000,2002944,"A",2026-11-13T16:59:02Z,0x20000008,0x0000000000000000
+            "X:\c.txt",0,0,10,0,"A",2026-11-13T16:59:02Z,0x20000008,0x0000000000000000
+            """.Split('\n').Select(l => l.TrimEnd('\r')))!;
+        var a = scan.Kids![0];
+        Check(scan is { Name: @"X:\", Size: 5005312 } && scan.Kids.Count == 3 && a is { Name: "a", Size: 3002368 } && scan.Kids[1].Path == @"X:\b.iso"
+            && scan.Kids[2].Lump, $"scan csv: {string.Join(", ", scan.Kids.Select(k => k.Name))}");
+        Check(a.Kids![0] is { Name: "big, one.bin", Size: 3000000, IsDir: false } && a.Kids[1] is { Name: "sub", IsDir: true }
+            && a.Kids[1].Kids!.Single() is { Lump: true, Size: 2368 } && a.Kids[0].Path == @"X:\a\big, one.bin", "scan csv: folders, a comma in a name, small files lumped");
+        var kinds = DiskScan.Kinds(scan);
+        Check(kinds.SequenceEqual([("Apps and libraries", 3000000L), ("Archives and disk images", 2002944L), (DiskScan.SmallKind, 2368L)])
+            && kinds.Sum(k => k.Bytes) == scan.Size, $"scan kinds: {string.Join(", ", kinds)}");
+        DiskScan.Remove(a.Kids[0]);
+        Check(a.Size == 2368 && scan.Size == 2005312 && scan.Kids[0].Name == "b.iso", $"scan: recycled item leaves the tree: {a.Size} {scan.Size}");
+
+        var area = new Rect(0, 0, 6, 4);
+        var cells = Treemap.Squarify([6, 6, 4, 3, 2, 2, 1], area); // the example from the squarified treemap paper
+        Check(cells[0] == new Rect(0, 0, 3, 2) && cells[1] == new Rect(0, 2, 3, 2), $"treemap: first row {cells[0]} {cells[1]}");
+        Check(cells.Zip(new double[] { 6, 6, 4, 3, 2, 2, 1 }).All(c => Math.Abs(c.First.Width * c.First.Height - c.Second) < 1e-9
+            && c.First.X >= -1e-9 && c.First.Y >= -1e-9 && c.First.Right <= 6 + 1e-9 && c.First.Bottom <= 4 + 1e-9), "treemap: areas match sizes, inside the bounds");
+        Check(Treemap.Squarify([], area).Length == 0 && Treemap.Squarify([0, 0], area).All(r => r == default), "treemap: nothing to lay out");
+
+        // Both pages and their row templates build and lay out (a bad resource name only shows up at runtime)
+        var clean = new Pages.CleanPage();
+        var disk = new Pages.ScanPage();
+        disk.Show(scan);
+        foreach (var page in new System.Windows.Controls.UserControl[] { clean, disk })
+        {
+            page.Measure(new Size(1000, 700));
+            page.Arrange(new Rect(0, 0, 1000, 700));
+            page.UpdateLayout();
+        }
+        Check(clean.Groups.ItemContainerGenerator.ContainerFromIndex(0) is not null, "clean page: groups built");
+        Check(disk.List.ItemContainerGenerator.ContainerFromIndex(1) is not null && disk.Map.ActualWidth > 100, "scan page: rows and treemap laid out");
     }
 
     static Snapshot Snap(float gpuTemp) => new("", 0, null, null, null, "", 0, gpuTemp, null, null, null, null, null, null, 0, 0, [], []);

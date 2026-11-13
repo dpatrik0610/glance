@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     {
         Merged("System", "Monitor", "\uE7F4", new("Live", "\uE7F4", () => new SystemPage()), new("History", "\uE81C", () => new HistoryPage())),
         new("Network", "Monitor", "\uE839", () => new NetworkPage()),
+        Merged("Disk", "Monitor", "\uEDA2", new("Clean", "\uEA99", () => new CleanPage()), new("Scan", "\uEB05", () => new ScanPage())),
         new("Weather", "Life", "\uE706", () => new WeatherPage()),
         new("Map", "Life", "\uE707", () => new MapPage()),
         Merged("Money", "Life", "\uE825", new("Budget", "\uE8C7", () => new BudgetPage()), new("Exchange", "\uE8AB", () => new ExchangePage()),
