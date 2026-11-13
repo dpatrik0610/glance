@@ -240,6 +240,14 @@ static class SelfTest
             Check(!jp.FormatButton.IsEnabled && jp.CopyButton.IsEnabled && jp.StatusText.Text.StartsWith("Line 1"), "json page: error shown, format off");
             jp.Box.Text = "[1,2]";
             Check(jp.FormatButton.IsEnabled && jp.StatusText.Text == "Valid JSON · array · 2 items", "json page: valid");
+            jp.Box.Text = "[1,\n2,\n]";
+            jp.Measure(new System.Windows.Size(600, 400));
+            jp.Arrange(new System.Windows.Rect(0, 0, 600, 400));
+            jp.UpdateLayout();
+            jp.Place();
+            var gutter = new System.Windows.Documents.TextRange(jp.Gutter.ContentStart, jp.Gutter.ContentEnd).Text.ReplaceLineEndings("\n");
+            Check(gutter == "1\n2\n3" && jp.ErrorLine.Visibility == System.Windows.Visibility.Visible && System.Windows.Controls.Canvas.GetTop(jp.ErrorLine) > 0
+                  && jp.GoButton.Visibility == System.Windows.Visibility.Visible, "json page: line numbers, error line marked");
             Check(JsonText.Format("""{"a":[1]}""", true).ReplaceLineEndings("\n") == "{\n  \"a\": [\n    1\n  ]\n}", "json: format indents by 2");
 
             Console.Error.WriteLine($"selftest: all {checks} checks passed");

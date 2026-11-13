@@ -5,6 +5,7 @@
         <DockPanel>
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="GoButton" Content="Go to error" Click="GoToError" Margin="0,0,8,0" Visibility="Collapsed" />
                     <Button x:Name="MinifyButton" Content="Minify" Click="Minify" Margin="0,0,8,0" ToolTip="One line, no spaces" />
                     <Button x:Name="FormatButton" Content="Format" Click="Format" Margin="0,0,8,0" ToolTip="Indent by 2 spaces (Ctrl+Z undoes)" />
                     <Button x:Name="CopyButton" Style="{StaticResource Primary}" Content="Copy" Click="Copy" />
@@ -16,9 +17,38 @@
                     <TextBlock x:Name="StatusText" Style="{StaticResource Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </DockPanel>
-            <TextBox x:Name="Box" Tag="Paste or type JSON" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
-                     FontFamily="{StaticResource Mono}" FontSize="12.5" Padding="14,12" VerticalContentAlignment="Top"
-                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" TextChanged="Changed" />
+            <!-- The box is transparent; under it, Place() lines up the line numbers and the error highlight with its text -->
+            <Border CornerRadius="14" Background="{StaticResource Track}" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Style.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter Property="BorderBrush" Value="#B3FF6A3D" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="44" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <!-- Margin matches the box's top and bottom padding, so the clip matches its viewport -->
+                    <Canvas x:Name="Overlay" Grid.ColumnSpan="2" Margin="0,6" ClipToBounds="True" IsHitTestVisible="False">
+                        <Rectangle x:Name="ErrorLine" Fill="{StaticResource Red}" Opacity="0.13" Visibility="Collapsed" />
+                        <Rectangle x:Name="ErrorMark" Fill="{StaticResource Red}" Height="2" Visibility="Collapsed" />
+                        <!-- ponytail: fixed width fits 4 digits; size it from the line count if 10000+ line files matter -->
+                        <TextBlock x:Name="Gutter" Width="36" TextAlignment="Right" FontFamily="{StaticResource Mono}" FontSize="12.5"
+                                   Foreground="{StaticResource Sub}" LineStackingStrategy="BlockLineHeight" />
+                    </Canvas>
+                    <TextBox x:Name="Box" Grid.Column="1" Tag="Paste or type JSON" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                             Background="Transparent" BorderThickness="0" Padding="4,6,7,6"
+                             FontFamily="{StaticResource Mono}" FontSize="12.5" VerticalContentAlignment="Top"
+                             HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" TextChanged="Changed"
+                             ScrollViewer.ScrollChanged="Scrolled" />
+                </Grid>
+            </Border>
         </DockPanel>
     </Border>
 </UserControl>
