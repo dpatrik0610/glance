@@ -132,7 +132,9 @@ public partial class MiniWindow : Window
         stats.Children.Add(Stat("Download", SpeedRun.Down is { } d ? $"{SpeedRun.Mbps(d)} Mbps" : "—"));
         stats.Children.Add(Stat("Upload", SpeedRun.Up is { } u ? $"{SpeedRun.Mbps(u)} Mbps" : "—"));
         Add(stats);
-        Add(Line(SpeedRun.Note, 6));
+        var note = Line(SpeedRun.Note, 6);
+        note.ToolTip = SpeedRun.Note;
+        Add(note);
     }
 
     void ShowWeather()

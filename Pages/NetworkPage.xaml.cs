@@ -154,6 +154,7 @@ public partial class NetworkPage : UserControl
     void ShowSpeed()
     {
         SpeedNote.Text = SpeedRun.Note;
+        SpeedNote.ToolTip = SpeedRun.Note; // trimmed to fit; an error can be long
         SpeedPing.Text = SpeedRun.Ping is { } p ? $"{p:0}" : "—";
         SpeedJitter.Text = SpeedRun.Jitter is { } j ? $"jitter ±{j:0} ms" : "jitter —";
         SpeedDown.Text = Figure(SpeedRun.Down, SpeedRun.Stage.Down);

@@ -114,18 +114,26 @@ public static partial class Net
                 if (upload)
                 {
                     using var r = await bulk.PostAsync(Speed + "__up", new Payload(buf, add, stop), stop);
-                    r.EnsureSuccessStatusCode();
+                    Ok(r);
                 }
                 else
                 {
-                    using var r = await bulk.GetAsync(Speed + "__down?bytes=25000000", HttpCompletionOption.ResponseHeadersRead, stop);
-                    r.EnsureSuccessStatusCode();
+                    // 50 MB a request (100 MB is refused): a fast line goes through many, and too many in a few minutes get a 429
+                    using var r = await bulk.GetAsync(Speed + "__down?bytes=50000000", HttpCompletionOption.ResponseHeadersRead, stop);
+                    Ok(r);
                     await using var s = await r.Content.ReadAsStreamAsync(stop);
                     for (int n; (n = await s.ReadAsync(buf, stop)) > 0;) add(n);
                 }
             }
         }
         catch (Exception) when (stop.IsCancellationRequested) { } // time's up mid-transfer
+    }
+
+    static void Ok(HttpResponseMessage r)
+    {
+        if (r.StatusCode == HttpStatusCode.TooManyRequests)
+            throw new HttpRequestException("Cloudflare limits how often one connection can test. Try again in a few minutes.", null, r.StatusCode);
+        r.EnsureSuccessStatusCode();
     }
 
     /// 8 MB of zeros, counted as it's written so a cut-off upload still counts what went out.
