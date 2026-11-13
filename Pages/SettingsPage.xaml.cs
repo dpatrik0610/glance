@@ -43,6 +43,7 @@ public partial class SettingsPage : UserControl
         TopBox.IsChecked = s.Topmost;
         CompactBox.IsChecked = s.Compact;
         FBox.IsChecked = s.Fahrenheit;
+        StocksBox.IsChecked = s.StocksShown;
         BarBox.IsChecked = s.TopBar;
         BarFullscreenBox.IsChecked = s.BarHideFullscreen;
         BarSlimBox.IsChecked = s.BarSlim;
@@ -86,6 +87,7 @@ public partial class SettingsPage : UserControl
         s.Topmost = TopBox.IsChecked == true;
         s.Compact = CompactBox.IsChecked == true;
         s.Fahrenheit = FBox.IsChecked == true;
+        s.StocksShown = StocksBox.IsChecked == true;
         s.TopBar = BarBox.IsChecked == true;
         s.BarHideFullscreen = BarFullscreenBox.IsChecked == true;
         s.BarSlim = BarSlimBox.IsChecked == true;

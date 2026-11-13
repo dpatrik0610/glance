@@ -22,6 +22,16 @@ static class SelfTest
             }
             Check(Passwords.Generate(30, false, false, true, false, false).Password.All(char.IsDigit), "digits only");
 
+            Check(Money.Format(-4500).EndsWith(" Ft") && Money.Format(-4500)[0] == '−' && Money.Format(12000)[0] == '+'
+                && Money.Format(-4500, plus: false)[0] == '4', $"money format: {Money.Format(-4500)} {Money.Format(12000)} {Money.Format(-4500, plus: false)}");
+            var quote = Stocks.Parse("aapl", """
+                {"chart":{"result":[{"meta":{"currency":"USD","symbol":"AAPL","shortName":"Apple Inc.","regularMarketPrice":110},
+                "indicators":{"quote":[{"close":[90,null,100,110]}]}}],"error":null}}
+                """);
+            Check(quote is { Symbol: "AAPL", Name: "Apple Inc.", Currency: "USD", Price: 110 } && Math.Abs(quote.Change - 10) < 1e-9
+                && quote.Closes.Length == 4 && float.IsNaN(quote.Closes[1]), $"stock quote: {quote}");
+            Check(Stocks.Parse("x", """{"chart":{"result":null,"error":{"code":"Not Found"}}}""") is null, "stock quote: unknown symbol");
+
             Check(Native.TryParseHotkey("Win+Shift+G", out var m, out var vk) && m == 12 && vk == 0x47, "Win+Shift+G");
             Check(Native.TryParseHotkey("ctrl + alt + 1", out m, out vk) && m == 3 && vk == 0x31, "ctrl+alt+1");
             Check(!Native.TryParseHotkey("G", out _, out _), "needs modifier");

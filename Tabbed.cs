@@ -7,7 +7,10 @@ namespace Glance;
 /// One sidebar page made of related pages, switched with chips along the top. Each part is built on first visit and kept.
 public sealed class Tabbed : UserControl
 {
-    public record Part(string Name, string Icon, Func<UserControl> Create);
+    /// Shown: whether the part is offered now (a setting can turn it off); null = always.
+    public record Part(string Name, string Icon, Func<UserControl> Create, Func<bool>? Shown = null);
+
+    public static bool Offered(Part p) => p.Shown?.Invoke() != false;
 
     readonly Part[] parts;
     readonly UserControl?[] built;
@@ -39,6 +42,19 @@ public sealed class Tabbed : UserControl
         dock.Children.Add(host);
         Content = dock;
         chips[0].IsChecked = true;
+        Sync();
+        App.SettingsChanged += Sync;
+    }
+
+    // Parts a setting turned off lose their chip; if one was open, the first part takes its place.
+    void Sync()
+    {
+        for (var i = 0; i < parts.Length; i++)
+        {
+            var on = Offered(parts[i]);
+            chips[i].Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            if (!on && chips[i].IsChecked == true) chips[0].IsChecked = true;
+        }
     }
 
     public UserControl Current => (UserControl)host.Content;

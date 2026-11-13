@@ -217,6 +217,13 @@
                     </StackPanel>
                 </Border>
 
+                <TextBlock Text="Money" Style="{StaticResource Section}" />
+                <Border Style="{StaticResource Group}">
+                    <local:SettingRow Icon="&#xE9D2;" Title="Stocks" Description="A watchlist on the Money page, with delayed quotes from Yahoo Finance">
+                        <CheckBox x:Name="StocksBox" Style="{StaticResource Switch}" Click="Toggled" />
+                    </local:SettingRow>
+                </Border>
+
                 <TextBlock Text="Media and clipboard" Style="{StaticResource Section}" />
                 <Border Style="{StaticResource Group}">
                     <StackPanel>

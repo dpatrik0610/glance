@@ -45,6 +45,9 @@ public class Settings
     public List<string> RecentColors { get; set; } = [];
 
     public bool Fahrenheit { get; set; }
+    /// The Stocks part of the Money page, and the symbols it follows.
+    public bool StocksShown { get; set; } = true;
+    public List<string> StockSymbols { get; set; } = [];
     /// The always-on-top strip at the top of the screen, and which view it was left on.
     public bool TopBar { get; set; } = true;
     public double BarOpacity { get; set; } = 0.94;

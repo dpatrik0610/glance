@@ -1,0 +1,82 @@
+<UserControl x:Class="Glance.Pages.BudgetPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel>
+        <!-- The month shown, and its totals -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,6,4">
+            <Button Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" Content="&#xE76B;" ToolTip="Previous month" Click="PrevMonth" />
+            <TextBlock x:Name="MonthText" FontSize="15" FontWeight="SemiBold" MinWidth="140" TextAlignment="Center" VerticalAlignment="Center" />
+            <Button x:Name="NextButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" Content="&#xE76C;" ToolTip="Next month" Click="NextMonth" />
+        </StackPanel>
+        <UniformGrid DockPanel.Dock="Top" Columns="3">
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Income" Style="{StaticResource Label}" />
+                    <TextBlock x:Name="IncomeText" Style="{StaticResource Big}" FontSize="24" Foreground="{StaticResource Green}" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Expenses" Style="{StaticResource Label}" />
+                    <TextBlock x:Name="ExpenseText" Style="{StaticResource Big}" FontSize="24" Foreground="{StaticResource Red}" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Balance" Style="{StaticResource Label}" />
+                    <TextBlock x:Name="BalanceText" Style="{StaticResource Big}" FontSize="24" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- New entry: Enter in any box adds it -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource Card}">
+            <StackPanel>
+                <DockPanel KeyDown="BoxKey">
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                        <RadioButton x:Name="ExpenseChip" Style="{StaticResource Chip}" Content="Expense" IsChecked="True" />
+                        <RadioButton x:Name="IncomeChip" Style="{StaticResource Chip}" Content="Income" />
+                    </StackPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Add" Margin="8,0,0,0" Click="Add" />
+                    <TextBox x:Name="DateBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0" Tag="today"
+                             ToolTip="today, yesterday, nov 3, 2026-11-03" />
+                    <TextBox x:Name="AmountBox" DockPanel.Dock="Left" Width="120" Margin="6,0,8,0" Tag="Amount, Ft" />
+                    <TextBox x:Name="NoteBox" Tag="What for: groceries, salary…" />
+                </DockPanel>
+                <TextBlock x:Name="Hint" Style="{StaticResource Label}" Foreground="{StaticResource Amber}" Margin="0,8,0,0" Visibility="Collapsed" />
+            </StackPanel>
+        </Border>
+
+        <!-- The month's entries, newest first -->
+        <Border Style="{StaticResource Card}">
+            <Grid>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="List">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="Row" CornerRadius="8" Padding="10,6" Background="Transparent">
+                                    <DockPanel>
+                                        <Button x:Name="Remove" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="✕" FontSize="11" ToolTip="Remove"
+                                                Opacity="0" Click="RemoveEntry" />
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Amount}" Foreground="{Binding Brush}" FontWeight="SemiBold"
+                                                   FontSize="14" VerticalAlignment="Center" Margin="12,0,6,0" Typography.NumeralAlignment="Tabular" />
+                                        <TextBlock DockPanel.Dock="Left" Text="{Binding Day}" Style="{StaticResource Label}" Width="64" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Note}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{StaticResource Track}" />
+                                        <Setter TargetName="Remove" Property="Opacity" Value="1" />
+                                    </Trigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <TextBlock x:Name="Empty" Style="{StaticResource Label}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Text="Nothing this month yet." />
+            </Grid>
+        </Border>
+    </DockPanel>
+</UserControl>

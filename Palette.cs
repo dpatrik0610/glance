@@ -87,7 +87,7 @@ public partial class MainWindow
         var claude = Shell.OnPath("claude.exe");
         var list = Tabs.Append(SettingsTab).Select(t => new Cmd(t.Name, "Page", t.Icon, Do(() => Go(t)))).ToList();
         // A merged page's other parts (History, Stickies) are still found by name; the first part is the page itself.
-        list.AddRange(Tabs.SelectMany(t => t.Parts?.Skip(1) ?? []).Select(p => new Cmd(p.Name, "Page", p.Icon, Do(() => Go(p.Name)))));
+        list.AddRange(Tabs.SelectMany(t => t.Parts?.Skip(1) ?? []).Where(Tabbed.Offered).Select(p => new Cmd(p.Name, "Page", p.Icon, Do(() => Go(p.Name)))));
 
         list.Add(new("New terminal", "CLI", "\uE756", Do(() => Cli(home))));
         if (claude) list.Add(new("New Claude chat", "CLI", "\uE99A", Do(() => Cli(home, CliPage.Claude, "Claude"))));

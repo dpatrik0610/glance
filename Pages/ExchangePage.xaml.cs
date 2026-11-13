@@ -79,7 +79,7 @@ public partial class ExchangePage : UserControl
     }
 
     // Accept both "1 234,5" (hu) and "1234.5".
-    static bool TryParse(string text, out double v) =>
+    internal static bool TryParse(string text, out double v) =>
         double.TryParse(text.Replace(" ", "").Replace(" ", ""), NumberStyles.Number, CultureInfo.CurrentCulture, out v)
         || double.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out v);
 }
