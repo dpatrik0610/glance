@@ -227,6 +227,21 @@ static class SelfTest
             Check(Updater.Newer(Rel("v1.2.0", "Glance-1.2.0-win-x64.zip", null), v110) is null, "update: no digest, not offered");
             Check(Updater.Newer(Rel("v1.2.0", "notes.txt", "sha256:ab12"), v110) is null, "update: no zip, not offered");
 
+            // JSON page: strict check, error position as an editor counts it, formatting that keeps values as written
+            Check(JsonText.Check("""{"a":[1,2],"b":"é"}""") is { Ok: true, Message: "object · 2 keys" }, "json: valid object");
+            Check(JsonText.Check("  ") is { Ok: false, Message: "" }, "json: blank is neither valid nor an error");
+            var bad = JsonText.Check("{\r\n  \"a\": 1,\r\n  \"ő\" 2\r\n}"); // ő: 2 bytes, 1 column
+            Check(bad is { Ok: false, ErrorAt: 20 } && bad.Message.StartsWith("Line 3, column 7: "), $"json: error at line 3 col 7 ({bad.Message}, at {bad.ErrorAt})");
+            Check(!JsonText.Check("""{"a":1,}""").Ok && !JsonText.Check("// x\n1").Ok, "json: no trailing commas or comments");
+            const string raw = """{"n":1.50e3,"s":"é😀","t":"\\uD83D\\uDE00","a":[]}"""; // t: a backslash, then text that only looks like an escape
+            Check(JsonText.Format(raw, false) == raw, $"json: minify keeps numbers and text as written ({JsonText.Format(raw, false)})");
+            var jp = new Pages.JsonPage();
+            jp.Box.Text = "[1,";
+            Check(!jp.FormatButton.IsEnabled && jp.CopyButton.IsEnabled && jp.StatusText.Text.StartsWith("Line 1"), "json page: error shown, format off");
+            jp.Box.Text = "[1,2]";
+            Check(jp.FormatButton.IsEnabled && jp.StatusText.Text == "Valid JSON · array · 2 items", "json page: valid");
+            Check(JsonText.Format("""{"a":[1]}""", true).ReplaceLineEndings("\n") == "{\n  \"a\": [\n    1\n  ]\n}", "json: format indents by 2");
+
             Console.Error.WriteLine($"selftest: all {checks} checks passed");
             return 0;
         }

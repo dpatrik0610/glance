@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         new("Color", "Tools", "\uE790", () => new ColorPage()),
         new("Images", "Tools", "\uEB9F", () => new ImagePage()),
         new("Compare", "Tools", "\uE8C8", () => new ComparePage()),
+        new("JSON", "Tools", "\uE8A5", () => new JsonPage()),
         new("CLI", "Dev", "\uE756", () => new CliPage()),
         new("Ports", "Dev", "\uE943", () => new DevPage()),
         new("Git", "Dev", "\uF003", () => new GitPage(), "git.exe"),
