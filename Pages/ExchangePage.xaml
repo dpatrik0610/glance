@@ -48,6 +48,9 @@
             </DockPanel>
         </Border>
 
-        <TextBlock x:Name="Status" Style="{StaticResource Label}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <g:Logo Width="44" Height="44" Margin="0,0,0,12" Status="{Binding Text, ElementName=Status}" />
+            <TextBlock x:Name="Status" Style="{StaticResource Label}" FontSize="14" HorizontalAlignment="Center" />
+        </StackPanel>
     </Grid>
 </UserControl>

@@ -1,21 +1,38 @@
-# Renders Glance.ico (orange ring + white dot) at every size Windows asks for, each drawn natively for crisp edges.
-# Usage: powershell -File tools\make-icon.ps1
+# Renders Glance.ico at every size Windows asks for, each drawn natively for crisp edges: the Glance mark (orange ring,
+# white pupil looking up and right) on a dark glass squircle, so it reads on light and dark taskbars alike.
+# Inside the app the mark is drawn live without the tile (Logo.cs). Usage: powershell -File tools\make-icon.ps1
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path $PSScriptRoot '..\Glance.ico'
 $sizes = 16, 20, 24, 32, 40, 48, 64, 256
+function C($hex, $a = 255) { [System.Drawing.Color]::FromArgb($a, [Convert]::ToInt32($hex.Substring(0, 2), 16), [Convert]::ToInt32($hex.Substring(2, 2), 16), [Convert]::ToInt32($hex.Substring(4, 2), 16)) }
 $pngs = foreach ($s in $sizes) {
     $bmp = New-Object System.Drawing.Bitmap $s, $s
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = 'AntiAlias'; $g.PixelOffsetMode = 'HighQuality'
-    $stroke = [Math]::Max(2, $s * 0.16)
-    $inset = $stroke / 2 + $s * 0.06
-    $pen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 106, 61)), $stroke
-    $g.DrawEllipse($pen, $inset, $inset, $s - 2 * $inset, $s - 2 * $inset)
-    $dot = $s * 0.26
-    $g.FillEllipse([System.Drawing.Brushes]::White, ($s - $dot) / 2, ($s - $dot) / 2, $dot, $dot)
+    $u = $s / 100 # the design is laid out in a 100x100 box
+    # Tile: rounded square, lighter at the top, with a faint edge
+    $x = 4 * $u; $w = 92 * $u; $d = 48 * $u
+    $tile = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $tile.AddArc($x, $x, $d, $d, 180, 90); $tile.AddArc($x + $w - $d, $x, $d, $d, 270, 90)
+    $tile.AddArc($x + $w - $d, $x + $w - $d, $d, $d, 0, 90); $tile.AddArc($x, $x + $w - $d, $d, $d, 90, 90); $tile.CloseFigure()
+    $fill = New-Object System.Drawing.Drawing2D.LinearGradientBrush ([System.Drawing.PointF]::new(0, $x)), ([System.Drawing.PointF]::new(0, $x + $w)), (C '34343B'), (C '17171B')
+    $g.FillPath($fill, $tile)
+    $edge = New-Object System.Drawing.Pen (C 'FFFFFF' 34), ([Math]::Max(1, 1.5 * $u))
+    $g.DrawPath($edge, $tile)
+    # Ring: warm gradient, a little thicker at small sizes so it survives 16px
+    $warm = New-Object System.Drawing.Drawing2D.LinearGradientBrush ([System.Drawing.PointF]::new(24 * $u, 24 * $u)), ([System.Drawing.PointF]::new(76 * $u, 76 * $u)), (C 'FF9A6A'), (C 'E8442A')
+    $blend = New-Object System.Drawing.Drawing2D.ColorBlend 3
+    $blend.Colors = (C 'FF9A6A'), (C 'FF6A3D'), (C 'E8442A'); $blend.Positions = 0, 0.55, 1
+    $warm.InterpolationColors = $blend
+    $stroke = [Math]::Max(2, 11 * $u)
+    $ring = New-Object System.Drawing.Pen $warm, $stroke
+    $r = 26 * $u
+    $g.DrawEllipse($ring, 50 * $u - $r, 50 * $u - $r, 2 * $r, 2 * $r)
+    $p = [Math]::Max(1.6, 9.5 * $u)
+    $g.FillEllipse([System.Drawing.Brushes]::White, 54.5 * $u - $p, 46 * $u - $p, 2 * $p, 2 * $p)
     $ms = New-Object System.IO.MemoryStream
     $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-    $g.Dispose(); $bmp.Dispose(); $pen.Dispose()
+    $g.Dispose(); $bmp.Dispose(); $fill.Dispose(); $edge.Dispose(); $warm.Dispose(); $ring.Dispose(); $tile.Dispose()
     , $ms.ToArray()
 }
 # ICO container: header, one 16-byte directory entry per image, then the PNG payloads.

@@ -32,8 +32,9 @@
             <Grid Grid.ColumnSpan="2" Background="Transparent" MouseLeftButtonDown="Drag" Margin="0,0,6,10">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="NavToggle" Style="{StaticResource Ghost}" Width="44" Content="&#xE700;" FontFamily="{StaticResource Icons}"
-                            ToolTip="Collapse sidebar" Click="ToggleNav" />
-                    <Ellipse Width="14" Height="14" Stroke="{StaticResource Accent}" StrokeThickness="3" Margin="8,0,8,0" />
+                            ToolTip="Collapse sidebar" Click="ToggleNav" local:Logo.Hint="menu" />
+                    <!-- The mark: glances when the window opens; its pupil turns into the icon of the title bar button under the mouse -->
+                    <local:Logo x:Name="Mark" Width="28" Height="28" Margin="4,0,6,0" ShowsHints="True" />
                     <StackPanel x:Name="Brand" Orientation="Horizontal">
                         <TextBlock Text="Glance" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock Text="/" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" Margin="10,0" />
@@ -61,8 +62,8 @@
                             Content="&#xE73F;" ToolTip="Compact mode"
                             Click="CompactClick" />
                     <Button Style="{StaticResource Ghost}" Content="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
-                            ToolTip="Search everything (Ctrl+K)" Click="PaletteClick" />
-                    <Button Style="{StaticResource Ghost}" Content="✕" FontSize="13" ToolTip="Hide to tray (Esc)" Click="HideClick" />
+                            ToolTip="Search everything (Ctrl+K)" Click="PaletteClick" local:Logo.Hint="search" />
+                    <Button Style="{StaticResource Ghost}" Content="✕" FontSize="13" ToolTip="Hide to tray (Esc)" Click="HideClick" local:Logo.Hint="close" />
                 </StackPanel>
             </Grid>
 
@@ -142,7 +143,7 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
-                    <ListBox x:Name="Bottom" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged">
+                    <ListBox x:Name="Bottom" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged" local:Logo.Hint="gear">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Icon}" ToolTip="{Binding Name}" FontFamily="{StaticResource Icons}" FontSize="16" Width="20"

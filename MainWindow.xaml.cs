@@ -225,7 +225,11 @@ public partial class MainWindow : Window
     }
 
     /// Called when the window comes up from hidden: the content settles in.
-    public void Reveal() => Motion.Rise(Body, BodyShift, 8, 220);
+    public void Reveal()
+    {
+        Motion.Rise(Body, BodyShift, 8, 220);
+        Mark.Play();
+    }
 
     /// Opens a page, or a part of a merged page (History, Stickies), and returns it.
     public UserControl ShowTab(string name)

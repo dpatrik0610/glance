@@ -55,6 +55,7 @@ public partial class SettingsPage : UserControl
         MongoBox.Text = s.MongoUrl;
         IsVisibleChanged += (_, _) =>
         {
+            if (IsVisible) Mark.Play();
             AutoBox.IsChecked = Settings.AutoStart; // re-read: may change outside the app
             MenuBox.IsChecked = Settings.ExplorerMenu;
             ClipBox.IsChecked = s.ClipboardHistory; // the Clipboard page has the same switches

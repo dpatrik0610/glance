@@ -1,6 +1,7 @@
 <UserControl x:Class="Glance.Pages.DockerPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="clr-namespace:Glance">
     <UserControl.Resources>
         <Style x:Key="Act" TargetType="Button" BasedOn="{StaticResource Ghost}">
             <Setter Property="Padding" Value="8,3" />
@@ -89,6 +90,7 @@
                     </ItemsControl>
                 </ScrollViewer>
                 <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <g:Logo Width="44" Height="44" Margin="0,0,0,12" Status="{Binding Text, ElementName=EmptyText}" />
                     <TextBlock x:Name="EmptyText" Text="Loading…" Style="{StaticResource Label}" HorizontalAlignment="Center" />
                     <Button x:Name="StartDesktop" Style="{StaticResource Primary}" Content="Start Docker Desktop" Margin="0,12,0,0"
                             HorizontalAlignment="Center" Visibility="Collapsed" Click="StartDocker" />

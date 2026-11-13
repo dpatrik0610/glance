@@ -1,6 +1,7 @@
 <UserControl x:Class="Glance.Pages.GitPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="clr-namespace:Glance">
     <UserControl.Resources>
         <Style x:Key="Act" TargetType="Button" BasedOn="{StaticResource Ghost}">
             <Setter Property="FontFamily" Value="{StaticResource Icons}" />
@@ -85,8 +86,10 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-                <TextBlock x:Name="Empty" Style="{StaticResource Label}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Text="Loading…" />
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <g:Logo Width="44" Height="44" Margin="0,0,0,12" Status="{Binding Text, ElementName=Empty}" />
+                    <TextBlock x:Name="Empty" Style="{StaticResource Label}" HorizontalAlignment="Center" Text="Loading…" />
+                </StackPanel>
             </Grid>
         </DockPanel>
     </Border>
