@@ -9,7 +9,7 @@ using System.Windows.Threading;
 namespace Glance;
 
 /// The Glance mark drawn live (an open orange ring, the white pupil looking out through its gap), so it can move:
-/// - Play() draws the ring in and glances left and right; a click pokes it, and enough quick pokes annoy it (> <).
+/// - Play() draws the ring in and glances left and right. With Pokeable a click pokes it, and enough quick pokes annoy it (> <).
 /// - As a loader (Status) the whole mark turns, the pupil following the gap.
 /// - As a button icon (Icon="close") it rests as just that icon; hovering its button sweeps the ring around it
 ///   while the icon folds into the pupil and opens back out.
@@ -87,8 +87,10 @@ public sealed class Logo : FrameworkElement
     /// Makes this a button icon (a Shapes name). The nearest Button or ListBoxItem above it is what gets hovered.
     public string? Icon { get; set; }
 
+    /// Clicks poke it (title bar and Settings). Off by default, so a mark inside a button leaves the clicks to the button.
+    public bool Pokeable { get; set; }
+
     double[] Rest => Icon is not null && Shapes.TryGetValue(Icon, out var s) ? s : Dot;
-    bool Pokeable => Icon is null && Status is null;
     int gen; // bumps on every morph, so a chained or delayed step that was overtaken doesn't run
     int pokes;
     DateTime lastPoke;

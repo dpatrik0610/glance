@@ -70,7 +70,7 @@
                 <!-- About -->
                 <Border Style="{StaticResource Group}" Padding="20,18">
                     <DockPanel>
-                        <g:Logo x:Name="Mark" Width="48" Height="48" Margin="0,0,16,0" />
+                        <g:Logo x:Name="Mark" Width="48" Height="48" Margin="0,0,16,0" Pokeable="True" />
                         <Button x:Name="UpdateButton" DockPanel.Dock="Right" VerticalAlignment="Center" Content="Check for updates" Click="CheckUpdates" />
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Glance" FontSize="20" FontWeight="SemiBold" />
