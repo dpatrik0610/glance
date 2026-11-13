@@ -216,6 +216,17 @@ static class SelfTest
             Check(fired == 2, "re-fires after cooldown");
 
             CompareChecks();
+
+            static string Rel(string tag, string asset, string? digest) =>
+                $$"""{"tag_name":"{{tag}}","assets":[{"name":"{{asset}}","browser_download_url":"https://x/{{asset}}"{{(digest is null ? "" : $",\"digest\":\"{digest}\"")}}}]}""";
+            var v110 = new Version(1, 1, 0);
+            var up = Updater.Newer(Rel("v1.1.1", "Glance-1.1.1-win-x64.zip", "sha256:ab12"), v110);
+            Check(up is { Sha256: "ab12", Url: "https://x/Glance-1.1.1-win-x64.zip" } && up.Version == new Version(1, 1, 1), "update: newer patch offered");
+            Check(Updater.Newer(Rel("v1.1.0", "Glance-1.1.0-win-x64.zip", "sha256:ab12"), new Version(1, 1, 0, 0)) is null, "update: same version (4-part) not offered");
+            Check(Updater.Newer(Rel("v1.0.9", "Glance-1.0.9-win-x64.zip", "sha256:ab12"), v110) is null, "update: older not offered");
+            Check(Updater.Newer(Rel("v1.2.0", "Glance-1.2.0-win-x64.zip", null), v110) is null, "update: no digest, not offered");
+            Check(Updater.Newer(Rel("v1.2.0", "notes.txt", "sha256:ab12"), v110) is null, "update: no zip, not offered");
+
             Console.Error.WriteLine($"selftest: all {checks} checks passed");
             return 0;
         }

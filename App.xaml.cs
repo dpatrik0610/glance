@@ -109,6 +109,12 @@ public partial class App : Application
         // Re-point the registry at this exe, in case the folder moved.
         if (Settings.ExplorerMenu) Settings.ExplorerMenu = true;
         if (Settings.AutoStart) Settings.AutoStart = true;
+        // Released builds look for a newer release at start and daily; a build from source updates by "Rebuild and restart".
+        if (DeployScript is null)
+        {
+            new DispatcherTimer(TimeSpan.FromHours(24), DispatcherPriority.Background, (_, _) => CheckUpdate(), Dispatcher);
+            CheckUpdate();
+        }
 
         if (CliArg(e.Args) is { } dir) OpenCli(dir);
         else if (!e.Args.Contains("--tray")) ShowMain();
@@ -344,6 +350,41 @@ public partial class App : Application
         if (DeployScript is null) return;
         Process.Start(new ProcessStartInfo(Shell.PowerShell, $"-NoProfile -ExecutionPolicy Bypass -File \"{DeployScript}\"") { UseShellExecute = true });
         Db.Info("rebuild requested");
+    }
+
+    Version? offered; // once per run per version: closing the alert means "not now"
+
+    async void CheckUpdate()
+    {
+        try
+        {
+            if (await Updater.Check() is not { } r || r.Version == offered) return;
+            offered = r.Version;
+            AlertWindow.Show(new Toast("Glance · update", $"Version {r.Version}", "", "You have", Updater.Current.ToString(),
+                Color.FromRgb(0xFF, 0x6A, 0x3D), true, Detail: "Click to update and restart"), () => Update(r));
+        }
+        catch (Exception e) { Db.Warn($"update check: {e.Message}"); } // offline, rate-limited: try again tomorrow
+    }
+
+    async void Update(Updater.Release r)
+    {
+        if (!Dialog.Confirm("Update", $"Update Glance to {r.Version}?",
+                "Glance downloads it, closes and starts again." +
+                (CliPage.Running > 0 ? " Terminals reopen in their folders, but anything running in them stops." : ""),
+                "Update", danger: false)) return;
+        AlertWindow.Show(new Toast("Glance · update", $"Downloading {r.Version}", "", "", "", Color.FromRgb(0xFF, 0x6A, 0x3D), false,
+            Detail: "Glance restarts when it's ready", Quiet: true), () => { });
+        try
+        {
+            await Updater.Install(r);
+            Db.Info($"updating to {r.Version}");
+            Quit(ask: false);
+        }
+        catch (Exception e)
+        {
+            Db.Error("update", e);
+            Dialog.Info("Update", "The update failed", e.Message);
+        }
     }
 
     void Quit(bool ask = true)
