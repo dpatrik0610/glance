@@ -80,17 +80,25 @@ public static partial class Net
         catch (PingException) { return null; }
     }
 
-    // ---- Speed test against Cloudflare's endpoints (what speed.cloudflare.com itself uses) ----
+    // ---- Speed test: Cloudflare (what speed.cloudflare.com itself uses), falling back to a public LibreSpeed server ----
 
-    const string Speed = "https://speed.cloudflare.com/";
+    public record SpeedServer(string Name, string Down, string Up);
+
+    public static readonly SpeedServer[] SpeedServers =
+    [
+        // 50 MB a request (100 MB is refused): a fast line goes through many, and too many in a few minutes get a 429
+        new("Cloudflare", "https://speed.cloudflare.com/__down?bytes=50000000", "https://speed.cloudflare.com/__up"),
+        // From LibreSpeed's public list (librespeed.org/backend-servers/servers.php); kept up with a 600 Mbps line in Hungary
+        new("CESNET Prague", "https://speedtest.cesnet.cz/backend/garbage.php?ckSize=100", "https://speedtest.cesnet.cz/backend/empty.php"),
+    ];
 
     /// Mbps over ~6 s with 4 parallel streams (one TCP stream rarely fills a fast line).
     /// The first second is TCP ramp-up and isn't counted. Reports the running figure as it goes.
-    public static async Task<double> SpeedTest(bool upload, Action<double> progress)
+    public static async Task<double> SpeedTest(SpeedServer server, bool upload, Action<double> progress)
     {
         long bytes = 0;
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(7));
-        var workers = Enumerable.Range(0, 4).Select(_ => Task.Run(() => Transfer(upload, n => Interlocked.Add(ref bytes, n), stop.Token))).ToArray();
+        var workers = Enumerable.Range(0, 4).Select(_ => Task.Run(() => Transfer(server, upload, n => Interlocked.Add(ref bytes, n), stop.Token))).ToArray();
         await Task.Delay(1000);
         var (from, at) = (Interlocked.Read(ref bytes), Stopwatch.GetTimestamp());
         double mbps = 0;
@@ -104,7 +112,7 @@ public static partial class Net
         return mbps;
     }
 
-    static async Task Transfer(bool upload, Action<int> add, CancellationToken stop)
+    static async Task Transfer(SpeedServer server, bool upload, Action<int> add, CancellationToken stop)
     {
         var buf = new byte[64 << 10];
         try
@@ -113,13 +121,14 @@ public static partial class Net
             {
                 if (upload)
                 {
-                    using var r = await bulk.PostAsync(Speed + "__up", new Payload(buf, add, stop), stop);
+                    var body = new Payload(buf, add, stop);
+                    body.Headers.ContentType = new("application/octet-stream"); // so a PHP backend doesn't try to parse 8 MB as a form
+                    using var r = await bulk.PostAsync(server.Up, body, stop);
                     Ok(r);
                 }
                 else
                 {
-                    // 50 MB a request (100 MB is refused): a fast line goes through many, and too many in a few minutes get a 429
-                    using var r = await bulk.GetAsync(Speed + "__down?bytes=50000000", HttpCompletionOption.ResponseHeadersRead, stop);
+                    using var r = await bulk.GetAsync(server.Down, HttpCompletionOption.ResponseHeadersRead, stop);
                     Ok(r);
                     await using var s = await r.Content.ReadAsStreamAsync(stop);
                     for (int n; (n = await s.ReadAsync(buf, stop)) > 0;) add(n);
@@ -132,7 +141,8 @@ public static partial class Net
     static void Ok(HttpResponseMessage r)
     {
         if (r.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new HttpRequestException("Cloudflare limits how often one connection can test. Try again in a few minutes.", null, r.StatusCode);
+            throw new HttpRequestException($"{r.RequestMessage?.RequestUri?.Host} limits how often one connection can test. Try again in a few minutes.",
+                null, r.StatusCode);
         r.EnsureSuccessStatusCode();
     }
 
@@ -196,11 +206,26 @@ public static class SpeedRun
                 Ping = rtts.Order().ElementAt(rtts.Count / 2);
                 Jitter = rtts.Count > 1 ? rtts.Zip(rtts.Skip(1), (a, b) => Math.Abs(a - b)).Average() : 0;
             }
-            Go(Stage.Down, "Testing download…");
-            Down = await Net.SpeedTest(false, v => { Live = v; Downs.Add((float)v); Changed?.Invoke(); });
-            Go(Stage.Up, "Testing upload…");
-            Up = await Net.SpeedTest(true, v => { Live = v; Ups.Add((float)v); Changed?.Invoke(); });
-            Go(Stage.Done, $"Cloudflare · tested {DateTime.Now:HH:mm}");
+            var server = 0;
+            Down = await Measure(false, Downs);
+            Up = await Measure(true, Ups);
+            Go(Stage.Done, $"{Net.SpeedServers[server].Name} · tested {DateTime.Now:HH:mm}");
+
+            // A server that refuses (rate limit, down, blocked) hands this direction and the rest of the run to the next one.
+            async Task<double> Measure(bool upload, List<float> samples)
+            {
+                while (true)
+                {
+                    var s = Net.SpeedServers[server];
+                    Go(upload ? Stage.Up : Stage.Down, $"Testing {(upload ? "upload" : "download")} · {s.Name}…");
+                    samples.Clear();
+                    try { return await Net.SpeedTest(s, upload, v => { Live = v; samples.Add((float)v); Changed?.Invoke(); }); }
+                    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException && server + 1 < Net.SpeedServers.Length)
+                    {
+                        Db.Error($"speedtest: {s.Name} failed, trying {Net.SpeedServers[++server].Name}", ex);
+                    }
+                }
+            }
             Db.Info($"speedtest down={Mbps(Down.Value)} up={Mbps(Up.Value)} Mbps ping={Ping?.ToString("0") ?? "×"} ms");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
