@@ -14,32 +14,34 @@ namespace Glance;
 public partial class MainWindow : Window
 {
     /// Needs: an exe that must be on PATH, or the tab is left out (checked at startup).
-    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null);
+    /// Parts: a merged page, its related pages switched by chips at the top (Tabbed).
+    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null, Tabbed.Part[]? Parts = null);
+
+    static Tab Merged(string name, string group, string icon, params Tabbed.Part[] parts) =>
+        new(name, group, icon, () => new Tabbed(parts), Parts: parts);
 
     // Add a page here; sidebar, Ctrl+N shortcuts and lazy creation follow. Keep tabs of a group together:
     // groups appear in first-seen order. Icons: Segoe Fluent Icons code points.
     static readonly Tab[] Tabs = new Tab[]
     {
-        new("System", "Monitor", "\uE7F4", () => new SystemPage()),
+        Merged("System", "Monitor", "\uE7F4", new("Live", "\uE7F4", () => new SystemPage()), new("History", "\uE81C", () => new HistoryPage())),
         new("Network", "Monitor", "\uE839", () => new NetworkPage()),
-        new("History", "Monitor", "\uE81C", () => new HistoryPage()),
         new("Weather", "Life", "\uE706", () => new WeatherPage()),
         new("Map", "Life", "\uE707", () => new MapPage()),
         new("Exchange", "Life", "\uE8AB", () => new ExchangePage()),
         new("Now Playing", "Life", "\uEC4F", () => new NowPlayingPage()),
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
-        new("Notes", "Tools", "\uE70B", () => new NotesPage()),
-        new("Stickies", "Tools", "\uE840", () => new StickiesPage()),
+        Merged("Notes", "Tools", "\uE70B", new("Notes", "\uE70B", () => new NotesPage()), new("Stickies", "\uE840", () => new StickiesPage())),
         new("Calendar", "Tools", "\uE787", () => new CalendarPage()),
         new("Password", "Tools", "\uE8D7", () => new PasswordPage()),
         new("Color", "Tools", "\uE790", () => new ColorPage()),
         new("Images", "Tools", "\uEB9F", () => new ImagePage()),
         new("Compare", "Tools", "\uE8C8", () => new ComparePage()),
-        new("JSON", "Tools", "\uE8A5", () => new JsonPage()),
         new("CLI", "Dev", "\uE756", () => new CliPage()),
         new("Ports", "Dev", "\uE943", () => new DevPage()),
         new("Git", "Dev", "\uF003", () => new GitPage(), "git.exe"),
         new("Docker", "Dev", "\uF158", () => new DockerPage(), "docker.exe"),
+        new("JSON", "Dev", "\uE8A5", () => new JsonPage()),
     }.Where(t => t.Needs is null || Shell.OnPath(t.Needs)).ToArray();
 
     // Pinned at the bottom of the sidebar, icon only.
@@ -225,11 +227,12 @@ public partial class MainWindow : Window
     /// Called when the window comes up from hidden: the content settles in.
     public void Reveal() => Motion.Rise(Body, BodyShift, 8, 220);
 
+    /// Opens a page, or a part of a merged page (History, Stickies), and returns it.
     public UserControl ShowTab(string name)
     {
-        var t = Tabs.First(t => t.Name == name);
+        var t = Tabs.FirstOrDefault(t => t.Parts?.Any(p => p.Name == name) == true) ?? Tabs.First(t => t.Name == name);
         Open(t); // creates the page if needed
-        return pages[t];
+        return pages[t] is not Tabbed tabbed ? pages[t] : tabbed.Has(name) ? tabbed.Show(name) : tabbed.Current;
     }
 
     // ---- Folding groups and hiding pages: both saved in settings, then the views are rebuilt ----
