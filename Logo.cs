@@ -186,6 +186,13 @@ public sealed class Logo : FrameworkElement
         BeginAnimation(LookYProperty, Keys((0, 5), (2630, 5), (3200, 0)));
     }
 
+    /// A quick entrance (dialogs): the ring sweeps closed and the pupil pops in, in half a second.
+    public void Appear()
+    {
+        BeginAnimation(SweepProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(460)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        BeginAnimation(PopProperty, Keys((0, 0), (260, 0), (400, 1.15), (500, 1)));
+    }
+
     void UpdateLoader()
     {
         Visibility = Busy ? Visibility.Visible : Visibility.Collapsed;
