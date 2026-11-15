@@ -39,3 +39,9 @@ installer/      Inno Setup script for the setup exe
 tools/          build, deploy, release and signing scripts
 docs/           screenshots
 ```
+
+## License
+
+Copyright (C) 2026 dpatrik0610
+
+Glance is free software under the [GNU General Public License v3.0](LICENSE): you can use, study, change and share it, and anything you distribute that's built on it must be released under the same license, with its source.
