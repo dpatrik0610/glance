@@ -8,7 +8,7 @@ using System.Text.Json;
 
 namespace Glance.Services;
 
-/// Updates from the public releases repo (the source repo is private). On the user's OK: download, check the SHA-256
+/// Updates from this repo's GitHub releases. On the user's OK: download, check the SHA-256
 /// GitHub lists for it, swap the files once Glance has exited, start it again. Settings live in %APPDATA%, untouched.
 /// A copy installed by the setup updates by running the new setup silently (so Settings > Apps shows the right
 /// version); a portable copy from the zip gets the zip copied over it.
@@ -22,7 +22,7 @@ public static class Updater
     /// Inno Setup leaves its uninstaller next to the exe it installed (installer\Glance.iss).
     public static bool Installed { get; } = File.Exists(Path.Combine(AppContext.BaseDirectory, "unins000.exe"));
 
-    const string Latest = "https://api.github.com/repos/dpatrik0610/glance-releases/releases/latest";
+    const string Latest = "https://api.github.com/repos/dpatrik0610/glance/releases/latest";
     static readonly HttpClient http = new() { Timeout = TimeSpan.FromMinutes(5) };
 
     static Updater() => http.DefaultRequestHeaders.UserAgent.ParseAdd("Glance"); // GitHub's API refuses requests without one

@@ -4,7 +4,6 @@
 param([string]$Version)
 $root = Split-Path $PSScriptRoot
 $csproj = Join-Path $root 'src\Glance\Glance.csproj'
-$public = 'dpatrik0610/glance-releases' # Services\Updater.cs reads from here
 $Host.UI.RawUI.WindowTitle = 'Glance - publish release'
 Set-Location $root
 
@@ -84,10 +83,7 @@ $create = "gh release create $tag `"$zip`" `"$setup`" --title `"Glance $Version`
 git push -q origin main $tag
 if ($LASTEXITCODE) { Fail "Push failed; the commit and tag $tag are only local. Finish by hand: git push origin main $tag, then $create" }
 & $gh release create $tag $zip $setup --title "Glance $Version" --notes-file $notes
-if ($LASTEXITCODE) { Fail "Creating the release failed ($tag is pushed). Retry: $create, and again with -R $public" }
-# The source repo is private: installed copies update from this public one, which holds only the releases.
-& $gh release create $tag $zip $setup -R $public --title "Glance $Version" --notes-file $notes
-if ($LASTEXITCODE) { Fail "The private release is up, but the public one failed, so nobody gets the update yet. Retry: $create -R $public" }
+if ($LASTEXITCODE) { Fail "Creating the release failed ($tag is pushed). Retry: $create" }
 
 Write-Host "Done: Glance $Version is released." -ForegroundColor Green
 & $gh release view $tag --web

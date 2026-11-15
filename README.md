@@ -14,7 +14,7 @@ A glassy Windows 11 tray dashboard: system stats, everyday tools and a terminal 
 
 ## Install
 
-Download `Glance-x.y.z-setup.exe` from [Releases](https://github.com/dpatrik0610/glance-releases/releases/latest) and run it (no admin needed). For a portable copy, unzip the `-win-x64.zip` instead. Glance updates itself.
+Download `Glance-x.y.z-setup.exe` from [Releases](https://github.com/dpatrik0610/glance/releases/latest) and run it (no admin needed). For a portable copy, unzip the `-win-x64.zip` instead. Glance updates itself.
 
 Needs Windows 10/11 x64 (the glass look is best on 11), the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) and WebView2.
 
