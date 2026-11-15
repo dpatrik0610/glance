@@ -47,4 +47,6 @@ public partial class NotesPage : UserControl
         NoteStore.Notes.Remove(n);
         List.SelectedIndex = Math.Min(i, NoteStore.Notes.Count - 1);
     }
+
+    void FontClick(object sender, RoutedEventArgs e) => Body.ShowFontMenu((UIElement)sender);
 }

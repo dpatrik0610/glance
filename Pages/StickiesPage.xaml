@@ -53,6 +53,8 @@
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                     <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Icons}"
                             ToolTip="Delete sticky" Click="DeleteSticky" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE8D2;" FontFamily="{StaticResource Icons}"
+                            ToolTip="Font and text size" Click="FontClick" />
                     <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Show on desktop" Margin="0,0,6,0" Click="RevealClick" />
                     <TextBox x:Name="TitleBox" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Tag="Title"
                              FontSize="20" FontWeight="SemiBold" Background="Transparent" BorderThickness="0" Padding="0,4" />

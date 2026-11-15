@@ -83,4 +83,6 @@ public partial class StickiesPage : UserControl
         Stickies.Items.Remove(s);
         List.SelectedIndex = Math.Min(i, Stickies.Items.Count - 1);
     }
+
+    void FontClick(object sender, RoutedEventArgs e) => Body.ShowFontMenu((UIElement)sender);
 }

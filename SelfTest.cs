@@ -88,16 +88,18 @@ static class SelfTest
             {
                 var store = new JsonStore<Sticky>(tmp);
                 Check(store.Load(), "store: no file yet");
-                var sticky = new Sticky { Title = "t", Kind = NoteKind.Checklist, Color = "Blue", Opacity = 0.5, Left = -10, Width = 300, Shown = false };
+                var sticky = new Sticky { Title = "t", Kind = NoteKind.Checklist, Color = "Blue", Opacity = 0.5, Left = -10, Width = 300, Shown = false, Font = "Consolas", FontSize = 18 };
                 sticky.Items.Add(new TodoItem { Text = "a", Done = true, Due = new DateTime(2026, 1, 2, 3, 4, 0), Remind = true, Reminded = true });
                 store.Items.Add(sticky);
                 store.Items.Add(new Sticky()); // never placed: no position yet
                 store.Flush();
                 var reread = new JsonStore<Sticky>(tmp);
                 Check(!reread.Load() && reread.Items.Count == 2, "store: reload");
-                Check(reread.Items[0] is { Title: "t", Kind: NoteKind.Checklist, Color: "Blue", Opacity: 0.5, Left: -10, Top: null, Width: 300, Shown: false }
+                Check(reread.Items[0] is { Title: "t", Kind: NoteKind.Checklist, Color: "Blue", Opacity: 0.5, Left: -10, Top: null, Width: 300, Shown: false, Font: "Consolas", FontSize: 18 }
                       && reread.Items[0].Items[0] is { Text: "a", Done: true, Remind: true, Reminded: true } && reread.Items[1].Left is null,
                     "store: sticky round-trip");
+                Check(reread.Items[1] is { Font: Note.DefaultFont, FontSize: 14 } && new Note { FontSize = 99, Font = " " } is { FontSize: 40, Font: Note.DefaultFont },
+                    "note: default font, size clamped");
             }
             finally { File.Delete(tmp); }
 

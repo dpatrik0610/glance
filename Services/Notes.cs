@@ -62,13 +62,20 @@ public class TodoItem : Bindable
 
 public class Note : Bindable
 {
-    string title = "", text = "";
+    /// Glance's own font; a note shows it until another is picked.
+    public const string DefaultFont = "Segoe UI Variable Text, Segoe UI";
+
+    string title = "", text = "", font = DefaultFont;
+    double fontSize = 14;
 
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     [JsonConverter(typeof(JsonStringEnumConverter))] public NoteKind Kind { get; set; }
     public string Title { get => title; set { if (Set(ref title, value)) Raise(nameof(DisplayTitle)); } }
     public string Text { get => text; set { if (Set(ref text, value)) Raise(nameof(Summary)); } }
     public ObservableCollection<TodoItem> Items { get; set; } = [];
+    /// How the body (text or checklist items) is written.
+    public string Font { get => font; set => Set(ref font, string.IsNullOrWhiteSpace(value) ? DefaultFont : value); }
+    public double FontSize { get => fontSize; set => Set(ref fontSize, Math.Clamp(Math.Round(value), 9, 40)); }
 
     [JsonIgnore] public string DisplayTitle => title.Trim().Length > 0 ? title : "Untitled";
     [JsonIgnore] public string Icon => Kind == NoteKind.Text ? "\uE70B" : "\uE9D5";

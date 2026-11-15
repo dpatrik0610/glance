@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Glance.Services;
 
 namespace Glance;
@@ -53,6 +54,26 @@ public partial class NoteEditor : UserControl
             TextEditor.ClearValue(BorderThicknessProperty);
             TextEditor.Padding = new Thickness(14, 12, 14, 12);
         }
+    }
+
+    /// The font and size menu under target. Fonts are listed on first open (Glance's own first).
+    public void ShowFontMenu(UIElement target)
+    {
+        FontList.ItemsSource ??= Fonts.SystemFontFamilies.Select(f => f.Source).Order().Prepend(Note.DefaultFont).Distinct().ToList();
+        FontMenu.PlacementTarget = target;
+        FontMenu.IsOpen = true;
+        FontList.ScrollIntoView(FontList.SelectedItem);
+    }
+
+    // Ctrl+wheel: bigger or smaller text, like a browser.
+    protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers == ModifierKeys.Control && Note is { } n)
+        {
+            n.FontSize += e.Delta > 0 ? 1 : -1;
+            e.Handled = true;
+        }
+        base.OnPreviewMouseWheel(e);
     }
 
     public void FocusText()
