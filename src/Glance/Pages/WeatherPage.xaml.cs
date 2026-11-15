@@ -80,7 +80,10 @@ public partial class WeatherPage : UserControl
         var nowHour = c.Time[..13];
         var start = Math.Max(0, Array.FindIndex(h.Time, t => t.StartsWith(nowHour)));
         var n = Math.Min(24, h.Time.Length - start);
-        var temps = h.Temp.AsSpan(start, n);
+        // Heights from the shown (whole-degree) value, so bars with the same label are the same height.
+        // AwayFromZero matches how the "0" format rounds the label.
+        var shown = h.Temp.Select(t => Math.Round(t, MidpointRounding.AwayFromZero)).ToArray();
+        var temps = shown.AsSpan(start, n);
         double lo = double.MaxValue, hi = double.MinValue;
         foreach (var t in temps) { lo = Math.Min(lo, t); hi = Math.Max(hi, t); }
         var range = Math.Max(1, hi - lo);
@@ -88,8 +91,8 @@ public partial class WeatherPage : UserControl
         var dim = (Brush)FindResource("Track");
         Hours.ItemsSource = Enumerable.Range(start, n).Select(i =>
         {
-            var share = 0.25 + 0.75 * (h.Temp[i] - lo) / range; // keep the coldest bar visible
-            return new HourBar(i == start ? "Now" : h.Time[i][11..13], $"{h.Temp[i]:0}°",
+            var share = 0.25 + 0.75 * (shown[i] - lo) / range; // keep the coldest bar visible
+            return new HourBar(i == start ? "Now" : h.Time[i][11..13], $"{shown[i]:0}°",
                 h.Rain[i] is > 0 and var r ? $"{r}%" : "",
                 new GridLength(1 - share, GridUnitType.Star), new GridLength(share, GridUnitType.Star),
                 i == start ? accent : dim);
