@@ -136,6 +136,11 @@ static class SelfTest
             var upright = ImageOps.Load(sideways);
             Check(upright.PixelWidth == 100 && upright.PixelHeight == 200, $"exif orientation: {upright.PixelWidth}×{upright.PixelHeight}");
 
+            // Media: trim, resize, audio out of video, lossless keeps the sample rate (real files through Windows' transcoder)
+            Task.Run(Media).GetAwaiter().GetResult();
+            Check(MediaOps.ParseTime("1:05.5") == TimeSpan.FromSeconds(65.5) && MediaOps.ParseTime("1:02:03") == new TimeSpan(1, 2, 3)
+                && MediaOps.ParseTime("90") == TimeSpan.FromSeconds(90) && MediaOps.ParseTime("x") is null && MediaOps.ParseTime("-1") is null, "media time parse");
+
             // Color math
             var rnd = new Random(7);
             for (var i = 0; i < 300; i++)
@@ -456,7 +461,7 @@ static class SelfTest
         var clean = new Pages.CleanPage();
         var disk = new Pages.ScanPage();
         disk.Show(scan);
-        foreach (var page in new System.Windows.Controls.UserControl[] { clean, disk })
+        foreach (var page in new System.Windows.Controls.UserControl[] { clean, disk, new Pages.MediaPage() })
         {
             page.Measure(new Size(1000, 700));
             page.Arrange(new Rect(0, 0, 1000, 700));
@@ -464,6 +469,76 @@ static class SelfTest
         }
         Check(clean.Groups.ItemContainerGenerator.ContainerFromIndex(0) is not null, "clean page: groups built");
         Check(disk.List.ItemContainerGenerator.ContainerFromIndex(1) is not null && disk.Map.ActualWidth > 100, "scan page: rows and treemap laid out");
+    }
+
+    static async Task Media()
+    {
+        var dir = Directory.CreateTempSubdirectory("glance-selftest-").FullName;
+        try
+        {
+            // 2 s of 440 Hz, 44.1 kHz 16-bit stereo
+            const int rate = 44100, seconds = 2;
+            var wav = Path.Combine(dir, "tone.wav");
+            using (var w = new BinaryWriter(File.Create(wav)))
+            {
+                var data = rate * seconds * 4;
+                w.Write("RIFF"u8); w.Write(36 + data); w.Write("WAVEfmt "u8); w.Write(16); w.Write((short)1); w.Write((short)2);
+                w.Write(rate); w.Write(rate * 4); w.Write((short)4); w.Write((short)16); w.Write("data"u8); w.Write(data);
+                for (var i = 0; i < rate * seconds; i++) { var v = (short)(Math.Sin(i * 2 * Math.PI * 440 / rate) * 8000); w.Write(v); w.Write(v); }
+            }
+            var tone = await MediaOps.Probe(wav);
+            Check(tone.Video is null && tone.Audio?.SampleRate == rate && Math.Abs(tone.Duration.TotalSeconds - seconds) < 0.1, $"media probe wav: {tone.Duration}");
+
+            static bool Near(TimeSpan t, double s) => Math.Abs(t.TotalSeconds - s) < 0.2;
+            var f = (string n) => MediaOps.Formats.First(x => x.Name == n);
+
+            var mp3 = Path.Combine(dir, "cut.mp3");
+            await MediaOps.Convert(wav, mp3, MediaOps.Profile(f("MP3"), MediaOps.Quality.Medium, tone, null),
+                TimeSpan.FromSeconds(0.5), TimeSpan.FromSeconds(1.5), tone.Duration, null, default);
+            var cut = await MediaOps.Probe(mp3);
+            Check(cut.Audio is not null && Near(cut.Duration, 1), $"media trim to mp3: {cut.Duration}");
+
+            var flac = Path.Combine(dir, "same.flac");
+            await MediaOps.Convert(wav, flac, MediaOps.Profile(f("FLAC"), MediaOps.Quality.High, tone, null), TimeSpan.Zero, tone.Duration, tone.Duration, null, default);
+            Check((await MediaOps.Probe(flac)).Audio?.SampleRate == rate, "media flac keeps sample rate");
+            var wav2 = Path.Combine(dir, "cut.wav");
+            await MediaOps.Convert(wav, wav2, MediaOps.Profile(f("WAV"), MediaOps.Quality.High, tone, null), TimeSpan.FromSeconds(1), tone.Duration, tone.Duration, null, default);
+            var wavInfo = await MediaOps.Probe(wav2);
+            Check(wavInfo.Audio?.SampleRate == rate && Near(wavInfo.Duration, 1), $"media wav keeps sample rate, trims start: {wavInfo.Duration}");
+
+            var bad = Path.Combine(dir, "nothing.mp3");
+            await File.WriteAllTextAsync(bad, "not audio");
+            var refused = false;
+            try { await MediaOps.Convert(bad, Path.Combine(dir, "out.m4a"), MediaOps.Profile(f("M4A"), MediaOps.Quality.Low, tone, null), TimeSpan.Zero, tone.Duration, tone.Duration, null, default); }
+            catch (Exception) { refused = true; }
+            Check(refused && !File.Exists(Path.Combine(dir, "out.m4a")), "media: a failed convert leaves no file");
+            try { await MediaOps.Convert(wav, wav, MediaOps.Profile(f("WAV"), MediaOps.Quality.High, tone, null), TimeSpan.Zero, tone.Duration, tone.Duration, null, default); refused = false; }
+            catch (IOException) { refused = true; }
+            Check(refused && File.Exists(wav), "media: won't write over its own source");
+
+            // A 640×360 video with that tone under it, made with Windows' own editor
+            var comp = new Windows.Media.Editing.MediaComposition();
+            comp.Clips.Add(Windows.Media.Editing.MediaClip.CreateFromColor(Windows.UI.Color.FromArgb(255, 30, 140, 90), TimeSpan.FromSeconds(seconds)));
+            comp.BackgroundAudioTracks.Add(await Windows.Media.Editing.BackgroundAudioTrack.CreateFromFileAsync(await Windows.Storage.StorageFile.GetFileFromPathAsync(wav)));
+            var mp4 = Path.Combine(dir, "clip.mp4");
+            await File.WriteAllBytesAsync(mp4, []);
+            var make = Windows.Media.MediaProperties.MediaEncodingProfile.CreateMp4(Windows.Media.MediaProperties.VideoEncodingQuality.Vga);
+            (make.Video.Width, make.Video.Height) = (640, 360);
+            await comp.RenderToFileAsync(await Windows.Storage.StorageFile.GetFileFromPathAsync(mp4), Windows.Media.Editing.MediaTrimmingPreference.Precise, make);
+            var clip = await MediaOps.Probe(mp4);
+            Check(clip.Video is { Width: 640, Height: 360 } && clip.Audio is not null, $"media probe mp4: {clip.Video?.Width}×{clip.Video?.Height}");
+
+            var small = Path.Combine(dir, "small.mp4");
+            await MediaOps.Convert(mp4, small, MediaOps.Profile(f("MP4"), MediaOps.Quality.Low, clip, 240), TimeSpan.Zero, TimeSpan.FromSeconds(1), clip.Duration, null, default);
+            var smallInfo = await MediaOps.Probe(small);
+            Check(smallInfo.Video is { Width: 426, Height: 240 } && Near(smallInfo.Duration, 1), $"media resize + trim: {smallInfo.Video?.Width}×{smallInfo.Video?.Height} {smallInfo.Duration}");
+
+            var sound = Path.Combine(dir, "sound.m4a");
+            await MediaOps.Convert(mp4, sound, MediaOps.Profile(f("M4A"), MediaOps.Quality.High, clip, null), TimeSpan.Zero, clip.Duration, clip.Duration, null, default);
+            var soundInfo = await MediaOps.Probe(sound);
+            Check(soundInfo.Video is null && soundInfo.Audio is not null && Near(soundInfo.Duration, seconds), "media: audio out of video");
+        }
+        finally { try { Directory.Delete(dir, true); } catch (IOException) { } }
     }
 
     static Snapshot Snap(float gpuTemp) => new("", 0, null, null, null, "", 0, gpuTemp, null, null, null, null, null, null, 0, 0, [], []);

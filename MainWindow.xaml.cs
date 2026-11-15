@@ -37,7 +37,7 @@ public partial class MainWindow : Window
         new("Calendar", "Tools", "\uE787", () => new CalendarPage()),
         new("Password", "Tools", "\uE8D7", () => new PasswordPage()),
         new("Color", "Tools", "\uE790", () => new ColorPage()),
-        new("Images", "Tools", "\uEB9F", () => new ImagePage()),
+        Merged("Converters", "Tools", "\uE895", new("Images", "\uEB9F", () => new ImagePage()), new("Media", "\uE714", () => new MediaPage())),
         new("Compare", "Tools", "\uE8C8", () => new ComparePage()),
         new("CLI", "Dev", "\uE756", () => new CliPage()),
         new("Ports", "Dev", "\uE943", () => new DevPage()),
