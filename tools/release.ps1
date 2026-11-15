@@ -3,7 +3,7 @@
 # Notes are the commit subjects since the last release; edit them on GitHub afterwards if you like.
 param([string]$Version)
 $root = Split-Path $PSScriptRoot
-$csproj = Join-Path $root 'Glance.csproj'
+$csproj = Join-Path $root 'src\Glance\Glance.csproj'
 $public = 'dpatrik0610/glance-releases' # Services\Updater.cs reads from here
 $Host.UI.RawUI.WindowTitle = 'Glance - publish release'
 Set-Location $root
@@ -17,6 +17,9 @@ function Fail($msg) {
 $gh = (Get-Command gh -ErrorAction Ignore).Source
 if (-not $gh) { $gh = Join-Path $env:ProgramFiles 'GitHub CLI\gh.exe' }
 if (-not (Test-Path $gh)) { Fail 'GitHub CLI (gh) is not installed.' }
+$iscc = @((Get-Command ISCC -ErrorAction Ignore).Source, "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
+    "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+if (-not $iscc) { Fail 'Inno Setup 6 is not installed (it builds the setup): winget install JRSoftware.InnoSetup' }
 
 if (git status --porcelain) { Fail 'There are uncommitted changes. Commit them first: a release is built from a commit.' }
 if ((git branch --show-current) -ne 'main') { Fail 'Not on main.' }
@@ -54,14 +57,21 @@ $zip = Join-Path $root "bin\release\Glance-$Version-win-x64.zip"
 Compress-Archive -Path "$out\*" -DestinationPath $zip -Force
 $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
 
+# The installer. Its name must not end in -win-x64.zip: Services\Updater.cs picks the zip by that.
+Write-Host 'Setup...' -ForegroundColor DarkGray
+& $iscc /Q "/DAppVersion=$Version" "/DBuildDir=$out" "/O$root\bin\release" "$root\installer\Glance.iss"
+if ($LASTEXITCODE) { Undo 'Building the setup failed. Nothing was committed or published.' }
+$setup = Join-Path $root "bin\release\Glance-$Version-setup.exe"
+& "$PSScriptRoot\sign.ps1" -Path $setup | Out-Null
+
 $notes = Join-Path $env:TEMP 'glance-release-notes.md'
 $lines = $changes | ForEach-Object { if ($_ -match '^([^:]{1,40}): (.+)$') { "- **$($Matches[1]):** $($Matches[2])" } else { "- $_" } }
 @"
 $($lines -join "`n")
 
-**Install:** unzip anywhere and run ``Glance.exe`` (replacing the old folder keeps your settings, they live in %APPDATA%\Glance). Needs Windows 10/11 x64, the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) and WebView2.
+**Install:** run ``Glance-$Version-setup.exe`` (no admin needed), or unzip ``Glance-$Version-win-x64.zip`` anywhere and run ``Glance.exe``. Settings live in %APPDATA%\Glance and survive updates. Needs Windows 10/11 x64, the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) and WebView2.
 
-The exe isn't signed by a public certificate, so SmartScreen may warn the first time: More info, then Run anyway.
+The setup and exe aren't signed by a public certificate, so SmartScreen may warn the first time: More info, then Run anyway.
 
 SHA-256 of the zip: ``$sha``
 "@ | ForEach-Object { [IO.File]::WriteAllText($notes, $_) } # no BOM, in either PowerShell
@@ -70,13 +80,13 @@ Write-Host 'Publishing...' -ForegroundColor DarkGray
 git commit -q -m "Version $Version" -- $csproj
 if ($LASTEXITCODE) { Undo 'Committing the version failed. Nothing was published.' }
 git tag $tag
-$create = "gh release create $tag `"$zip`" --title `"Glance $Version`" --notes-file `"$notes`""
+$create = "gh release create $tag `"$zip`" `"$setup`" --title `"Glance $Version`" --notes-file `"$notes`""
 git push -q origin main $tag
 if ($LASTEXITCODE) { Fail "Push failed; the commit and tag $tag are only local. Finish by hand: git push origin main $tag, then $create" }
-& $gh release create $tag $zip --title "Glance $Version" --notes-file $notes
+& $gh release create $tag $zip $setup --title "Glance $Version" --notes-file $notes
 if ($LASTEXITCODE) { Fail "Creating the release failed ($tag is pushed). Retry: $create, and again with -R $public" }
 # The source repo is private: installed copies update from this public one, which holds only the releases.
-& $gh release create $tag $zip -R $public --title "Glance $Version" --notes-file $notes
+& $gh release create $tag $zip $setup -R $public --title "Glance $Version" --notes-file $notes
 if ($LASTEXITCODE) { Fail "The private release is up, but the public one failed, so nobody gets the update yet. Retry: $create -R $public" }
 
 Write-Host "Done: Glance $Version is released." -ForegroundColor Green

@@ -14,27 +14,29 @@
     <PublishReadyToRun>true</PublishReadyToRun>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
-    <ApplicationIcon>Glance.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\Glance.ico</ApplicationIcon>
     <Version>1.1.6</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- WinForms' "set DPI in code" advice: WPF owns the windows here and reads DPI awareness from the manifest. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
+    <!-- The repository root (this file is in src\Glance), where tools\ lives. Ends with a backslash. -->
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\'))</RepoRoot>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Same file as the exe icon; window and tray load it from resources. Regenerate: tools\make-icon.ps1 -->
-    <Resource Include="Glance.ico" />
+    <Resource Include="Assets\Glance.ico" />
     <None Include="Terminal\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Map\**" CopyToOutputDirectory="PreserveNewest" />
     <!-- Where this build came from, for "Rebuild and restart" (tools\deploy.ps1). Only in local builds: a release
          (-p:PublicBuild=true) carries no path from the machine that built it. -->
-    <AssemblyMetadata Include="SourceDir" Value="$(MSBuildProjectDirectory)" Condition="'$(PublicBuild)' != 'true'" />
+    <AssemblyMetadata Include="SourceDir" Value="$(RepoRoot)" Condition="'$(PublicBuild)' != 'true'" />
   </ItemGroup>
 
   <!-- Sign the exe with the local cert (see tools\trust.ps1). No-op until that cert exists. -->
   <Target Name="SignExe" AfterTargets="Build">
     <!-- Clear PSModulePath: one inherited from PowerShell 7 makes Windows PowerShell load the wrong Security module. -->
-    <Exec Command="set &quot;PSModulePath=&quot; &amp; powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\tools\sign.ps1&quot; -Path &quot;$(TargetDir)$(AssemblyName).exe&quot;" />
+    <Exec Command="set &quot;PSModulePath=&quot; &amp; powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(RepoRoot)tools\sign.ps1&quot; -Path &quot;$(TargetDir)$(AssemblyName).exe&quot;" />
   </Target>
 
   <ItemGroup>

@@ -9,3 +9,6 @@ obj/
 
 # graphify knowledge graph
 graphify-out/
+
+# Claude Code local settings
+.claude/

@@ -247,6 +247,11 @@ static class SelfTest
             Check(Updater.Newer(Rel("v1.0.9", "Glance-1.0.9-win-x64.zip", "sha256:ab12"), v110) is null, "update: older not offered");
             Check(Updater.Newer(Rel("v1.2.0", "Glance-1.2.0-win-x64.zip", null), v110) is null, "update: no digest, not offered");
             Check(Updater.Newer(Rel("v1.2.0", "notes.txt", "sha256:ab12"), v110) is null, "update: no zip, not offered");
+            const string both = """{"tag_name":"v1.2.0","assets":[{"name":"Glance-1.2.0-win-x64.zip","browser_download_url":"https://x/z","digest":"sha256:aa"},{"name":"Glance-1.2.0-setup.exe","browser_download_url":"https://x/Glance-1.2.0-setup.exe","digest":"sha256:bb"}]}""";
+            Check(Updater.Newer(both, v110, installed: true) is { Setup: true, Sha256: "bb" }, "update: installed copy takes the setup");
+            Check(Updater.Newer(both, v110) is { Setup: false, Sha256: "aa" }, "update: portable copy takes the zip");
+            Check(Updater.Newer(Rel("v1.2.0", "Glance-1.2.0-win-x64.zip", "sha256:ab12"), v110, installed: true) is { Setup: false },
+                "update: installed copy falls back to the zip when a release has no setup");
 
             // JSON page: strict check, error position as an editor counts it, formatting that keeps values as written
             Check(JsonText.Check("""{"a":[1,2],"b":"é"}""") is { Ok: true, Message: "object · 2 keys" }, "json: valid object");

@@ -2,7 +2,7 @@
 # white pupil looking up and right) on a dark glass squircle, so it reads on light and dark taskbars alike.
 # Inside the app the mark is drawn live without the tile (Logo.cs). Usage: powershell -File tools\make-icon.ps1
 Add-Type -AssemblyName System.Drawing
-$out = Join-Path $PSScriptRoot '..\Glance.ico'
+$out = Join-Path $PSScriptRoot '..\src\Glance\Assets\Glance.ico'
 $sizes = 16, 20, 24, 32, 40, 48, 64, 256
 function C($hex, $a = 255) { [System.Drawing.Color]::FromArgb($a, [Convert]::ToInt32($hex.Substring(0, 2), 16), [Convert]::ToInt32($hex.Substring(2, 2), 16), [Convert]::ToInt32($hex.Substring(4, 2), 16)) }
 $pngs = foreach ($s in $sizes) {

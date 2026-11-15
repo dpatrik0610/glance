@@ -12,7 +12,7 @@ public sealed class Tray
     public Tray(Forms.ContextMenuStrip menu, Action leftClick)
     {
         // Load the size the tray actually uses, so Windows doesn't rescale a bigger frame.
-        using var ico = Application.GetResourceStream(new Uri("pack://application:,,,/Glance.ico")).Stream;
+        using var ico = Application.GetResourceStream(new Uri("pack://application:,,,/Assets/Glance.ico")).Stream;
         icon = new Forms.NotifyIcon
         {
             Icon = new Draw.Icon(ico, Forms.SystemInformation.SmallIconSize),
