@@ -13,7 +13,7 @@ namespace Glance.Pages;
 public partial class CalendarPage : UserControl
 {
     static readonly CultureInfo Culture = CultureInfo.CurrentCulture;
-    static readonly Color DueColor = Color.FromRgb(0xFF, 0x6A, 0x3D);
+    static readonly Color DueColor = Color.FromRgb(0xE6, 0xA6, 0x5D);
 
     DateTime month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     DateTime day = DateTime.Today;

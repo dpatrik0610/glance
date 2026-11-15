@@ -202,7 +202,7 @@ public partial class App : Application
     {
         var blame = who is null ? "" : " · " + (a.Blame == Blame.Memory ? $"{who.Name} {who.MemText}" : $"{who.Name} {who.Cpu:0}%");
         Db.Warn($"alert {a.Label} {a.Value:0}{a.Unit} (limit {a.Limit:0}){blame}");
-        var color = a.Critical ? Color.FromRgb(0xFF, 0x4D, 0x5E) : Color.FromRgb(0xFF, 0x6A, 0x3D);
+        var color = a.Critical ? Color.FromRgb(0xFF, 0x4D, 0x5E) : Color.FromRgb(0xE6, 0xA6, 0x5D);
         AlertWindow.Show(new Toast(a.Label + blame, a.Value.ToString("0"), a.Unit, "Limit", $"{(a.Above ? "≥" : "≤")} {a.Limit:0}{a.Unit}", color, false),
             ((App)Current).ShowMain);
     }
@@ -210,7 +210,7 @@ public partial class App : Application
     void ShowTrack(Player p)
     {
         if (!Settings.TrackAlerts) return;
-        AlertWindow.Show(new Toast($"Now playing · {p.Source}", p.Title, "", "", "", Color.FromRgb(0xFF, 0x6A, 0x3D), false, p.Cover, p.Artist, Quiet: true),
+        AlertWindow.Show(new Toast($"Now playing · {p.Source}", p.Title, "", "", "", Color.FromRgb(0xE6, 0xA6, 0x5D), false, p.Cover, p.Artist, Quiet: true),
             () => Drop("Now Playing"));
     }
 
@@ -376,7 +376,7 @@ public partial class App : Application
             if (r is null || r.Version == offered) return;
             offered = r.Version;
             AlertWindow.Show(new Toast("Glance · update", $"Version {r.Version}", "", "You have", Updater.Current.ToString(),
-                Color.FromRgb(0xFF, 0x6A, 0x3D), true, Detail: "Click to update and restart"), () => Update(r));
+                Color.FromRgb(0xE6, 0xA6, 0x5D), true, Detail: "Click to update and restart"), () => Update(r));
         }
         catch (Exception e)
         {
@@ -391,7 +391,7 @@ public partial class App : Application
                 "Glance downloads it, closes and starts again." +
                 (CliPage.Running > 0 ? " Terminals reopen in their folders, but anything running in them stops." : ""),
                 "Update", danger: false)) return;
-        AlertWindow.Show(new Toast("Glance · update", $"Downloading {r.Version}", "", "", "", Color.FromRgb(0xFF, 0x6A, 0x3D), false,
+        AlertWindow.Show(new Toast("Glance · update", $"Downloading {r.Version}", "", "", "", Color.FromRgb(0xE6, 0xA6, 0x5D), false,
             Detail: "Glance restarts when it's ready", Quiet: true), () => { });
         try
         {

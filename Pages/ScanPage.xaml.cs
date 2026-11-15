@@ -18,7 +18,7 @@ public partial class ScanPage : UserControl
     public record Row(Node? Node, string Icon, string Name, string Size, double Share);
     public record Kind(string Name, Brush Brush, string Size);
 
-    static readonly Color Accent = Color.FromRgb(0xFF, 0x6A, 0x3D), Free = Color.FromArgb(0x55, 0x9C, 0x9C, 0xA3), Blue = Color.FromRgb(0x3D, 0xA9, 0xFF);
+    static readonly Color Accent = Color.FromRgb(0x7F, 0xD6, 0xA4), Free = Color.FromArgb(0x55, 0x9C, 0x9C, 0xA3), Blue = Color.FromRgb(0x3D, 0xA9, 0xFF);
     static readonly Dictionary<string, Color> KindColors = new()
     {
         ["Video"] = Color.FromRgb(0xFF, 0x5C, 0x8A), ["Images"] = Color.FromRgb(0x3D, 0xA9, 0xFF), ["Audio"] = Color.FromRgb(0x2C, 0xC7, 0xC7),

@@ -14,8 +14,8 @@ namespace Glance;
 public sealed class Spark : FrameworkElement
 {
     static readonly Pen Guide = Frozen(new Pen(new SolidColorBrush(Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF)), 1));
-    static readonly Pen DotRing = Frozen(new Pen(new SolidColorBrush(Color.FromRgb(0x16, 0x16, 0x18)), 2));
-    static readonly Brush LabelBg = Frozen(new SolidColorBrush(Color.FromArgb(0xEE, 0x1E, 0x1E, 0x22)));
+    static readonly Pen DotRing = Frozen(new Pen(new SolidColorBrush(Color.FromRgb(0x0C, 0x1B, 0x15)), 2));
+    static readonly Brush LabelBg = Frozen(new SolidColorBrush(Color.FromArgb(0xEE, 0x12, 0x22, 0x1B)));
     static readonly Brush LabelText = Frozen(new SolidColorBrush(Color.FromRgb(0xF4, 0xF4, 0xF5)));
     static readonly Typeface Face = new("Segoe UI Variable Text, Segoe UI");
 

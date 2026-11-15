@@ -78,7 +78,7 @@ public partial class HistoryPage : UserControl
 
         Charts.ItemsSource = charts = new[]
         {
-            Make("CPU load", "cpu", "{0:0}%", 0xFF6A3D, 100, "cpu"),
+            Make("CPU load", "cpu", "{0:0}%", 0xE6A65D, 100, "cpu"),
             Make("GPU load", "gpu", "{0:0}%", 0x4CC37A, 100, "gpu"),
             Make("CPU temperature", "cpuTemp", "{0:0}°C", 0xFF4D5E, 100, "cpu"),
             Make("GPU temperature", "gpuTemp", "{0:0}°C", 0xF5B83D, 100, "gpu"),

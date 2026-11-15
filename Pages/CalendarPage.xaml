@@ -47,7 +47,7 @@
             </Border>
 
             <!-- Not connected: how to, over the month (which still shows Glance's own due items) -->
-            <Border x:Name="ConnectCard" Style="{StaticResource Card}" Background="#F2161618" VerticalAlignment="Center" HorizontalAlignment="Center"
+            <Border x:Name="ConnectCard" Style="{StaticResource Card}" Background="#F20C1B15" VerticalAlignment="Center" HorizontalAlignment="Center"
                     Width="470" Visibility="Collapsed">
                 <StackPanel>
                     <TextBlock Text="Connect Google Calendar" Style="{StaticResource H}" FontSize="17" Margin="0,0,0,8" />

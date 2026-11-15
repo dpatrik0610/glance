@@ -21,7 +21,7 @@
                     </DockPanel>
                     <TextBlock x:Name="CpuLoad" Style="{StaticResource Big}" Margin="0,6,0,0" />
                     <TextBlock x:Name="CpuSub" Style="{StaticResource Label}" />
-                    <g:Spark x:Name="CpuSpark" Format="{}{0:0}%" Color="#FF6A3D" Height="34" Margin="0,10,0,0" />
+                    <g:Spark x:Name="CpuSpark" Format="{}{0:0}%" Color="#E6A65D" Height="34" Margin="0,10,0,0" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="GPU load" MouseLeftButtonUp="OpenHistory">
@@ -86,7 +86,7 @@
                             <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
                             <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1" />
                         </UniformGrid>
-                        <g:Spark x:Name="CpuHistory" Format="{}{0:0}%" Color="#FF6A3D" />
+                        <g:Spark x:Name="CpuHistory" Format="{}{0:0}%" Color="#E6A65D" />
                         <g:Spark x:Name="GpuHistory" Format="{}{0:0}%" Color="#4CC37A" />
                     </Grid>
                 </DockPanel>

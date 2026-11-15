@@ -6,8 +6,8 @@
     <UserControl.Resources>
         <!-- A titled group of rows, hairlines between them (SettingRow draws its own top line) -->
         <Style x:Key="Group" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource CardBg}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+            <Setter Property="Background" Value="{StaticResource CardFill}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardEdge}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="12" />
         </Style>
@@ -75,6 +75,11 @@
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Glance" FontSize="20" FontWeight="SemiBold" />
                             <TextBlock x:Name="VersionText" Style="{StaticResource Label}" Margin="0,2,0,0" />
+                            <TextBlock Foreground="{StaticResource Sub}" FontSize="12" Margin="0,4,0,0">
+                                Made by dpatr ·
+                                <Hyperlink NavigateUri="https://github.com/dpatrik0610" RequestNavigate="OpenLink" Foreground="{StaticResource Accent}">GitHub</Hyperlink> ·
+                                <Hyperlink NavigateUri="https://dobospatrik.com" RequestNavigate="OpenLink" Foreground="{StaticResource Accent}">dobospatrik.com</Hyperlink>
+                            </TextBlock>
                         </StackPanel>
                     </DockPanel>
                 </Border>
@@ -109,6 +114,12 @@
                         <local:SettingRow Icon="&#xE790;" Title="Window opacity">
                             <StackPanel x:Name="OpacityRow" Orientation="Horizontal">
                                 <Slider Minimum="0.1" Maximum="1" />
+                                <TextBlock Style="{StaticResource Value}" />
+                            </StackPanel>
+                        </local:SettingRow>
+                        <local:SettingRow Icon="&#xE793;" Title="Color glow" Description="Green and orange light on the glass">
+                            <StackPanel x:Name="GlowRow" Orientation="Horizontal">
+                                <Slider Minimum="0" Maximum="1" />
                                 <TextBlock Style="{StaticResource Value}" />
                             </StackPanel>
                         </local:SettingRow>

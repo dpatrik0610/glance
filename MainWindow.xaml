@@ -11,8 +11,34 @@
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" GlassFrameThickness="-1" ResizeBorderThickness="6" UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
-    <Border x:Name="Panel" Background="#C8161618">
+    <Border x:Name="Panel" Background="#C80B2419">
       <Grid>
+        <Grid x:Name="Glow" IsHitTestVisible="False">
+            <Rectangle>
+                <Rectangle.Fill>
+                    <RadialGradientBrush Center="0.85,0" GradientOrigin="0.85,0" RadiusX="0.75" RadiusY="0.95">
+                        <GradientStop Color="#8E2E8B57" Offset="0" />
+                        <GradientStop Color="#002E8B57" Offset="1" />
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle>
+                <Rectangle.Fill>
+                    <RadialGradientBrush Center="0,0.6" GradientOrigin="0,0.6" RadiusX="0.6" RadiusY="0.8">
+                        <GradientStop Color="#AA1F5C3F" Offset="0" />
+                        <GradientStop Color="#001F5C3F" Offset="1" />
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle>
+                <Rectangle.Fill>
+                    <RadialGradientBrush Center="0.35,1" GradientOrigin="0.35,1" RadiusX="0.5" RadiusY="0.45">
+                        <GradientStop Color="#4DE6A65D" Offset="0" />
+                        <GradientStop Color="#00E6A65D" Offset="1" />
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+        </Grid>
         <Grid x:Name="Body" Margin="14">
             <Grid.RenderTransform>
                 <TranslateTransform x:Name="BodyShift" />
@@ -171,7 +197,7 @@
         <!-- Ctrl+K command palette: one search over pages, actions, repos, containers, notes and clipboard -->
         <Grid x:Name="PaletteLayer" Visibility="Collapsed" Background="#8C000000" MouseLeftButtonDown="PaletteBackdrop">
             <Border x:Name="PaletteCard" Width="640" VerticalAlignment="Top" Margin="16,84,16,16" CornerRadius="20" Padding="10"
-                    Background="#F51A1A1E" BorderBrush="{StaticResource Line}" BorderThickness="1" RenderTransformOrigin="0.5,0">
+                    Background="#F50F1D17" BorderBrush="{StaticResource Line}" BorderThickness="1" RenderTransformOrigin="0.5,0">
                 <Border.RenderTransform>
                     <ScaleTransform x:Name="PaletteZoom" />
                 </Border.RenderTransform>

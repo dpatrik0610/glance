@@ -48,7 +48,7 @@ public sealed class Eyedropper : Window
         grid.Children.Add(new Rectangle { Width = Cell + 2, Height = Cell + 2, Stroke = Brushes.White, StrokeThickness = 1.5 }); // the pixel you'd pick
         Content = new Border
         {
-            CornerRadius = new(12), Padding = new(6), Background = new SolidColorBrush(Color.FromArgb(0xF0, 0x1E, 0x1E, 0x22)),
+            CornerRadius = new(12), Padding = new(6), Background = new SolidColorBrush(Color.FromArgb(0xF0, 0x12, 0x22, 0x1B)),
             BorderBrush = new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF)), BorderThickness = new(1),
             Child = new StackPanel
             {

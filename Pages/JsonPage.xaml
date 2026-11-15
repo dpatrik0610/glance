@@ -24,7 +24,7 @@
                         <Setter Property="BorderBrush" Value="Transparent" />
                         <Style.Triggers>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter Property="BorderBrush" Value="#B3FF6A3D" />
+                                <Setter Property="BorderBrush" Value="#B37FD6A4" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>

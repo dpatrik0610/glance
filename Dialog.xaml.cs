@@ -9,7 +9,7 @@ namespace Glance;
 /// Glance's own confirm/info box: a card in Glance's panel colours that grows out of the Glance mark. Replaces Windows' MessageBox (and its ding).
 public partial class Dialog : Window
 {
-    static readonly Color Danger = Color.FromRgb(0xFF, 0x4D, 0x5E), Accent = Color.FromRgb(0xFF, 0x6A, 0x3D);
+    static readonly Color Danger = Color.FromRgb(0xFF, 0x4D, 0x5E), Accent = ((SolidColorBrush)Application.Current.Resources["Accent"]).Color;
 
     bool result, closing;
 

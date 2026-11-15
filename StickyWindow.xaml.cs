@@ -104,7 +104,7 @@ public partial class StickyWindow : Window
             PlacementTarget = DotButton, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true,
             Child = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(0xF4, 0x1E, 0x1E, 0x22)), CornerRadius = new(12), Padding = new(12),
+                Background = new SolidColorBrush(Color.FromArgb(0xF4, 0x12, 0x22, 0x1B)), CornerRadius = new(12), Padding = new(12),
                 BorderBrush = (Brush)FindResource("Line"), BorderThickness = new(1),
                 Child = new StackPanel
                 {

@@ -20,7 +20,7 @@ public sealed class SpeedGauge : Button
     const double From = 135, Sweep = 270; // degrees clockwise from 3 o'clock: the gap is at the bottom
     const double WarmUp = 1.3; // s, the needle's sweep to the top and back while pinging
     static readonly Color PingC = Color.FromRgb(0x4C, 0xC3, 0x7A), DownC = Color.FromRgb(0x5A, 0xA9, 0xFF),
-        UpC = Color.FromRgb(0xB0, 0x7C, 0xFF), Accent = Color.FromRgb(0xFF, 0x6A, 0x3D),
+        UpC = Color.FromRgb(0xB0, 0x7C, 0xFF), Accent = Color.FromRgb(0xE6, 0xA6, 0x5D),
         TextC = Color.FromRgb(0xF4, 0xF4, 0xF5), SubC = Color.FromRgb(0x9C, 0x9C, 0xA3);
     static readonly Typeface Bold = new(new FontFamily("Segoe UI Variable Display, Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
     static readonly Typeface Regular = new(new FontFamily("Segoe UI Variable Text, Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);

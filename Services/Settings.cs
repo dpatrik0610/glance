@@ -7,6 +7,7 @@ namespace Glance.Services;
 public class Settings
 {
     public double Opacity { get; set; } = 0.78;
+    public double Glow { get; set; } = 0.6;
     public bool Blur { get; set; } = true;
     public bool Topmost { get; set; }
     public bool NavCollapsed { get; set; }

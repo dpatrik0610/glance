@@ -19,6 +19,7 @@ public partial class SettingsPage : UserControl
         VersionText.Text = $"Version {Updater.Current}" + (source ? ", built from source" : "");
         UpdateButton.Visibility = source ? Visibility.Collapsed : Visibility.Visible;
         Bind(OpacityRow, s.Opacity, v => s.Opacity = Math.Round(v, 2), v => $"{v:P0}");
+        Bind(GlowRow, s.Glow, v => s.Glow = Math.Round(v, 2), v => $"{v:P0}");
         Bind(BarOpacityRow, s.BarOpacity, v => s.BarOpacity = Math.Round(v, 2), v => $"{v:P0}");
         Bind(RefreshRow, s.RefreshMs, v => s.RefreshMs = (int)v, v => $"{v / 1000:0.##}s");
         Bind(CpuLimitRow, s.CpuTempLimit, v => s.CpuTempLimit = (float)v, v => $"{v:0}°C");
@@ -165,6 +166,9 @@ public partial class SettingsPage : UserControl
     }
 
     void CheckUpdates(object sender, RoutedEventArgs e) => App.CheckForUpdates();
+
+    void OpenLink(object sender, System.Windows.Navigation.RequestNavigateEventArgs e) =>
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
 }
 
 /// One settings line: icon, title and a short description on the left, its control on the right.

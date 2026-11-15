@@ -41,7 +41,7 @@
                                     <TextBlock DockPanel.Dock="Top" Text="{Binding Price}" Style="{StaticResource Big}" FontSize="24" Margin="0,6,0,8"
                                                Typography.NumeralAlignment="Tabular" />
                                     <TextBlock DockPanel.Dock="Bottom" Text="{Binding Range}" Style="{StaticResource Label}" FontSize="11" Margin="0,6,0,0" />
-                                    <g:Spark Series="{Binding Closes}" Format="{Binding Format}" Color="#FF6A3D" Max="0" MinHeight="40" />
+                                    <g:Spark Series="{Binding Closes}" Format="{Binding Format}" Color="#E6A65D" Max="0" MinHeight="40" />
                                 </DockPanel>
                             </Border>
                             <DataTemplate.Triggers>
