@@ -236,6 +236,12 @@
                 </DockPanel>
             </Border>
         </Grid>
+        <!-- Horizon line along the top edge, above everything (like the Vice City Discord theme) -->
+        <Rectangle Height="2" VerticalAlignment="Top" Fill="{StaticResource TopLine}" IsHitTestVisible="False">
+            <Rectangle.Effect>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.7" Color="{StaticResource TopLineGlow}" />
+            </Rectangle.Effect>
+        </Rectangle>
       </Grid>
     </Border>
 </Window>

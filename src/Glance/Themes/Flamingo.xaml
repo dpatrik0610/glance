@@ -25,6 +25,14 @@
     <Color x:Key="Glow3">#66FF8A3D</Color>
     <Color x:Key="Glow3Fade">#00FF8A3D</Color>
 
+    <!-- Thin horizon line along the window's top edge, and its glow. -->
+    <LinearGradientBrush x:Key="TopLine" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#FFB060" Offset="0" />
+        <GradientStop Color="#FF4F9A" Offset="0.5" />
+        <GradientStop Color="#9A5CFF" Offset="1" />
+    </LinearGradientBrush>
+    <Color x:Key="TopLineGlow">#FF4F9A</Color>
+
     <LinearGradientBrush x:Key="CardFill" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#26FF6EC7" Offset="0" />
         <GradientStop Color="#0FFC94AF" Offset="0.6" />
