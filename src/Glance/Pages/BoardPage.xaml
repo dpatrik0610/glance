@@ -24,7 +24,7 @@
 
             <TextBlock x:Name="Hint" Style="{StaticResource Label}" HorizontalAlignment="Center" VerticalAlignment="Center"
                        TextAlignment="Center" IsHitTestVisible="False" LineHeight="22"
-                       Text="Double-click to add a note&#10;Paste or drop pictures and text&#10;Drag the background to move around, scroll to zoom" />
+                       Text="Double-click to add a note (Markdown works, double-click a note to edit it)&#10;Paste or drop pictures and text&#10;Drag the background to move around, scroll to zoom" />
 
             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" Orientation="Horizontal">
                 <TextBlock x:Name="ZoomText" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0" />

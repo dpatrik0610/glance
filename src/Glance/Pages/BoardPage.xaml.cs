@@ -160,18 +160,48 @@ public partial class BoardPage : UserControl
     void Show(BoardItem it, bool focus = false)
     {
         FrameworkElement body;
+        Action<bool>? edit = null;
         if (it.Kind == "image")
             body = new Image { Source = LoadPicture(it), MaxWidth = it.W, Stretch = Stretch.Uniform };
         else
         {
-            var box = new TextBox
+            // A note shows its Markdown drawn; double-click switches to editing the title and source, leaving the card switches back.
+            TextBox Box(string text, string hint, double size, FontWeight weight) => new()
             {
-                Text = it.Text, Tag = "Write something…", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Width = it.W,
-                Background = Brushes.Transparent, BorderThickness = new(0), Padding = new(0), FontSize = 14,
+                Text = text, Tag = hint, AcceptsReturn = size < 15, TextWrapping = TextWrapping.Wrap, Width = it.W, Cursor = Cursors.IBeam,
+                Background = Brushes.Transparent, BorderThickness = new(0), Padding = new(0), FontSize = size, FontWeight = weight,
             };
+            var title = Box(it.Title, "Title (optional)", 15, FontWeights.SemiBold);
+            var box = Box(it.Text, "Markdown: **bold**, - [ ] task, # heading…", 14, FontWeights.Normal);
+            title.Margin = new(0, 0, 0, 6);
+            var editor = new StackPanel { Children = { title, box }, Visibility = Visibility.Collapsed };
+            var view = new StackPanel { Width = it.W };
+            title.TextChanged += (_, _) => { it.Title = title.Text; Changed(); };
             box.TextChanged += (_, _) => { it.Text = box.Text; Changed(); };
-            if (focus) box.Loaded += (_, _) => box.Focus();
-            body = box;
+            void Draw()
+            {
+                view.Children.Clear();
+                if (it.Title.Trim() != "")
+                    view.Children.Add(new TextBlock { Text = it.Title, FontSize = 15, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, Margin = new(0, 0, 0, 6) });
+                view.Children.Add(it.Text.Trim() == "" && it.Title.Trim() == ""
+                    ? new TextBlock { Text = "Empty note", Style = (Style)FindResource("Label") }
+                    : MarkdownView.Render(it.Text, at => box.Text = MarkdownView.Toggle(it.Text, at))); // box saves it
+            }
+            edit = on =>
+            {
+                editor.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+                view.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+                if (on) FocusWhenVisible(box);
+                else Draw();
+            };
+            body = new Grid { Children = { view, editor } };
+            body.IsKeyboardFocusWithinChanged += (_, e) =>
+            {
+                if (e.NewValue is true || !editor.IsVisible) return;
+                edit(false);
+                if (it.Title.Trim() == "" && it.Text.Trim() == "") Dispatcher.BeginInvoke(() => Remove(it)); // left empty
+            };
+            edit(focus);
         }
 
         var remove = new Button
@@ -187,13 +217,13 @@ public partial class BoardPage : UserControl
             CornerRadius = new(12), Padding = new(12, 2, 12, 12), Cursor = Cursors.SizeAll,
             Child = new DockPanel { Children = { head, body } },
         };
-        if (body is TextBox) body.Cursor = Cursors.IBeam;
         card.MouseEnter += (_, _) => remove.Opacity = 1;
         card.MouseLeave += (_, _) => remove.Opacity = 0;
         remove.Click += (_, _) => Remove(it);
-        // Drag by anything but the text box (which keeps its clicks for editing).
+        // Drag by anything but the text boxes, task boxes and links (which keep their clicks); double-click edits a note.
         card.MouseLeftButtonDown += (_, e) =>
         {
+            if (e.ClickCount == 2 && edit is not null) { edit(true); e.Handled = true; return; }
             board.Items.Remove(it); // to the end of the list and the top of the stack
             board.Items.Add(it);
             World.Children.Remove(card);
@@ -205,6 +235,20 @@ public partial class BoardPage : UserControl
         cards[it] = card;
         Place(it, card);
         World.Children.Add(card);
+    }
+
+    /// Focus can't land on an element until it's shown, which for a new card or a just-switched editor is after layout.
+    static void FocusWhenVisible(UIElement e)
+    {
+        if (e.IsVisible) { e.Focus(); return; }
+        DependencyPropertyChangedEventHandler? once = null;
+        once = (_, _) =>
+        {
+            if (!e.IsVisible) return;
+            e.IsVisibleChanged -= once;
+            e.Focus();
+        };
+        e.IsVisibleChanged += once;
     }
 
     static void Place(BoardItem it, FrameworkElement card)
@@ -230,7 +274,8 @@ public partial class BoardPage : UserControl
 
     void Remove(BoardItem it)
     {
-        if (it.Kind == "note" && it.Text.Trim().Length > 0
+        if (!board.Items.Contains(it)) return; // already gone (an emptied note removes itself as focus leaves)
+        if (it.Kind == "note" && (it.Title + it.Text).Trim().Length > 0
             && !Dialog.Confirm("Remove note", "Remove this note from the board?", "This can't be undone.", "Remove")) return;
         board.Items.Remove(it);
         World.Children.Remove(cards[it]);

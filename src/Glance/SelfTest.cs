@@ -36,7 +36,12 @@ static class SelfTest
                 && quote.Closes.Length == 4 && float.IsNaN(quote.Closes[1]), $"stock quote: {quote}");
             Check(Stocks.Parse("x", """{"chart":{"result":null,"error":{"code":"Not Found"}}}""") is null, "stock quote: unknown symbol");
 
-            Check(new Pages.BoardPage().Content is not null, "board page loads"); // XAML parses, saved board reads
+            Check(new Pages.BoardPage().Content is not null, "board page loads");
+            const string md = "# Plan\r\n- [ ] buy **milk**\r\n- [x] call [mom](https://example.com)\r\n\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |";
+            var tasks = MarkdownView.Tasks(md);
+            Check(tasks.Length == 2 && MarkdownView.Toggle(md, tasks[0]).Contains("- [x] buy") && MarkdownView.Toggle(md, tasks[1]).Contains("- [ ] call")
+                && MarkdownView.Toggle(md, tasks[1]).Length == md.Length, $"markdown: task toggle {string.Join(",", tasks)}");
+            Check(MarkdownView.Render(md, _ => { }) is System.Windows.Controls.StackPanel { Children.Count: 3 }, "markdown: heading, list, table"); // XAML parses, saved board reads
             HashSet<object> Keys(string f) => [.. new ResourceDictionary { Source = new Uri($"pack://application:,,,/Themes/{f}.xaml") }.Keys];
             Check(Keys("Mint").SetEquals(Keys("Flamingo")), "themes define the same keys");
 

@@ -11,6 +11,8 @@ public class BoardItem
     public double X { get; set; }
     public double Y { get; set; }
     public double W { get; set; } = 220;
+    /// Notes: an optional title, and the body as Markdown.
+    public string Title { get; set; } = "";
     public string Text { get; set; } = "";
     /// Image file name in BoardStore.Files.
     public string? File { get; set; }
