@@ -557,7 +557,28 @@ public partial class BoardPage : UserControl
         resizing = null;
         Surface.ReleaseMouseCapture();
         Surface.Cursor = null;
+        if (penBeforePan is { } pen) SetPen(pen); // back to drawing after a Ctrl-drag
+        penBeforePan = null;
         Changed();
+    }
+
+    /// The pen or eraser that was on when a Ctrl-drag started (null: neither).
+    InkCanvasEditingMode? penBeforePan;
+
+    // Ctrl + left drag pans from anywhere: over nodes, and with the pen or eraser on (which pause for the drag, so nothing is drawn).
+    void SurfacePreviewDown(object sender, MouseButtonEventArgs e)
+    {
+        if (Kanban || e.ChangedButton != MouseButton.Left || !Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
+        e.Handled = true; // nodes, ink and the rest never see this press
+        Focus();
+        if (Ink.EditingMode != InkCanvasEditingMode.None)
+        {
+            penBeforePan = Ink.EditingMode;
+            Ink.EditingMode = InkCanvasEditingMode.None;
+        }
+        panFrom = e.GetPosition(Surface);
+        Surface.CaptureMouse();
+        Surface.Cursor = Cursors.SizeAll;
     }
 
     /// The topmost node under a board point (other than `not`), preferring nodes over the groups they sit in.

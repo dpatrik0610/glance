@@ -13,7 +13,7 @@
     <Border Style="{StaticResource Card}" Padding="0">
         <!-- Canvas layout: drag the background to pan, scroll to zoom. Nodes, arrows and the pen layer live on World, which pans and zooms. -->
         <Grid x:Name="Surface" ClipToBounds="True" AllowDrop="True" Margin="1"
-              MouseDown="SurfaceDown" MouseMove="SurfaceMove" MouseUp="SurfaceUp" PreviewMouseWheel="Wheel" Drop="Dropped">
+              PreviewMouseDown="SurfacePreviewDown" MouseDown="SurfaceDown" MouseMove="SurfaceMove" MouseUp="SurfaceUp" PreviewMouseWheel="Wheel" Drop="Dropped">
             <Grid.Background>
                 <DrawingBrush x:Name="Dots" TileMode="Tile" ViewportUnits="Absolute" Viewport="0,0,24,24" ViewboxUnits="Absolute" Viewbox="0,0,24,24" />
             </Grid.Background>

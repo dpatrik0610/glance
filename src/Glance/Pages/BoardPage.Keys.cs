@@ -151,6 +151,7 @@ public partial class BoardPage
         ("Ctrl+0 / Ctrl+1", "Zoom to 100% / fit everything"),
         ("Ctrl+= / Ctrl+-", "Zoom in / out"),
         ("Esc", "Leave the pen, or clear the selection"),
+        ("Ctrl + drag", "Move around the board from anywhere, even with the pen on"),
     ];
 
     void ShowShortcuts() => Dialog.Info("Board", "Keyboard shortcuts", string.Join("\n", Shortcuts.Select(s => $"{s.Keys}   {s.What}")));
