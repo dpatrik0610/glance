@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -200,6 +201,8 @@ public partial class BoardPage
             m.Items.Add(new Separator());
             Item(m, "Export as picture…", ExportPicture, board.Items.Count > 0 || Ink.Strokes.Count > 0);
         }
+        Item(m, "Export this board…", () => ExportBoard(board));
+        Item(m, "Import a board…", ImportBoard);
         Item(m, "Export as Obsidian canvas…", ExportCanvas);
         Item(m, "Import Obsidian canvas…", () =>
         {
@@ -218,6 +221,7 @@ public partial class BoardPage
         Item(m, "Rename", () => Rename(b, chip));
         Item(m, "Move left", () => MoveBoard(b, -1), at > 0);
         Item(m, "Move right", () => MoveBoard(b, 1), at < boards.All.Count - 1);
+        Item(m, "Export…", () => ExportBoard(b));
         Item(m, "Delete", () => DeleteBoard(b));
         return m;
     }
@@ -276,6 +280,38 @@ public partial class BoardPage
             png.Save(f);
         }
         catch (IOException e) { Dialog.Info("Board", "Couldn't save the picture", e.Message); }
+    }
+
+    /// A board and its pictures as one .glanceboard file.
+    void ExportBoard(Board b)
+    {
+        if (b == board) Commit();
+        var pick = new Microsoft.Win32.SaveFileDialog { FileName = b.Name + BoardFile.Extension, Filter = $"Glance board|*{BoardFile.Extension}" };
+        if (pick.ShowDialog() != true) return;
+        try { BoardFile.Export(b, pick.FileName, BoardStore.Files); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { Dialog.Info("Board", "Couldn't export the board", e.Message); }
+    }
+
+    void ImportBoard()
+    {
+        var pick = new Microsoft.Win32.OpenFileDialog { Filter = $"Glance board|*{BoardFile.Extension}", Multiselect = true };
+        if (pick.ShowDialog() == true) foreach (var f in pick.FileNames) ImportBoardFile(f);
+    }
+
+    /// A .glanceboard file becomes a new board tab.
+    void ImportBoardFile(string file)
+    {
+        Board b;
+        try { b = BoardFile.Import(file, BoardStore.Files); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
+        {
+            Dialog.Info("Board", "Couldn't read that board", e.Message);
+            return;
+        }
+        boards.All.Add(b);
+        Switch(b);
+        DrawTabs();
+        Changed();
     }
 
     void ExportCanvas()

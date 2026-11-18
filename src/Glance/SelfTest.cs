@@ -57,6 +57,27 @@ static class SelfTest
                 h.Record("x"); // a new change drops what could be redone
                 Check(undo == ("b", "a", null) && redo == "b" && h.Now == "x" && !h.CanRedo && h.Step(true) == "b", "board undo/redo");
             }
+            {
+                var dir = Directory.CreateTempSubdirectory("glance-board-").FullName;
+                try
+                {
+                    string pics = Path.Combine(dir, "pics"), copies = Path.Combine(dir, "copies"), file = Path.Combine(dir, "Trip" + BoardFile.Extension);
+                    Directory.CreateDirectory(pics);
+                    File.WriteAllBytes(Path.Combine(pics, "p1.png"), [1, 2, 3]);
+                    var b = new Board { Name = "Trip", Layout = "kanban", Ink = "abc" };
+                    BoardItem n = new() { Title = "Pack", Text = "- [ ] socks" }, pic = new() { Kind = "image", File = "p1.png" };
+                    b.Items.AddRange([n, pic]);
+                    b.Edges.Add(new() { From = n.Id, To = pic.Id, Label = "then" });
+                    BoardFile.Export(b, file, pics);
+                    var again = BoardFile.Import(file, copies);
+                    var n2 = again.Items[0];
+                    var pic2 = again.Items[1];
+                    Check(again is { Name: "Trip", Layout: "kanban", Ink: "abc" } && again.Id != b.Id && n2 is { Title: "Pack", Text: "- [ ] socks" } && n2.Id != n.Id
+                        && pic2.File == pic2.Id + ".png" && File.ReadAllBytes(Path.Combine(copies, pic2.File)).SequenceEqual(new byte[] { 1, 2, 3 })
+                        && again.Edges is [{ Label: "then" } e] && e.From == n2.Id && e.To == pic2.Id && !File.Exists(file + ".tmp"), "board file round trip");
+                }
+                finally { Directory.Delete(dir, true); }
+            }
             Check(new Pages.TimerPage().Content is not null && new Pages.TasksPage().Content is not null, "timer and tasks pages load");
             const string md = "# Plan\r\n- [ ] buy **milk**\r\n- [x] call [mom](https://example.com)\r\n\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |";
             var tasks = MarkdownView.TaskLines(md).ToList();

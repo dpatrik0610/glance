@@ -866,6 +866,7 @@ public partial class BoardPage : UserControl
         {
             var ext = IOPath.GetExtension(f).ToLowerInvariant();
             if (ext == ".canvas") { ImportCanvas(f); continue; }
+            if (ext == BoardFile.Extension) { ImportBoardFile(f); continue; }
             if (Pictures.Contains(ext)) NewPicture(at, copyFrom: f);
             else Add(new() { Kind = "link", W = 260, Text = f }, at);
             at.Offset(24, 24);
