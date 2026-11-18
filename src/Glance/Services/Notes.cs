@@ -165,7 +165,7 @@ public sealed class JsonStore<T> where T : Note
             SaveSoon();
         };
         saveTimer.Tick += (_, _) => Flush();
-        Application.Current.Exit += (_, _) => Flush();
+        Application.Current.Exit += (_, _) => { if (saveTimer.IsEnabled) Flush(); }; // only when a save is pending
         return created;
     }
 

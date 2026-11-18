@@ -90,6 +90,10 @@ public partial class BoardPage : UserControl
         ApplyView();
         ApplyTag();
         Changed();
+        // A switched-to board (or layout) fades in.
+        UIElement shown = kanban ? KanbanHost : World;
+        shown.Opacity = 0;
+        Fade(shown, 1, 220);
     }
 
     // ---- boards: one tab each ----
@@ -190,7 +194,7 @@ public partial class BoardPage : UserControl
             var r = Bounds(it);
             board.X = Surface.ActualWidth / 2 - (r.X + r.Width / 2) * board.Zoom;
             board.Y = Surface.ActualHeight / 2 - (r.Y + r.Height / 2) * board.Zoom;
-            ApplyView();
+            ApplyView(ease: true);
             ToFront(it);
             Flash(cards[it]);
         }, System.Windows.Threading.DispatcherPriority.Loaded);
@@ -239,17 +243,116 @@ public partial class BoardPage : UserControl
         TagButton.Visibility = tagFilter is null ? Visibility.Collapsed : Visibility.Visible;
         TagButton.Content = $"#{tagFilter}  ✕";
         foreach (var (it, card) in cards)
-            card.Opacity = tagFilter is null || MarkdownView.Tags(it.Title + "\n" + it.Text).Contains(tagFilter) ? 1 : 0.18;
+            Fade(card, tagFilter is null || MarkdownView.Tags(it.Title + "\n" + it.Text).Contains(tagFilter) ? 1 : 0.18, 200);
     }
 
     // ---- view: pan, zoom, fit, background ----
 
-    void ApplyView()
+    // What's on screen. board.X/Y/Zoom is where the view is going: zooms, fits and jumps ease toward it a frame at a time;
+    // panning follows the pointer at once. Zoom eases in log space (in and out feel alike); a zoom about a point keeps that point still.
+    double shownX, shownY, shownZoom = 1;
+    Point? easeAnchor;
+    TimeSpan? lastFrame;
+    bool easing;
+
+    void ApplyView(bool ease = false, Point? anchor = null)
     {
-        World.RenderTransform = new MatrixTransform(board.Zoom, 0, 0, board.Zoom, board.X, board.Y);
-        Dots.Viewport = new Rect(board.X, board.Y, Tile * board.Zoom, Tile * board.Zoom);
         ZoomText.Content = $"{board.Zoom:P0}";
+        easeAnchor = anchor;
+        if (ease && IsVisible)
+        {
+            if (!easing) { easing = true; lastFrame = null; CompositionTarget.Rendering += Ease; }
+            return;
+        }
+        StopEasing();
+        (shownX, shownY, shownZoom) = (board.X, board.Y, board.Zoom);
+        Render();
+    }
+
+    void StopEasing()
+    {
+        if (!easing) return;
+        easing = false;
+        CompositionTarget.Rendering -= Ease;
+    }
+
+    void Ease(object? sender, EventArgs e)
+    {
+        var now = ((RenderingEventArgs)e).RenderingTime;
+        if (now == lastFrame) return; // raised more than once per frame
+        var dt = lastFrame is { } last ? Math.Min((now - last).TotalSeconds, 0.05) : 1 / 60.0;
+        lastFrame = now;
+        var k = 1 - Math.Exp(-dt * 14); // about 90% of the way in 160 ms, whatever the frame rate
+        shownZoom = Math.Exp(Math.Log(shownZoom) + (Math.Log(board.Zoom) - Math.Log(shownZoom)) * k);
+        if (easeAnchor is { } a)
+        {
+            // The board point that ends up under the anchor stays under it all the way.
+            var p = new Point((a.X - board.X) / board.Zoom, (a.Y - board.Y) / board.Zoom);
+            (shownX, shownY) = (a.X - p.X * shownZoom, a.Y - p.Y * shownZoom);
+        }
+        else
+        {
+            shownX += (board.X - shownX) * k;
+            shownY += (board.Y - shownY) * k;
+        }
+        if (Math.Abs(Math.Log(board.Zoom / shownZoom)) < 0.0005 && Math.Abs(board.X - shownX) < 0.3 && Math.Abs(board.Y - shownY) < 0.3)
+        {
+            StopEasing();
+            (shownX, shownY, shownZoom) = (board.X, board.Y, board.Zoom);
+        }
+        Render();
+    }
+
+    void Render()
+    {
+        World.RenderTransform = new MatrixTransform(shownZoom, 0, 0, shownZoom, shownX, shownY);
+        Dots.Viewport = new Rect(shownX, shownY, Tile * shownZoom, Tile * shownZoom);
         DrawMap();
+    }
+
+    /// Eases an element's opacity (or another double property) to a value; the value stays set when it's done.
+    static void Fade(UIElement e, double to, double ms = 140, DependencyProperty? property = null)
+    {
+        property ??= OpacityProperty;
+        var from = (double)e.GetValue(property);
+        e.SetValue(property, to);
+        e.BeginAnimation(property, new System.Windows.Media.Animation.DoubleAnimation(from, to, TimeSpan.FromMilliseconds(ms))
+        {
+            EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut },
+            FillBehavior = System.Windows.Media.Animation.FillBehavior.Stop,
+        });
+    }
+
+    /// A deleted node shrinks and fades out, then goes.
+    void Vanish(FrameworkElement card)
+    {
+        card.IsHitTestVisible = false;
+        World.Children.Add(card);
+        var scale = new ScaleTransform(1, 1);
+        (card.RenderTransform, card.RenderTransformOrigin) = (scale, new(0.5, 0.5));
+        var shrink = new System.Windows.Media.Animation.DoubleAnimation(0.92, TimeSpan.FromMilliseconds(150));
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
+        var fade = new System.Windows.Media.Animation.DoubleAnimation(0, TimeSpan.FromMilliseconds(150));
+        fade.Completed += (_, _) => World.Children.Remove(card);
+        card.BeginAnimation(OpacityProperty, fade);
+    }
+
+    /// A new node grows in from slightly smaller.
+    static void Appear(FrameworkElement card)
+    {
+        var scale = new ScaleTransform(0.94, 0.94);
+        card.RenderTransform = scale;
+        card.RenderTransformOrigin = new(0.5, 0.5);
+        var to = card.Opacity;
+        card.Opacity = 0;
+        Fade(card, to, 180);
+        var grow = new System.Windows.Media.Animation.DoubleAnimation(0.94, 1, TimeSpan.FromMilliseconds(220))
+        {
+            EasingFunction = new System.Windows.Media.Animation.BackEase { Amplitude = 0.3, EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut },
+        };
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
     }
 
     void DrawBackground()
@@ -264,7 +367,8 @@ public partial class BoardPage : UserControl
         };
     }
 
-    Point ToBoard(Point screen) => new((screen.X - board.X) / board.Zoom, (screen.Y - board.Y) / board.Zoom);
+    /// A pointer position on the board, as it's drawn right now (mid-ease too).
+    Point ToBoard(Point screen) => new((screen.X - shownX) / shownZoom, (screen.Y - shownY) / shownZoom);
 
     Point ScreenMiddle => new(Surface.ActualWidth / 2, Surface.ActualHeight / 2);
 
@@ -279,14 +383,15 @@ public partial class BoardPage : UserControl
         board.X = screen.X - (screen.X - board.X) * f;
         board.Y = screen.Y - (screen.Y - board.Y) * f;
         board.Zoom = zoom;
-        ApplyView();
+        ApplyView(ease: true, anchor: screen);
         Changed();
     }
 
     void Wheel(object sender, MouseWheelEventArgs e)
     {
         if (Kanban) return; // the columns scroll
-        ZoomAt(e.GetPosition(Surface), board.Zoom * (e.Delta > 0 ? 1.1 : 1 / 1.1));
+        // 10% a notch; touchpads send small steps, which zoom a little each.
+        ZoomAt(e.GetPosition(Surface), board.Zoom * Math.Pow(1.1, e.Delta / 120.0));
         e.Handled = true;
     }
 
@@ -303,13 +408,13 @@ public partial class BoardPage : UserControl
     /// Zooms and centers so every node is in view (not past 150%).
     void Fit()
     {
-        if (board.Items.Count == 0) { (board.X, board.Y, board.Zoom) = (40, 40, 1); ApplyView(); Changed(); return; }
+        if (board.Items.Count == 0) { (board.X, board.Y, board.Zoom) = (40, 40, 1); ApplyView(ease: true); Changed(); return; }
         var all = board.Items.Select(Bounds).Aggregate(Rect.Union);
         const double pad = 60;
         board.Zoom = Math.Clamp(Math.Min((Surface.ActualWidth - 2 * pad) / all.Width, (Surface.ActualHeight - 2 * pad) / all.Height), MinZoom, 1.5);
         board.X = Surface.ActualWidth / 2 - (all.X + all.Width / 2) * board.Zoom;
         board.Y = Surface.ActualHeight / 2 - (all.Y + all.Height / 2) * board.Zoom;
-        ApplyView();
+        ApplyView(ease: true);
         Changed();
     }
 
@@ -473,7 +578,11 @@ public partial class BoardPage : UserControl
         if (Kanban && it.Column == "") it.Column = board.Columns.FirstOrDefault() ?? "";
         board.Items.Add(it);
         if (Kanban) DrawKanban(focus ? it : null);
-        else Show(it, focus);
+        else
+        {
+            Show(it, focus);
+            Appear(cards[it]);
+        }
         Changed();
     }
 
@@ -546,8 +655,9 @@ public partial class BoardPage : UserControl
         };
         if (group) (card.Width, card.Height) = (it.W + Pad, it.H > 0 ? it.H : it.H = 240);
         Panel.SetZIndex(card, group ? -2 : 0);
-        card.MouseEnter += (_, _) => remove.Opacity = handle.Opacity = grip.Opacity = it.Locked ? 0 : 1;
-        card.MouseLeave += (_, _) => remove.Opacity = handle.Opacity = grip.Opacity = 0;
+        void Chrome(double to) { Fade(remove, to); Fade(handle, to); Fade(grip, to); }
+        card.MouseEnter += (_, _) => Chrome(it.Locked ? 0 : 1);
+        card.MouseLeave += (_, _) => Chrome(0);
         card.SizeChanged += (_, _) => Redraw();
         remove.Click += (_, _) => Remove(it);
         grip.MouseLeftButtonDown += (_, e) =>
@@ -652,8 +762,10 @@ public partial class BoardPage : UserControl
             && !Dialog.Confirm("Remove note", "Remove this note from the board?", "This can't be undone.", "Remove")) return;
         board.Items.Remove(it);
         board.Edges.RemoveAll(e => e.From == it.Id || e.To == it.Id);
+        var leaving = Kanban ? null : cards.GetValueOrDefault(it);
         Detach(it);
         DeleteFile(it);
+        if (leaving is not null) Vanish(leaving);
         if (Kanban) DrawKanban();
         Changed();
     }

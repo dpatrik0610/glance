@@ -41,6 +41,12 @@ static class SelfTest
             Check(Timers.ParseDuration("25") == 1500 && Timers.ParseDuration("1:30") == 90 && Timers.ParseDuration("1:00:00") == 3600
                 && Timers.ParseDuration("0") is null && Timers.ParseDuration("abc") is null && Timers.ParseDuration("-5") is null, "timer lengths");
             Check(Timers.Clock(90) == "01:30" && Timers.Clock(3725) == "1:02:05" && Timers.Clock(0.2) == "00:01" && Timers.Clock(-3) == "00:00", "timer clock");
+            {
+                var colorMenu = new System.Windows.Controls.MenuItem { Header = "Color" };
+                colorMenu.Items.Add(new System.Windows.Controls.MenuItem { Header = "Red", IsChecked = true });
+                colorMenu.ApplyTemplate();
+                Check(colorMenu.Template.FindName("PART_Popup", colorMenu) is System.Windows.Controls.Primitives.Popup, "menus open submenus");
+            }
             Check(new Pages.TimerPage().Content is not null && new Pages.TasksPage().Content is not null, "timer and tasks pages load");
             const string md = "# Plan\r\n- [ ] buy **milk**\r\n- [x] call [mom](https://example.com)\r\n\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |";
             var tasks = MarkdownView.TaskLines(md).ToList();
@@ -127,7 +133,7 @@ static class SelfTest
             Check(back.SequenceEqual(px), "clipboard image: png keeps pixels and alpha");
 
             // Stickies: everything a sticky holds survives a save and load (an absolute name keeps it out of AppData)
-            var tmp = Path.Combine(Path.GetTempPath(), $"glance-selftest-{Environment.ProcessId}.json");
+            var tmp = Path.Combine(Path.GetTempPath(), $"glance-selftest-{Guid.NewGuid():N}.json");
             try
             {
                 var store = new JsonStore<Sticky>(tmp);

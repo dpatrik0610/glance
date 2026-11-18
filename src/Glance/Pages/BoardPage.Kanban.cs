@@ -110,8 +110,8 @@ public partial class BoardPage
             Padding = new(10, 0, 10, 10), Margin = new(0, 0, 0, 8), Tag = it, Cursor = Cursors.Hand,
             Child = new DockPanel { Children = { Docked(new Grid { Height = 20, Children = { remove } }, Dock.Top), body } },
         };
-        card.MouseEnter += (_, _) => remove.Opacity = 1;
-        card.MouseLeave += (_, _) => remove.Opacity = 0;
+        card.MouseEnter += (_, _) => Fade(remove, 1);
+        card.MouseLeave += (_, _) => Fade(remove, 0);
         // Press and move a few pixels to drag it to another place or column; double-click edits.
         Point? down = null;
         card.MouseLeftButtonDown += (_, e) =>

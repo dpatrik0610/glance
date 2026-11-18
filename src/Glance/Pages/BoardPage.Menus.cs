@@ -64,7 +64,8 @@ public partial class BoardPage
         m.Items.Add(new Separator());
 
         var color = Sub(m, "Color");
-        Item(color, "None", () => SetColor(it, ""), check: it.Color == "");
+        Item(color, "None", () => SetColor(it, ""), check: it.Color == "").Icon =
+            new Ellipse { Width = 10, Height = 10, Stroke = (Brush)FindResource("Sub"), StrokeThickness = 1.2 };
         foreach (var (id, name, c) in NodeColors)
         {
             var i = Item(color, name, () => SetColor(it, id), check: it.Color == id);
@@ -107,7 +108,11 @@ public partial class BoardPage
         }
         board.Items.Add(copy);
         if (Kanban) DrawKanban();
-        else Show(copy);
+        else
+        {
+            Show(copy);
+            Appear(cards[copy]);
+        }
         Changed();
     }
 

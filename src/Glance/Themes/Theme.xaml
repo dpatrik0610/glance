@@ -361,15 +361,41 @@
         </Setter>
     </Style>
 
-    <!-- Dark right-click menus (flat: no submenus) -->
+    <!-- Dark right-click menus, with submenus, ticks, icons and separators. They fade and slide in. -->
     <Style TargetType="ContextMenu">
         <Setter Property="Foreground" Value="{StaticResource Text}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
-                    <Border Background="{StaticResource Popup}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="5">
-                        <ItemsPresenter />
+                    <Border x:Name="m" Background="{StaticResource Popup}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="5">
+                        <Border.RenderTransform>
+                            <TranslateTransform />
+                        </Border.RenderTransform>
+                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <EventTrigger RoutedEvent="FrameworkElement.Loaded" SourceName="m">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="m" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.13" />
+                                    <DoubleAnimation Storyboard.TargetName="m" Storyboard.TargetProperty="RenderTransform.Y" From="-5" To="0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction>
+                                            <CubicEase EasingMode="EaseOut" />
+                                        </DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1" Margin="10,5" Background="{StaticResource Line}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -380,12 +406,44 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
-                    <Border x:Name="b" CornerRadius="8" Padding="12,7" MinWidth="160" Background="Transparent">
-                        <ContentPresenter ContentSource="Header" />
-                    </Border>
+                    <Grid>
+                        <Border x:Name="b" CornerRadius="8" Padding="12,7" MinWidth="170" Background="Transparent">
+                            <DockPanel>
+                                <ContentPresenter x:Name="icon" DockPanel.Dock="Left" ContentSource="Icon" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <TextBlock x:Name="arrow" DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource Icons}" FontSize="9"
+                                           VerticalAlignment="Center" Margin="18,0,0,0" Opacity="0.7" Visibility="Collapsed" />
+                                <TextBlock x:Name="tick" DockPanel.Dock="Right" Text="&#xE73E;" FontFamily="{StaticResource Icons}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="18,0,0,0" Foreground="{StaticResource Accent}" Visibility="Collapsed" />
+                                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </Border>
+                        <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="6" VerticalOffset="-6" AllowsTransparency="True" Focusable="False"
+                               PopupAnimation="Fade" IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Border Background="{StaticResource Popup}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="5">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="480">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="Icon" Value="{x:Null}">
+                            <Setter TargetName="icon" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="tick" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="Role" Value="SubmenuHeader">
+                            <Setter TargetName="arrow" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="b" Property="Background" Value="{StaticResource CardBg}" />
+                        </Trigger>
+                        <Trigger Property="IsSubmenuOpen" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource CardBg}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="b" Property="Opacity" Value="0.4" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
