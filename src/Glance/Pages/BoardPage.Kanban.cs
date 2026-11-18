@@ -18,6 +18,7 @@ public partial class BoardPage
     {
         foreach (var it in cards.Keys.ToList()) Detach(it);
         Columns.Children.Clear();
+        kanbanColumns.Clear();
         if (board.Columns.Count == 0) board.Columns.Add("To do");
         foreach (var name in board.Columns) Columns.Children.Add(Column(name, focus));
 
@@ -70,21 +71,7 @@ public partial class BoardPage
                 Children = { Docked(head, Dock.Top), Docked(addCard, Dock.Bottom), new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = list } },
             },
         };
-        // Dropping a card: it goes before the first card whose middle is below the pointer.
-        column.DragOver += (_, e) => { e.Effects = e.Data.GetDataPresent(typeof(BoardItem)) ? DragDropEffects.Move : DragDropEffects.None; e.Handled = true; };
-        column.Drop += (_, e) =>
-        {
-            if (e.Data.GetData(typeof(BoardItem)) is not BoardItem moved) return;
-            var before = list.Children.OfType<FrameworkElement>()
-                .FirstOrDefault(c => c.Tag is BoardItem o && o != moved && e.GetPosition(c).Y < c.ActualHeight / 2)?.Tag as BoardItem;
-            board.Items.Remove(moved);
-            moved.Column = name;
-            var at = before is null ? (board.Items.FindLastIndex(i => ColumnOf(i) == name) + 1 is var n && n > 0 ? n : board.Items.Count) : board.Items.IndexOf(before);
-            board.Items.Insert(at, moved);
-            Dispatcher.BeginInvoke(() => DrawKanban()); // not while the drag is still unwinding
-            Changed();
-            e.Handled = true;
-        };
+        kanbanColumns.Add((name, column, list));
         return column;
     }
 
@@ -121,13 +108,20 @@ public partial class BoardPage
         };
         card.MouseMove += (_, e) =>
         {
+            if (kdrag?.Card == card) { MoveKanbanDrag(e.GetPosition(DragLayer)); return; }
             if (down is not { } d || e.LeftButton != MouseButtonState.Pressed) { down = null; return; }
             if ((e.GetPosition(card) - d).Length < 6) return;
             down = null;
-            card.Opacity = 0.4;
-            DragDrop.DoDragDrop(card, new DataObject(typeof(BoardItem), it), DragDropEffects.Move);
-            card.Opacity = 1;
+            StartKanbanDrag(it, card, d);
         };
+        card.MouseLeftButtonUp += (_, e) =>
+        {
+            down = null;
+            if (kdrag?.Card != card) return;
+            EndKanbanDrag(drop: true);
+            e.Handled = true;
+        };
+        card.LostMouseCapture += (_, _) => { if (kdrag?.Card == card) EndKanbanDrag(drop: false); };
         NodeMenuOn(card, it, edit);
         cards[it] = card;
         return card;

@@ -29,6 +29,8 @@
                           Padding="14,56,14,14" Background="Transparent">
                 <StackPanel x:Name="Columns" Orientation="Horizontal" />
             </ScrollViewer>
+            <!-- A Kanban card being dragged, shrunk to a chip that follows the pointer -->
+            <Canvas x:Name="DragLayer" IsHitTestVisible="False" Panel.ZIndex="50" />
 
             <TextBlock x:Name="Hint" Style="{StaticResource Label}" HorizontalAlignment="Center" VerticalAlignment="Center"
                        TextAlignment="Center" IsHitTestVisible="False" LineHeight="22"
