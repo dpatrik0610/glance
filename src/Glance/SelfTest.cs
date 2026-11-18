@@ -36,6 +36,7 @@ static class SelfTest
                 && quote.Closes.Length == 4 && float.IsNaN(quote.Closes[1]), $"stock quote: {quote}");
             Check(Stocks.Parse("x", """{"chart":{"result":null,"error":{"code":"Not Found"}}}""") is null, "stock quote: unknown symbol");
 
+            Check(new Pages.BoardPage().Content is not null, "board page loads"); // XAML parses, saved board reads
             HashSet<object> Keys(string f) => [.. new ResourceDictionary { Source = new Uri($"pack://application:,,,/Themes/{f}.xaml") }.Keys];
             Check(Keys("Mint").SetEquals(Keys("Flamingo")), "themes define the same keys");
 
