@@ -13,9 +13,9 @@ namespace Glance.Pages;
 /// Right-click menus (node, board, tab), the Add menu, and what they do: tidy, export, import.
 public partial class BoardPage
 {
-    static MenuItem Item(ItemsControl into, string header, Action act, bool enabled = true, bool check = false)
+    static MenuItem Item(ItemsControl into, string header, Action act, bool enabled = true, bool check = false, string keys = "")
     {
-        var i = new MenuItem { Header = header, IsEnabled = enabled, IsChecked = check };
+        var i = new MenuItem { Header = header, IsEnabled = enabled, IsChecked = check, InputGestureText = keys };
         i.Click += (_, e) => { e.Handled = true; act(); };
         into.Items.Add(i);
         return i;
@@ -28,9 +28,19 @@ public partial class BoardPage
         return i;
     }
 
-    /// Right-click on a node opens its menu (and keeps the board's own menu shut). Text boxes keep their own.
-    void NodeMenuOn(FrameworkElement card, BoardItem it, Action<bool>? edit)
+    /// What every node's card (canvas or Kanban) does with the mouse besides dragging: a click selects it (and takes keyboard
+    /// focus for the shortcuts, unless it's in a text box); a right-click opens its menu (and keeps the board's own menu shut).
+    void NodeMenuOn(Border card, BoardItem it, Action<bool>? edit)
     {
+        if (edit is not null) edits[it] = edit;
+        if (it == selected) card.BorderBrush = (Brush)FindResource("Accent");
+        void Pick(MouseButtonEventArgs e)
+        {
+            Select(it);
+            if (!(e.OriginalSource is DependencyObject d && InTextBox(d))) Focus();
+        }
+        card.PreviewMouseLeftButtonDown += (_, e) => Pick(e);
+        card.PreviewMouseRightButtonDown += (_, e) => Pick(e);
         card.MouseRightButtonDown += (_, e) => e.Handled = true;
         card.MouseRightButtonUp += (_, e) =>
         {
@@ -53,12 +63,13 @@ public partial class BoardPage
     ContextMenu NodeMenu(BoardItem it, Action<bool>? edit)
     {
         var m = new ContextMenu();
-        if (edit is not null) Item(m, it.Kind == "embed" ? "Open in Notes" : "Edit", () => edit(true));
+        if (edit is not null) Item(m, it.Kind == "embed" ? "Open in Notes" : "Edit", () => edit(true), keys: "Enter");
         if (it.Kind == "link") Item(m, "Open", () => Open(it.Text.Trim().Trim('"')));
         if (it.Kind == "image") Item(m, "Open", () => Open(IOPath.Combine(BoardStore.Files, it.File ?? "")));
-        Item(m, "Duplicate", () => Duplicate(it));
+        Item(m, "Duplicate", () => Duplicate(it), keys: "Ctrl+D");
+        Item(m, "Cut", () => { CopyNode(it); Remove(it); }, keys: "Ctrl+X");
         var copy = it.Kind switch { "link" => "Copy address", "image" => "Copy picture", "note" => "Copy text", _ => null };
-        if (copy is not null) Item(m, copy, () => Copy(it));
+        Item(m, copy ?? "Copy", () => CopyNode(it), keys: "Ctrl+C");
         if (it.Kind == "image") Item(m, "Save picture as…", () => SavePicture(it));
         if (it.Kind == "note") Item(m, "Pin to desktop as a sticky", () => PinSticky(it));
         m.Items.Add(new Separator());
@@ -73,9 +84,9 @@ public partial class BoardPage
         }
         if (!Kanban)
         {
-            Item(m, "Bring to front", () => { ToFront(it); Changed(); });
-            Item(m, "Send to back", () => ToBack(it));
-            Item(m, it.Locked ? "Unlock" : "Lock in place", () => { it.Locked = !it.Locked; Rebuild(it); });
+            Item(m, "Bring to front", () => { ToFront(it); Changed(); }, keys: "]");
+            Item(m, "Send to back", () => ToBack(it), keys: "[");
+            Item(m, it.Locked ? "Unlock" : "Lock in place", () => { it.Locked = !it.Locked; Rebuild(it); }, keys: "L");
             if (board.Edges.Any(e => e.From == it.Id || e.To == it.Id))
                 Item(m, "Remove its arrows", () => { board.Edges.RemoveAll(e => e.From == it.Id || e.To == it.Id); Changed(); });
         }
@@ -84,7 +95,7 @@ public partial class BoardPage
         move.IsEnabled = others.Count > 0;
         foreach (var b in others) Item(move, b.Name, () => MoveTo(it, b));
         m.Items.Add(new Separator());
-        Item(m, "Delete", () => Remove(it));
+        Item(m, "Delete", () => Remove(it), keys: "Del");
         return m;
     }
 
@@ -92,28 +103,6 @@ public partial class BoardPage
     {
         it.Color = id;
         Rebuild(it);
-    }
-
-    void Duplicate(BoardItem it)
-    {
-        var copy = new BoardItem
-        {
-            Kind = it.Kind, X = it.X + 24, Y = it.Y + 24, W = it.W, H = it.H, Title = it.Title, Text = it.Text, Color = it.Color, Column = it.Column,
-        };
-        if (it.File is not null)
-        {
-            copy.File = copy.Id + IOPath.GetExtension(it.File);
-            try { File.Copy(IOPath.Combine(BoardStore.Files, it.File), IOPath.Combine(BoardStore.Files, copy.File)); }
-            catch (IOException) { return; }
-        }
-        board.Items.Add(copy);
-        if (Kanban) DrawKanban();
-        else
-        {
-            Show(copy);
-            Appear(cards[copy]);
-        }
-        Changed();
     }
 
     void Copy(BoardItem it)
@@ -183,13 +172,16 @@ public partial class BoardPage
     ContextMenu BoardMenu(Point at, Point? screen)
     {
         var m = new ContextMenu();
+        Item(m, "Undo", Undo, CanUndo, keys: "Ctrl+Z");
+        Item(m, "Redo", Redo, CanRedo, keys: "Ctrl+Y");
+        m.Items.Add(new Separator());
         if (!Kanban)
         {
             Fill(Sub(m, "Add"), at);
-            Item(m, "Paste here", () => Paste(at), Clipboard.ContainsText() || Clipboard.ContainsImage() || Clipboard.ContainsFileDropList());
+            Item(m, "Paste here", () => Paste(at), Clipboard.ContainsText() || Clipboard.ContainsImage() || Clipboard.ContainsFileDropList(), keys: "Ctrl+V");
             m.Items.Add(new Separator());
-            Item(m, "Zoom to 100% here", () => ZoomAt(screen ?? ScreenMiddle, 1));
-            Item(m, "Fit everything", Fit);
+            Item(m, "Zoom to 100% here", () => ZoomAt(screen ?? ScreenMiddle, 1), keys: "Ctrl+0");
+            Item(m, "Fit everything", Fit, keys: "Ctrl+1");
             Item(m, "Tidy up (snap to the grid)", Tidy, board.Items.Count > 0);
             var bg = Sub(m, "Background");
             foreach (var (id, name) in new[] { ("dots", "Dots"), ("grid", "Grid"), ("plain", "Plain") })
@@ -202,11 +194,8 @@ public partial class BoardPage
         {
             Item(m, "Clear the drawing", () =>
             {
-                if (Dialog.Confirm("Clear the drawing", "Erase everything drawn with the pen?", "Notes and other nodes stay.", "Clear"))
-                {
-                    Ink.Strokes.Clear();
-                    SaveInk();
-                }
+                Ink.Strokes.Clear();
+                SaveInk();
             }, Ink.Strokes.Count > 0);
             m.Items.Add(new Separator());
             Item(m, "Export as picture…", ExportPicture, board.Items.Count > 0 || Ink.Strokes.Count > 0);
@@ -217,6 +206,8 @@ public partial class BoardPage
             var pick = new Microsoft.Win32.OpenFileDialog { Filter = "Obsidian canvas|*.canvas" };
             if (pick.ShowDialog() == true) ImportCanvas(pick.FileName);
         });
+        m.Items.Add(new Separator());
+        Item(m, "Keyboard shortcuts", ShowShortcuts);
         return m;
     }
 

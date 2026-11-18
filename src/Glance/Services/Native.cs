@@ -30,6 +30,8 @@ public static class Native
         SHQueryUserNotificationState(out var s) == 0 && s is 2 /* busy */ or 3 /* D3D fullscreen */ or 4 /* presentation */;
 
     [DllImport("user32.dll")] static extern bool IsZoomed(IntPtr hwnd);
+    /// Changes whenever anything is put on the clipboard.
+    [DllImport("user32.dll", EntryPoint = "GetClipboardSequenceNumber")] public static extern uint ClipboardSequence();
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out Rect r);
     [DllImport("user32.dll")] static extern int GetWindowThreadProcessId(IntPtr hwnd, out int pid);
     struct Rect { public int Left, Top, Right, Bottom; }

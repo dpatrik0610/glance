@@ -412,6 +412,8 @@
                                 <ContentPresenter x:Name="icon" DockPanel.Dock="Left" ContentSource="Icon" VerticalAlignment="Center" Margin="0,0,10,0" />
                                 <TextBlock x:Name="arrow" DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource Icons}" FontSize="9"
                                            VerticalAlignment="Center" Margin="18,0,0,0" Opacity="0.7" Visibility="Collapsed" />
+                                <TextBlock x:Name="keys" DockPanel.Dock="Right" Text="{TemplateBinding InputGestureText}" Foreground="{StaticResource Sub}"
+                                           FontSize="12" VerticalAlignment="Center" Margin="24,0,0,0" />
                                 <TextBlock x:Name="tick" DockPanel.Dock="Right" Text="&#xE73E;" FontFamily="{StaticResource Icons}" FontSize="11"
                                            VerticalAlignment="Center" Margin="18,0,0,0" Foreground="{StaticResource Accent}" Visibility="Collapsed" />
                                 <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
@@ -429,6 +431,9 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="Icon" Value="{x:Null}">
                             <Setter TargetName="icon" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="InputGestureText" Value="">
+                            <Setter TargetName="keys" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="tick" Property="Visibility" Value="Visible" />

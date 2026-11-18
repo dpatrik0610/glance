@@ -160,5 +160,6 @@ public partial class BoardPage
             board.Ink = Convert.ToBase64String(s.ToArray());
         }
         BoardStore.SaveSoon();
+        Track();
     }
 }

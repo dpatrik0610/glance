@@ -183,7 +183,6 @@ public partial class BoardPage
         var i = board.Columns.IndexOf(name);
         var to = board.Columns[i == 0 ? 1 : i - 1];
         var moving = board.Items.Where(it => ColumnOf(it) == name).ToList();
-        if (moving.Count > 0 && !Dialog.Confirm("Delete column", $"Delete \"{name}\"?", $"Its {moving.Count} card{(moving.Count == 1 ? "" : "s")} move to \"{to}\".", "Delete")) return;
         foreach (var it in moving) it.Column = to;
         board.Columns.RemoveAt(i);
         DrawKanban();

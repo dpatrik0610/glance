@@ -47,6 +47,16 @@ static class SelfTest
                 colorMenu.ApplyTemplate();
                 Check(colorMenu.Template.FindName("PART_Popup", colorMenu) is System.Windows.Controls.Primitives.Popup, "menus open submenus");
             }
+            {
+                var h = new Pages.BoardPage.History("a");
+                h.Record("a"); // no change: no step
+                h.Record("b");
+                h.Record("c");
+                var undo = (h.Step(undo: true), h.Step(undo: true), h.Step(undo: true));
+                var redo = h.Step(undo: false);
+                h.Record("x"); // a new change drops what could be redone
+                Check(undo == ("b", "a", null) && redo == "b" && h.Now == "x" && !h.CanRedo && h.Step(true) == "b", "board undo/redo");
+            }
             Check(new Pages.TimerPage().Content is not null && new Pages.TasksPage().Content is not null, "timer and tasks pages load");
             const string md = "# Plan\r\n- [ ] buy **milk**\r\n- [x] call [mom](https://example.com)\r\n\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |";
             var tasks = MarkdownView.TaskLines(md).ToList();

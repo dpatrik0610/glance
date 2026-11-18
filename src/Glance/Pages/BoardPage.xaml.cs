@@ -62,6 +62,7 @@ public partial class BoardPage : UserControl
     void Changed()
     {
         BoardStore.SaveSoon();
+        Track();
         Hint.Visibility = board.Items.Count == 0 && !Kanban ? Visibility.Visible : Visibility.Collapsed;
         Redraw();
     }
@@ -74,9 +75,10 @@ public partial class BoardPage : UserControl
         DrawMap();
     }
 
-    /// Draws the current board from scratch (after switching boards or layouts).
-    void Refresh()
+    /// Draws the current board from scratch (after switching boards or layouts, or an undo).
+    void Refresh(bool fade = true)
     {
+        _ = HistoryOf(board); // its state before anything changes here
         (panFrom, dragging, resizing) = (null, null, null);
         foreach (var it in cards.Keys.ToList()) Detach(it);
         LoadInk();
@@ -90,6 +92,7 @@ public partial class BoardPage : UserControl
         ApplyView();
         ApplyTag();
         Changed();
+        if (!fade) return;
         // A switched-to board (or layout) fades in.
         UIElement shown = kanban ? KanbanHost : World;
         shown.Opacity = 0;
@@ -118,6 +121,8 @@ public partial class BoardPage : UserControl
     void Switch(Board b)
     {
         if (b == board) return;
+        Commit(); // the last changes here are one undo step on this board
+        Select(null);
         board = b;
         boards.Current = b.Id;
         tagFilter = null;
@@ -176,7 +181,6 @@ public partial class BoardPage : UserControl
             Switch(boards.All[i == 0 ? 1 : i - 1]);
         }
         boards.All.Remove(b);
-        foreach (var it in b.Items) DeleteFile(it);
         DrawTabs();
         Changed();
     }
@@ -489,6 +493,7 @@ public partial class BoardPage : UserControl
         Focus(); // for Ctrl+V; also takes focus out of a node being edited
         if (Kanban) return;
         var p = e.GetPosition(Surface);
+        if (NodeAt(ToBoard(p)) is null) Select(null); // empty board (a locked node lets clicks through, but stays picked)
         if (e.ChangedButton == MouseButton.Right) { BoardMenu(ToBoard(p), p).IsOpen = true; return; }
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2) { NewNote(ToBoard(p), ""); return; }
         if (e.ChangedButton is not (MouseButton.Left or MouseButton.Middle)) return;
@@ -752,27 +757,21 @@ public partial class BoardPage : UserControl
     void Detach(BoardItem it)
     {
         if (cleanups.Remove(it, out var stop)) stop();
+        edits.Remove(it);
         if (cards.Remove(it, out var card)) World.Children.Remove(card);
     }
 
     void Remove(BoardItem it)
     {
         if (!board.Items.Contains(it)) return; // already gone (an emptied node removes itself as focus leaves)
-        if (it.Kind == "note" && (it.Title + it.Text).Trim().Length > 0
-            && !Dialog.Confirm("Remove note", "Remove this note from the board?", "This can't be undone.", "Remove")) return;
-        board.Items.Remove(it);
+        if (it == selected) Select(null);
+        board.Items.Remove(it); // Ctrl+Z brings it back (its picture file stays until the next start)
         board.Edges.RemoveAll(e => e.From == it.Id || e.To == it.Id);
         var leaving = Kanban ? null : cards.GetValueOrDefault(it);
         Detach(it);
-        DeleteFile(it);
         if (leaving is not null) Vanish(leaving);
         if (Kanban) DrawKanban();
         Changed();
-    }
-
-    static void DeleteFile(BoardItem it)
-    {
-        if (it.File is not null) try { File.Delete(IOPath.Combine(BoardStore.Files, it.File)); } catch (IOException) { }
     }
 
     /// Focus can't land on an element until it's shown, which for a new card or a just-switched editor is after layout.
@@ -811,12 +810,6 @@ public partial class BoardPage : UserControl
     }
 
     // ---- paste and drop ----
-
-    void KeyPressed(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.V || Keyboard.Modifiers != ModifierKeys.Control || e.OriginalSource is TextBox || Kanban) return;
-        if (Paste(Surface.IsMouseOver ? ToBoard(Mouse.GetPosition(Surface)) : Middle)) e.Handled = true;
-    }
 
     /// Whatever's on the clipboard, as nodes at a board point. False when there's nothing usable.
     bool Paste(Point at)

@@ -89,7 +89,8 @@ public static partial class BoardStore
     public static Boards Load()
     {
         Boards b;
-        try { b = JsonSerializer.Deserialize<Boards>(File.ReadAllText(File_)) ?? new(); }
+        var read = false; // only a cleanly read file says which pictures are unused
+        try { b = JsonSerializer.Deserialize<Boards>(File.ReadAllText(File_)) ?? new(); read = true; }
         catch (FileNotFoundException)
         {
             b = new();
@@ -104,7 +105,20 @@ public static partial class BoardStore
         catch (IOException) { b = new(); }
         if (b.All.Count == 0) b.All.Add(new());
         foreach (var board in b.All) board.Items.RemoveAll(i => i.Kind == "timer"); // timers moved to their own page
+        if (read && b.All.Count > 0) Sweep(b);
         return b;
+    }
+
+    /// Pictures no node uses any more (deleted nodes keep theirs for undo until the next start).
+    static void Sweep(Boards b)
+    {
+        var used = b.All.SelectMany(x => x.Items).Select(i => i.File).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var f in Directory.EnumerateFiles(Files))
+                if (!used.Contains(Path.GetFileName(f))) File.Delete(f);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } // none yet, or in use: next time
     }
 
     public static void Save()
