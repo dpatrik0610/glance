@@ -91,6 +91,10 @@
                     <Button Style="{StaticResource Ghost}" Margin="0,0,4,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick">
                         <local:Logo Icon="search" Width="17" Height="17" />
                     </Button>
+                    <Button Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="12" Margin="0,0,4,0"
+                            Content="&#xE921;" ToolTip="Minimize" Click="MinimizeClick" />
+                    <Button x:Name="MaxButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="12" Margin="0,0,4,0"
+                            Content="&#xE922;" ToolTip="Maximize" Click="MaximizeClick" />
                     <Button Style="{StaticResource Ghost}" ToolTip="Hide to tray (Esc)" Click="HideClick">
                         <local:Logo Icon="close" Width="17" Height="17" />
                     </Button>

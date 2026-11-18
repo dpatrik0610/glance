@@ -342,7 +342,27 @@ public partial class MainWindow : Window
         App.ApplySettings();
     }
 
-    void Drag(object sender, MouseButtonEventArgs e) => DragMove();
+    // Double-click the bar to maximize/restore, like a normal title bar.
+    void Drag(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2) MaximizeClick(sender, e);
+        else DragMove();
+    }
+
+    void MinimizeClick(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    void MaximizeClick(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    protected override void OnStateChanged(EventArgs e)
+    {
+        base.OnStateChanged(e);
+        var max = WindowState == WindowState.Maximized;
+        MaxButton.Content = max ? "" : "";
+        MaxButton.ToolTip = max ? "Restore" : "Maximize";
+        // A maximized frameless window overhangs the screen by its resize border; pull the content back in.
+        Panel.Margin = max ? SystemParameters.WindowResizeBorderThickness : default;
+    }
 
     void HideClick(object sender, RoutedEventArgs e) => Away();
 
