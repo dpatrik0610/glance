@@ -31,6 +31,8 @@ public partial class NotesPage : UserControl
 
     void NewChecklist(object sender, RoutedEventArgs e) => Add(NoteKind.Checklist);
 
+    void OpenToday(object sender, RoutedEventArgs e) => List.SelectedItem = NoteStore.Today();
+
     void Add(NoteKind kind)
     {
         var n = new Note { Kind = kind };

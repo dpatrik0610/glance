@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -8,7 +9,7 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-/// What goes inside each kind of node. The card around it (drag, resize, remove) is BoardPage.Show.
+/// What goes inside each kind of node. The card around it is BoardPage.Show (canvas) or KanbanCard.
 public partial class BoardPage
 {
     public static readonly string[] Metrics = ["CPU", "GPU", "RAM", "Download", "Upload"];
@@ -23,8 +24,9 @@ public partial class BoardPage
                     ? new Image { Source = pic, Stretch = Stretch.Uniform }
                     : new TextBlock { Text = "Picture missing", Style = (Style)FindResource("Label") }, null, null);
             case "link": return Link(it, focus);
-            case "timer": return Timer(it, focus);
             case "stat": return Stat(it);
+            case "group": return Group(it, focus);
+            case "embed": return Embed(it);
             default: return Note(it, focus);
         }
     }
@@ -37,7 +39,7 @@ public partial class BoardPage
         FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
     };
 
-    TextBlock Heading(string text) => new()
+    static TextBlock Heading(string text) => new()
     {
         Text = text, FontSize = 15, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, Margin = new(0, 0, 0, 6),
         Visibility = text.Trim() == "" ? Visibility.Collapsed : Visibility.Visible,
@@ -67,6 +69,7 @@ public partial class BoardPage
         {
             if (e.NewValue is true || editor.Visibility != Visibility.Visible) return;
             Edit(false);
+            ApplyTag();
             if (empty()) Dispatcher.BeginInvoke(() => Remove(it));
         };
         Edit(focus);
@@ -78,22 +81,111 @@ public partial class BoardPage
     (FrameworkElement, Action<bool>?, Action?) Note(BoardItem it, bool focus)
     {
         var title = Field(it.Title, "Title (optional)", 15, bold: true);
-        var box = Field(it.Text, "Markdown: **bold**, - [ ] task, # heading…", multiline: true);
+        var box = Field(it.Text, "Markdown: **bold**, - [ ] task @tomorrow 9, [[link]], #tag…", multiline: true);
         title.Margin = new(0, 0, 0, 6);
         title.TextChanged += (_, _) => { it.Title = title.Text; Changed(); };
         box.TextChanged += (_, _) => { it.Text = box.Text; Changed(); };
         var view = new StackPanel();
         void Draw()
         {
+            // "@tomorrow 9" on a task becomes a fixed date when editing ends, so it doesn't move every day.
+            if (BoardStore.FixDues(it.Text, DateTime.Now) is var fixedText && fixedText != it.Text) box.Text = fixedText;
             view.Children.Clear();
             view.Children.Add(Heading(it.Title));
             view.Children.Add(it.Text.Trim() == "" && it.Title.Trim() == ""
                 ? new TextBlock { Text = "Empty note", Style = (Style)FindResource("Label") }
-                : MarkdownView.Render(it.Text, at => box.Text = MarkdownView.Toggle(it.Text, at))); // box saves it
+                : MarkdownView.Render(it.Text, n => box.Text = MarkdownView.Toggle(it.Text, n), Go, ShowTag)); // box saves it
         }
         var (body, edit) = Editable(it, view, new StackPanel { Children = { title, box } }, box, Draw,
             () => it.Title.Trim() == "" && it.Text.Trim() == "", focus);
         return (body, edit, null);
+    }
+
+    // ---- group: a labeled frame; dragging it carries what's inside ----
+
+    (FrameworkElement, Action<bool>?, Action?) Group(BoardItem it, bool focus)
+    {
+        var name = Field(it.Title, "Group name", 15, bold: true);
+        name.TextChanged += (_, _) => { it.Title = name.Text; Changed(); };
+        var label = new TextBlock { FontSize = 15, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("Sub"), TextTrimming = TextTrimming.CharacterEllipsis };
+        void Draw() => label.Text = it.Title.Trim() == "" ? "Group" : it.Title;
+        var (body, edit) = Editable(it, label, name, name, Draw, () => false, focus);
+        body.VerticalAlignment = VerticalAlignment.Top;
+        return (body, edit, null);
+    }
+
+    // ---- embed: a Notes-page note, shown live; double-click opens it there ----
+
+    (FrameworkElement, Action<bool>?, Action?) Embed(BoardItem it)
+    {
+        var view = new StackPanel();
+        var note = NoteStore.Notes.FirstOrDefault(n => n.Id == it.Text);
+        void Open()
+        {
+            if (note is null) return;
+            App.Go("Notes");
+            NoteStore.RequestFocus(note);
+        }
+        void Draw()
+        {
+            view.Children.Clear();
+            if (note is null || !NoteStore.Notes.Contains(note))
+            {
+                view.Children.Add(new TextBlock { Text = "This note was deleted", Style = (Style)FindResource("Label") });
+                return;
+            }
+            view.Children.Add(new DockPanel
+            {
+                Margin = new(0, 0, 0, 6),
+                Children =
+                {
+                    new TextBlock { Text = note.Icon, FontFamily = (FontFamily)FindResource("Icons"), Foreground = (Brush)FindResource("Accent"), Margin = new(0, 2, 8, 0), ToolTip = "From Notes (double-click to open it there)" },
+                    new TextBlock { Text = note.DisplayTitle, FontSize = 15, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap },
+                },
+            });
+            if (note.Kind == NoteKind.Text)
+                view.Children.Add(MarkdownView.Render(note.Text, n => note.Text = MarkdownView.Toggle(note.Text, n), Go, ShowTag));
+            else
+                foreach (var item in note.Items)
+                {
+                    var box = new CheckBox
+                    {
+                        Style = (Style)FindResource("Check"), IsChecked = item.Done, LayoutTransform = new ScaleTransform(0.8, 0.8),
+                        Margin = new(0, 1, 8, 0), VerticalAlignment = VerticalAlignment.Top,
+                    };
+                    box.Click += (_, _) => item.Done = box.IsChecked == true;
+                    var text = new TextBlock { Text = item.Text, TextWrapping = TextWrapping.Wrap, Opacity = item.Done ? 0.55 : 1 };
+                    if (item.Due is not null) text.Inlines.Add(new System.Windows.Documents.Run("  " + item.DueText) { Foreground = (Brush)FindResource(item.IsOverdue ? "Red" : "Sub"), FontSize = 12 });
+                    DockPanel.SetDock(box, Dock.Left);
+                    view.Children.Add(new DockPanel { Margin = new(0, 0, 0, 3), Children = { box, text } });
+                }
+        }
+        // Redraws after the note changes, at most once per burst of changes (typing in Notes).
+        var pending = false;
+        void Soon()
+        {
+            if (pending) return;
+            pending = true;
+            Dispatcher.BeginInvoke(() => { pending = false; Draw(); }, System.Windows.Threading.DispatcherPriority.Background);
+        }
+        PropertyChangedEventHandler changed = (_, _) => Soon();
+        NotifyCollectionChangedEventHandler listChanged = (_, _) => Soon();
+        if (note is not null)
+        {
+            note.PropertyChanged += changed;
+            note.Items.CollectionChanged += listChanged;
+        }
+        NoteStore.Notes.CollectionChanged += listChanged; // deleted
+        Draw();
+        return (view, on => { if (on) Open(); }, () =>
+        {
+            if (note is not null)
+            {
+                note.PropertyChanged -= changed;
+                note.Items.CollectionChanged -= listChanged;
+            }
+            NoteStore.Notes.CollectionChanged -= listChanged;
+        });
     }
 
     // ---- link: a website, file or folder, opened with its button ----
@@ -138,7 +230,7 @@ public partial class BoardPage
     }
 
     /// http(s) and mailto addresses; "example.com" counts as https://example.com. Null for anything else (paths).
-    static Uri? WebAddress(string t)
+    internal static Uri? WebAddress(string t)
     {
         if (!t.Contains("://") && !t.StartsWith("mailto:") && !t.Contains('\\') && !t.Contains(' ') && t.Contains('.') && !File.Exists(t)) t = "https://" + t;
         return Uri.TryCreate(t, UriKind.Absolute, out var u) && u.Scheme is "http" or "https" or "mailto" ? u : null;
@@ -151,75 +243,6 @@ public partial class BoardPage
         if (target is null) return;
         try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
         catch (Win32Exception) { } // no app for it, or cancelled
-    }
-
-    // ---- timer: counts down, alerts when done; keeps running across restarts ----
-
-    (FrameworkElement, Action<bool>?, Action?) Timer(BoardItem it, bool focus)
-    {
-        var name = Field(it.Title, "Name (optional)", 15, bold: true);
-        var length = Field(BoardStore.Clock(it.Seconds), "Minutes, or m:ss");
-        name.Margin = new(0, 0, 0, 6);
-        name.TextChanged += (_, _) => { it.Title = name.Text; Changed(); };
-        length.TextChanged += (_, _) =>
-        {
-            if (BoardStore.ParseDuration(length.Text) is not { } s) return;
-            (it.Seconds, it.Ends, it.Left) = (s, null, 0);
-            Changed();
-        };
-
-        var heading = Heading(it.Title);
-        var clock = new TextBlock { FontSize = 36, FontWeight = FontWeights.Light, HorizontalAlignment = HorizontalAlignment.Center };
-        var fill = new Border { Background = (Brush)FindResource("Accent"), CornerRadius = new(2), RenderTransform = new ScaleTransform(1, 1) };
-        var bar = new Grid { Height = 4, Margin = new(0, 6, 0, 8), Children = { new Border { Background = (Brush)FindResource("Track"), CornerRadius = new(2) }, fill } };
-        Button play = null!;
-        play = IconButton("", "Start", () =>
-        {
-            if (it.Ends is not null) (it.Left, it.Ends) = (Remaining(), null); // pause
-            else (it.Ends, it.Left) = (DateTime.Now.AddSeconds(Remaining()), 0);
-            Update();
-            Changed();
-        });
-        var reset = IconButton("", "Reset", () => { (it.Ends, it.Left) = (null, 0); Update(); Changed(); });
-        var view = new StackPanel
-        {
-            Children = { heading, clock, bar, new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Children = { play, reset } } },
-        };
-
-        double Remaining() => it.Ends is { } e ? Math.Max(0, (e - DateTime.Now).TotalSeconds) : it.Left > 0 ? it.Left : it.Seconds;
-        void Update()
-        {
-            var left = Remaining();
-            clock.Text = BoardStore.Clock(left);
-            ((ScaleTransform)fill.RenderTransform).ScaleX = it.Seconds > 0 ? left / it.Seconds : 0;
-            play.Content = it.Ends is null ? "" : "";
-            play.ToolTip = it.Ends is null ? "Start" : "Pause";
-        }
-        void Finish()
-        {
-            (it.Ends, it.Left) = (null, 0);
-            Changed();
-            var accent = ((SolidColorBrush)FindResource("Accent")).Color;
-            AlertWindow.Show(new Toast(it.Title.Trim() == "" ? "Timer" : $"Timer · {it.Title}", "Time's up", "", "Length",
-                BoardStore.Clock(it.Seconds), accent, true), () => { });
-        }
-        void Draw()
-        {
-            heading.Text = it.Title;
-            heading.Visibility = it.Title.Trim() == "" ? Visibility.Collapsed : Visibility.Visible;
-            length.Text = BoardStore.Clock(it.Seconds);
-            Update();
-        }
-
-        var (body, edit) = Editable(it, view, new StackPanel { Children = { name, length } }, length, Draw, () => false, focus);
-        // Only the running tick finishes it, so building the node (opening the page) never alerts by itself.
-        void Ticked()
-        {
-            if (it.Ends is { } end && DateTime.Now >= end) Finish();
-            Update();
-        }
-        Tick += Ticked;
-        return (body, edit, () => Tick -= Ticked);
     }
 
     // ---- live stat: a value and its recent history, from the same samples as the tray and top bar ----
@@ -256,14 +279,14 @@ public partial class BoardPage
         };
         pick.Click += (_, _) =>
         {
-            var menu = new ContextMenu { PlacementTarget = pick, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+            var menu = new ContextMenu();
             foreach (var m in Metrics)
             {
                 var item = new MenuItem { Header = m };
                 item.Click += (_, _) => { it.Text = m; Rebuild(it); };
                 menu.Items.Add(item);
             }
-            menu.IsOpen = true;
+            Open(menu, pick);
         };
         var value = new TextBlock { Text = "—", FontSize = 28, FontWeight = FontWeights.Light, Margin = new(0, 2, 0, 4), Foreground = new SolidColorBrush(color) };
         var spark = new Spark { Color = color, Format = format, Max = max, Height = 56 };

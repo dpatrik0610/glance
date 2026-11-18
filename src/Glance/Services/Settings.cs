@@ -23,6 +23,8 @@ public class Settings
     public bool StayOpen { get; set; }
     public int RefreshMs { get; set; } = 1000;
     public string Hotkey { get; set; } = "Win+Shift+G";
+    /// Quick capture into today's note ("" = off).
+    public string CaptureHotkey { get; set; } = "Win+Shift+N";
 
     public bool AlertsEnabled { get; set; } = true;
     /// The two-note chime with alerts and reminders.

@@ -6,55 +6,90 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using System.Windows.Threading;
 using Glance.Services;
+using IOPath = System.IO.Path;
 
 namespace Glance.Pages;
 
-/// An endless dotted canvas of nodes (BoardPage.Nodes.cs). Board units are pixels at 100%; the view is pan (screen px) + zoom.
-// ponytail: prototype. No multi-select, lines between nodes or undo yet.
+/// Boards (one tab each) of nodes: notes, pictures, links, groups, live stats, embedded notes; with arrows between them and a pen layer.
+/// Canvas layout here; Kanban, node bodies, menus and arrows/ink are the other BoardPage.*.cs parts.
+/// Board units are pixels at 100%; the view is pan (screen px) + zoom. Everything lives in BoardStore.Data and saves itself.
 public partial class BoardPage : UserControl
 {
-    const double Tile = 24, MinW = 120, MaxW = 1200, MinZoom = 0.25, MaxZoom = 3;
+    const double Tile = 24, MinW = 120, MaxW = 1600, MinZoom = 0.25, MaxZoom = 3, Pad = 26; // Pad: a card's padding + border, around W
     static readonly string[] Pictures = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"];
 
-    readonly Boards boards = BoardStore.Load();
+    readonly Boards boards = BoardStore.Data;
     Board board;
-    readonly DispatcherTimer saveSoon = new() { Interval = TimeSpan.FromSeconds(1) };
     readonly Dictionary<BoardItem, Border> cards = [];
     readonly Dictionary<BoardItem, Action> cleanups = [];
-    /// Once a second, for timers.
-    event Action? Tick;
     Point? panFrom;
-    (BoardItem Item, Border Card, Vector Grab)? dragging;
-    (BoardItem Item, FrameworkElement Inner, double FromX, double FromW)? resizing;
+    (BoardItem Item, Border Card, Vector Grab, List<(BoardItem Item, Border Card, Vector Offset)> Carry)? dragging;
+    (BoardItem Item, Border Card, FrameworkElement Inner, Point From, double W, double H)? resizing;
+    (BoardItem From, Line Rubber)? connecting;
     // The minimap's board → map mapping; held still while it's being dragged so the map doesn't slide under the pointer.
     double mapScale = 1;
     Vector mapOffset;
     bool mapDragging;
+    /// Only nodes with this #tag are shown at full strength (null: all).
+    string? tagFilter;
+
+    bool Kanban => board.Layout == "kanban";
 
     public BoardPage()
     {
         InitializeComponent();
-        saveSoon.Tick += (_, _) => Save();
-        Application.Current.Exit += (_, _) => { if (saveSoon.IsEnabled) Save(); };
-        new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Tick?.Invoke(), Dispatcher).Start();
         // The card's corners are round; keep the dots inside them.
         Surface.SizeChanged += (_, _) =>
         {
             Surface.Clip = new RectangleGeometry(new Rect(Surface.RenderSize), 17, 17);
             DrawMap();
         };
+        Ink.StrokeCollected += (_, _) => SaveInk();
+        Ink.StrokeErased += (_, _) => SaveInk();
+        // Ticked on the Tasks page, or added by quick capture: draw it (again).
+        BoardStore.Edited += it =>
+        {
+            if (!board.Items.Contains(it)) return;
+            if (cards.ContainsKey(it) || Kanban) Rebuild(it);
+            else { Show(it); ApplyTag(); Changed(); }
+        };
         board = boards.All.FirstOrDefault(b => b.Id == boards.Current) ?? boards.All[0];
-        foreach (var it in board.Items) Show(it);
         DrawTabs();
-        ApplyView();
+        Refresh();
     }
 
-    void Save()
+    void Changed()
     {
-        saveSoon.Stop();
-        BoardStore.Save(boards);
+        BoardStore.SaveSoon();
+        Hint.Visibility = board.Items.Count == 0 && !Kanban ? Visibility.Visible : Visibility.Collapsed;
+        Redraw();
+    }
+
+    /// Everything that follows node positions and sizes.
+    void Redraw()
+    {
+        if (Kanban) return;
+        DrawEdges();
+        DrawMap();
+    }
+
+    /// Draws the current board from scratch (after switching boards or layouts).
+    void Refresh()
+    {
+        (panFrom, dragging, resizing) = (null, null, null);
+        foreach (var it in cards.Keys.ToList()) Detach(it);
+        LoadInk();
+        var kanban = Kanban;
+        World.Visibility = MapBox.Visibility = ZoomBar.Visibility = PenButton.Visibility = EraserButton.Visibility
+            = kanban ? Visibility.Collapsed : Visibility.Visible;
+        KanbanHost.Visibility = kanban ? Visibility.Visible : Visibility.Collapsed;
+        if (kanban) { SetPen(null); DrawKanban(); }
+        else foreach (var it in board.Items) Show(it);
+        DrawBackground();
+        ApplyView();
+        ApplyTag();
+        Changed();
     }
 
     // ---- boards: one tab each ----
@@ -71,19 +106,7 @@ public partial class BoardPage : UserControl
             };
             chip.Checked += (_, _) => Switch(b);
             chip.MouseDoubleClick += (_, e) => { Rename(b, chip); e.Handled = true; };
-            var menu = new ContextMenu();
-            void Item(string header, Action act, bool enabled = true)
-            {
-                var i = new MenuItem { Header = header, IsEnabled = enabled };
-                i.Click += (_, _) => act();
-                menu.Items.Add(i);
-            }
-            var at = boards.All.IndexOf(b);
-            Item("Rename", () => Rename(b, chip));
-            Item("Move left", () => MoveBoard(b, -1), at > 0);
-            Item("Move right", () => MoveBoard(b, 1), at < boards.All.Count - 1);
-            Item("Delete", () => DeleteBoard(b));
-            chip.ContextMenu = menu;
+            chip.ContextMenu = TabMenu(b, chip);
             TabStrip.Children.Add(chip);
         }
     }
@@ -91,13 +114,10 @@ public partial class BoardPage : UserControl
     void Switch(Board b)
     {
         if (b == board) return;
-        (panFrom, dragging, resizing) = (null, null, null);
-        foreach (var it in cards.Keys.ToList()) Drop(it);
         board = b;
         boards.Current = b.Id;
-        foreach (var it in board.Items) Show(it);
-        ApplyView();
-        Changed();
+        tagFilter = null;
+        Refresh();
     }
 
     void NewBoard(object sender, RoutedEventArgs e)
@@ -152,29 +172,96 @@ public partial class BoardPage : UserControl
             Switch(boards.All[i == 0 ? 1 : i - 1]);
         }
         boards.All.Remove(b);
-        foreach (var it in b.Items.Where(it => it.File is not null))
-            try { File.Delete(System.IO.Path.Combine(BoardStore.Files, it.File!)); } catch (IOException) { }
+        foreach (var it in b.Items) DeleteFile(it);
         DrawTabs();
         Changed();
     }
 
-    void Changed()
+    /// Opens a board (and centers a node on it), from a [[link]], the Tasks page or Ctrl+K.
+    public void Reveal(Board b, BoardItem? it = null)
     {
-        saveSoon.Stop();
-        saveSoon.Start();
-        Hint.Visibility = board.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        DrawMap();
+        Switch(b);
+        DrawTabs();
+        if (it is null || Kanban) return;
+        // Right after the page is created it has no size yet: center once it's laid out.
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!cards.ContainsKey(it)) return;
+            var r = Bounds(it);
+            board.X = Surface.ActualWidth / 2 - (r.X + r.Width / 2) * board.Zoom;
+            board.Y = Surface.ActualHeight / 2 - (r.Y + r.Height / 2) * board.Zoom;
+            ApplyView();
+            ToFront(it);
+            Flash(cards[it]);
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
-    // ---- view: pan, zoom, fit ----
+    /// A brief accent edge, to show which node a jump landed on.
+    void Flash(Border card)
+    {
+        var was = card.BorderBrush;
+        card.BorderBrush = (Brush)FindResource("Accent");
+        card.BorderThickness = new(2);
+        new System.Windows.Threading.DispatcherTimer(TimeSpan.FromSeconds(1.2), System.Windows.Threading.DispatcherPriority.Background,
+            (s, _) => { ((System.Windows.Threading.DispatcherTimer)s!).Stop(); card.BorderBrush = was; card.BorderThickness = new(1); }, Dispatcher);
+    }
+
+    /// [[Target]]: a node titled so on this board, a board, a Notes-page note, a node on another board; else a new note by that name.
+    void Go(string target)
+    {
+        var t = target.Trim();
+        bool Is(string s) => string.Equals(s.Trim(), t, StringComparison.OrdinalIgnoreCase);
+        if (board.Items.FirstOrDefault(i => Is(i.Title)) is { } here) { Reveal(board, here); return; }
+        if (boards.All.FirstOrDefault(b => Is(b.Name)) is { } other) { Reveal(other); return; }
+        if (NoteStore.Notes.FirstOrDefault(n => Is(n.Title)) is { } note)
+        {
+            App.Go("Notes");
+            NoteStore.RequestFocus(note);
+            return;
+        }
+        if (boards.All.SelectMany(b => b.Items.Select(i => (b, i))).FirstOrDefault(x => Is(x.i.Title)) is ({ } ob, { } oi)) { Reveal(ob, oi); return; }
+        if (Kanban) return;
+        Add(new() { Title = t }, Middle, focus: true);
+    }
+
+    // ---- #tag filter ----
+
+    void ShowTag(string tag)
+    {
+        tagFilter = tagFilter == tag ? null : tag;
+        ApplyTag();
+    }
+
+    void ClearTag(object sender, RoutedEventArgs e) => ShowTag(tagFilter ?? "");
+
+    void ApplyTag()
+    {
+        TagButton.Visibility = tagFilter is null ? Visibility.Collapsed : Visibility.Visible;
+        TagButton.Content = $"#{tagFilter}  ✕";
+        foreach (var (it, card) in cards)
+            card.Opacity = tagFilter is null || MarkdownView.Tags(it.Title + "\n" + it.Text).Contains(tagFilter) ? 1 : 0.18;
+    }
+
+    // ---- view: pan, zoom, fit, background ----
 
     void ApplyView()
     {
         World.RenderTransform = new MatrixTransform(board.Zoom, 0, 0, board.Zoom, board.X, board.Y);
         Dots.Viewport = new Rect(board.X, board.Y, Tile * board.Zoom, Tile * board.Zoom);
         ZoomText.Content = $"{board.Zoom:P0}";
-        Hint.Visibility = board.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         DrawMap();
+    }
+
+    void DrawBackground()
+    {
+        var mark = new SolidColorBrush(((SolidColorBrush)FindResource("Sub")).Color) { Opacity = 0.4 };
+        Dots.Drawing = board.Background switch
+        {
+            "grid" => new GeometryDrawing(null, new Pen(new SolidColorBrush(((SolidColorBrush)FindResource("Sub")).Color) { Opacity = 0.12 }, 1),
+                Geometry.Parse("M0,0 H24 M0,0 V24")),
+            "plain" => new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, 24, 24))),
+            _ => new GeometryDrawing(mark, null, new EllipseGeometry(new Point(12, 12), 1.1, 1.1)),
+        };
     }
 
     Point ToBoard(Point screen) => new((screen.X - board.X) / board.Zoom, (screen.Y - board.Y) / board.Zoom);
@@ -198,6 +285,7 @@ public partial class BoardPage : UserControl
 
     void Wheel(object sender, MouseWheelEventArgs e)
     {
+        if (Kanban) return; // the columns scroll
         ZoomAt(e.GetPosition(Surface), board.Zoom * (e.Delta > 0 ? 1.1 : 1 / 1.1));
         e.Handled = true;
     }
@@ -206,11 +294,14 @@ public partial class BoardPage : UserControl
     void ZoomOut(object sender, RoutedEventArgs e) => ZoomAt(ScreenMiddle, board.Zoom / 1.25);
     void ZoomReset(object sender, RoutedEventArgs e) => ZoomAt(ScreenMiddle, 1);
 
-    /// Every node's box, in board units.
-    Rect Bounds(BoardItem it) => cards[it] is { ActualWidth: > 0 } c ? new(it.X, it.Y, c.ActualWidth, c.ActualHeight) : new(it.X, it.Y, it.W, 80);
+    /// A node's box in board units.
+    Rect Bounds(BoardItem it) => cards.TryGetValue(it, out var c) && c.ActualWidth > 0
+        ? new(it.X, it.Y, c.ActualWidth, c.ActualHeight) : new(it.X, it.Y, it.W + Pad, it.H > 0 ? it.H : 80);
+
+    void Fit(object sender, RoutedEventArgs e) => Fit();
 
     /// Zooms and centers so every node is in view (not past 150%).
-    void Fit(object sender, RoutedEventArgs e)
+    void Fit()
     {
         if (board.Items.Count == 0) { (board.X, board.Y, board.Zoom) = (40, 40, 1); ApplyView(); Changed(); return; }
         var all = board.Items.Select(Bounds).Aggregate(Rect.Union);
@@ -227,7 +318,7 @@ public partial class BoardPage : UserControl
     void DrawMap()
     {
         double w = Map.ActualWidth, h = Map.ActualHeight;
-        if (w <= 0 || h <= 0 || Surface.ActualWidth <= 0) return;
+        if (w <= 0 || h <= 0 || Surface.ActualWidth <= 0 || Kanban) return;
         var view = new Rect(ToBoard(new Point(0, 0)), ToBoard(new Point(Surface.ActualWidth, Surface.ActualHeight)));
         if (!mapDragging)
         {
@@ -237,7 +328,7 @@ public partial class BoardPage : UserControl
         }
         Map.Children.Clear();
         var node = (Brush)FindResource("Sub");
-        foreach (var it in board.Items) Map.Children.Add(MapRect(Bounds(it), node, null, 0.55));
+        foreach (var it in board.Items) Map.Children.Add(MapRect(Bounds(it), it.Kind == "group" ? null : node, it.Kind == "group" ? node : null, 0.55));
         Map.Children.Add(MapRect(view, null, (Brush)FindResource("Accent"), 1));
     }
 
@@ -284,15 +375,16 @@ public partial class BoardPage : UserControl
         e.Handled = true;
     }
 
-    // ---- pointer on the background: pan, add ----
+    // ---- pointer on the background: pan, menus, add ----
 
-    // Left or middle drag on the background pans; a left double-click adds a note, a right click opens the Add menu there.
+    // Left or middle drag on the background pans; a left double-click adds a note, a right click opens the board menu there.
     // Nodes and their controls handle their own clicks, so only the background (and middle drags anywhere) get here.
     void SurfaceDown(object sender, MouseButtonEventArgs e)
     {
         Focus(); // for Ctrl+V; also takes focus out of a node being edited
+        if (Kanban) return;
         var p = e.GetPosition(Surface);
-        if (e.ChangedButton == MouseButton.Right) { AddMenu(ToBoard(p)).IsOpen = true; return; }
+        if (e.ChangedButton == MouseButton.Right) { BoardMenu(ToBoard(p), p).IsOpen = true; return; }
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2) { NewNote(ToBoard(p), ""); return; }
         if (e.ChangedButton is not (MouseButton.Left or MouseButton.Middle)) return;
         panFrom = p;
@@ -305,15 +397,32 @@ public partial class BoardPage : UserControl
         var p = e.GetPosition(Surface);
         if (resizing is { } r)
         {
-            r.Item.W = Math.Clamp(r.FromW + ToBoard(p).X - r.FromX, MinW, MaxW);
-            r.Inner.Width = r.Item.W;
+            var at = ToBoard(p);
+            r.Item.W = Math.Clamp(r.W + at.X - r.From.X, MinW, MaxW);
+            if (r.Item.Kind == "group")
+            {
+                r.Item.H = Math.Clamp(r.H + at.Y - r.From.Y, 80, 4000);
+                (r.Card.Width, r.Card.Height) = (r.Item.W + Pad, r.Item.H);
+            }
+            else r.Inner.Width = r.Item.W;
+            Redraw();
         }
         else if (dragging is { } d)
         {
             var at = ToBoard(p) - d.Grab;
             (d.Item.X, d.Item.Y) = (at.X, at.Y);
             Place(d.Item, d.Card);
-            DrawMap();
+            foreach (var (it, card, off) in d.Carry)
+            {
+                (it.X, it.Y) = (at.X + off.X, at.Y + off.Y);
+                Place(it, card);
+            }
+            Redraw();
+        }
+        else if (connecting is { } c)
+        {
+            var at = ToBoard(p);
+            (c.Rubber.X2, c.Rubber.Y2) = (at.X, at.Y);
         }
         else if (panFrom is { } from)
         {
@@ -326,7 +435,13 @@ public partial class BoardPage : UserControl
 
     void SurfaceUp(object sender, MouseButtonEventArgs e)
     {
-        if (panFrom is null && dragging is null && resizing is null) return;
+        if (connecting is { } c)
+        {
+            World.Children.Remove(c.Rubber);
+            connecting = null;
+            if (NodeAt(ToBoard(e.GetPosition(Surface)), c.From) is { } to) Connect(c.From, to);
+        }
+        else if (panFrom is null && dragging is null && resizing is null) return;
         panFrom = null;
         dragging = null;
         resizing = null;
@@ -335,42 +450,30 @@ public partial class BoardPage : UserControl
         Changed();
     }
 
-    void AddClick(object sender, RoutedEventArgs e)
+    /// The topmost node under a board point (other than `not`), preferring nodes over the groups they sit in.
+    BoardItem? NodeAt(Point at, BoardItem? not = null) =>
+        board.Items.AsEnumerable().Reverse().Where(i => i != not && Bounds(i).Contains(at)).OrderBy(i => i.Kind == "group" ? 1 : 0).FirstOrDefault();
+
+    void AddClick(object sender, RoutedEventArgs e) => Open(AddMenu(Kanban ? null : Middle), AddButton);
+
+    void MoreClick(object sender, RoutedEventArgs e) => Open(BoardMenu(Kanban ? new Point() : Middle, null), MoreButton);
+
+    static void Open(ContextMenu menu, UIElement under)
     {
-        var menu = AddMenu(Middle);
-        menu.PlacementTarget = AddButton;
+        menu.PlacementTarget = under;
         menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;
     }
 
-    ContextMenu AddMenu(Point at)
-    {
-        var menu = new ContextMenu();
-        void Item(string header, Action add)
-        {
-            var i = new MenuItem { Header = header };
-            i.Click += (_, _) => add();
-            menu.Items.Add(i);
-        }
-        Item("Note", () => NewNote(at, ""));
-        Item("Link (website, file or folder)", () => Add(new() { Kind = "link", W = 260 }, at, focus: true));
-        Item("Timer", () => Add(new() { Kind = "timer" }, at));
-        Item("Live stat (CPU, GPU, RAM, network)", () => Add(new() { Kind = "stat", Text = Metrics[0] }, at));
-        Item("Picture from a file…", () =>
-        {
-            var pick = new Microsoft.Win32.OpenFileDialog { Filter = "Pictures|" + string.Join(";", Pictures.Select(x => "*" + x)), Multiselect = true };
-            if (pick.ShowDialog() == true) AddFiles(pick.FileNames, at);
-        });
-        return menu;
-    }
-
-    // ---- nodes: the card around each one (drag, resize, remove) ----
+    // ---- nodes: the card around each one (drag, resize, connect, menu) ----
 
     void Add(BoardItem it, Point at, bool focus = false)
     {
         (it.X, it.Y) = (at.X, at.Y);
+        if (Kanban && it.Column == "") it.Column = board.Columns.FirstOrDefault() ?? "";
         board.Items.Add(it);
-        Show(it, focus);
+        if (Kanban) DrawKanban(focus ? it : null);
+        else Show(it, focus);
         Changed();
     }
 
@@ -380,8 +483,8 @@ public partial class BoardPage : UserControl
     {
         var it = new BoardItem { Kind = "image" };
         Directory.CreateDirectory(BoardStore.Files);
-        it.File = it.Id + (copyFrom is null ? ".png" : System.IO.Path.GetExtension(copyFrom).ToLowerInvariant());
-        var path = System.IO.Path.Combine(BoardStore.Files, it.File);
+        it.File = it.Id + (copyFrom is null ? ".png" : IOPath.GetExtension(copyFrom).ToLowerInvariant());
+        var path = IOPath.Combine(BoardStore.Files, it.File);
         try
         {
             if (copyFrom is not null) File.Copy(copyFrom, path);
@@ -398,20 +501,29 @@ public partial class BoardPage : UserControl
         Add(it, at);
     }
 
+    /// A node's card on the canvas.
     void Show(BoardItem it, bool focus = false)
     {
         var (body, edit, cleanup) = Build(it, focus);
         if (cleanup is not null) cleanups[it] = cleanup;
+        var group = it.Kind == "group";
 
         var remove = new Button
         {
             Style = (Style)FindResource("Ghost"), Content = "", FontFamily = (FontFamily)FindResource("Icons"), FontSize = 10,
             Padding = new(5), HorizontalAlignment = HorizontalAlignment.Right, ToolTip = "Remove", Opacity = 0,
         };
-        var head = new Grid { Height = 22, Children = { remove } };
+        var lockMark = new TextBlock
+        {
+            Text = "", FontFamily = (FontFamily)FindResource("Icons"), FontSize = 10, Foreground = (Brush)FindResource("Sub"),
+            VerticalAlignment = VerticalAlignment.Center, ToolTip = "Locked (right-click to unlock)",
+            Visibility = it.Locked ? Visibility.Visible : Visibility.Collapsed,
+        };
+        var head = new Grid { Height = 22, Children = { lockMark, remove } };
         DockPanel.SetDock(head, Dock.Top);
-        var inner = new DockPanel { Width = it.W, Children = { head, body } };
-        // Resize: drag the bottom-right corner (width; the height follows the content).
+        var inner = new DockPanel { Children = { head, body } };
+        if (!group) inner.Width = it.W;
+        // Resize: drag the bottom-right corner (width; a group's height too).
         var grip = new Border
         {
             Width = 16, Height = 16, Background = Brushes.Transparent, Cursor = Cursors.SizeNWSE, Opacity = 0,
@@ -419,53 +531,118 @@ public partial class BoardPage : UserControl
             ToolTip = "Drag to resize",
             Child = new System.Windows.Shapes.Path { Data = Geometry.Parse("M10,2 L2,10 M10,6 L6,10"), Stroke = (Brush)FindResource("Sub"), StrokeThickness = 1.3 },
         };
+        // Connect: drag from the dot on the right edge onto another node.
+        var handle = new Ellipse
+        {
+            Width = 12, Height = 12, Fill = (Brush)FindResource("Popup"), Stroke = (Brush)FindResource("Accent"), StrokeThickness = 2, Opacity = 0,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, -19, 0),
+            Cursor = Cursors.Cross, ToolTip = "Drag onto another node to connect",
+        };
         var card = new Border
         {
-            Background = (Brush)FindResource("Popup"), BorderBrush = (Brush)FindResource("CardEdge"), BorderThickness = new(1),
-            CornerRadius = new(12), Padding = new(12, 2, 12, 12), Cursor = Cursors.SizeAll,
-            Child = new Grid { Children = { inner, grip } },
+            Background = group ? GroupFill(it) : (Brush)FindResource("Popup"), BorderBrush = Edge(it), BorderThickness = new(1),
+            CornerRadius = new(group ? 16 : 12), Padding = new(12, 2, 12, 12), Cursor = Cursors.SizeAll,
+            Child = new Grid { Children = { inner, grip, handle } },
         };
-        card.MouseEnter += (_, _) => remove.Opacity = grip.Opacity = 1;
-        card.MouseLeave += (_, _) => remove.Opacity = grip.Opacity = 0;
-        card.SizeChanged += (_, _) => DrawMap();
+        if (group) (card.Width, card.Height) = (it.W + Pad, it.H > 0 ? it.H : it.H = 240);
+        Panel.SetZIndex(card, group ? -2 : 0);
+        card.MouseEnter += (_, _) => remove.Opacity = handle.Opacity = grip.Opacity = it.Locked ? 0 : 1;
+        card.MouseLeave += (_, _) => remove.Opacity = handle.Opacity = grip.Opacity = 0;
+        card.SizeChanged += (_, _) => Redraw();
         remove.Click += (_, _) => Remove(it);
         grip.MouseLeftButtonDown += (_, e) =>
         {
-            resizing = (it, inner, ToBoard(e.GetPosition(Surface)).X, it.W);
-            Surface.CaptureMouse();
             e.Handled = true;
+            if (it.Locked) return;
+            resizing = (it, card, inner, ToBoard(e.GetPosition(Surface)), it.W, it.H);
+            Surface.CaptureMouse();
+        };
+        handle.MouseLeftButtonDown += (_, e) =>
+        {
+            e.Handled = true;
+            var from = Bounds(it);
+            var rubber = new Line
+            {
+                X1 = from.X + from.Width / 2, Y1 = from.Y + from.Height / 2, X2 = from.Right, Y2 = from.Y + from.Height / 2,
+                Stroke = (Brush)FindResource("Accent"), StrokeThickness = 2, StrokeDashArray = [4, 3], IsHitTestVisible = false,
+            };
+            Panel.SetZIndex(rubber, 5);
+            World.Children.Add(rubber);
+            connecting = (it, rubber);
+            Surface.CaptureMouse();
         };
         // Drag by anything that doesn't keep its own clicks (text boxes, buttons, task boxes, links); double-click edits.
         card.MouseLeftButtonDown += (_, e) =>
         {
             if (e.ClickCount == 2 && edit is not null) { edit(true); e.Handled = true; return; }
-            board.Items.Remove(it); // to the end of the list and the top of the stack
-            board.Items.Add(it);
-            World.Children.Remove(card);
-            World.Children.Add(card);
-            dragging = (it, card, ToBoard(e.GetPosition(Surface)) - new Point(it.X, it.Y));
-            Surface.CaptureMouse();
+            if (it.Locked) return; // the background takes it: a locked node pans the board instead
             e.Handled = true;
+            if (!group) ToFront(it);
+            var at = ToBoard(e.GetPosition(Surface));
+            // A group carries what's inside it.
+            var box = Bounds(it);
+            var carry = group
+                ? board.Items.Where(o => o != it && !o.Locked && box.Contains(Bounds(o))).Select(o => (o, cards[o], new Point(o.X, o.Y) - new Point(it.X, it.Y))).ToList()
+                : [];
+            dragging = (it, card, at - new Point(it.X, it.Y), carry);
+            Surface.CaptureMouse();
         };
+        NodeMenuOn(card, it, edit);
         cards[it] = card;
         Place(it, card);
         World.Children.Add(card);
     }
 
+    /// The card's edge: its color when it has one.
+    Brush Edge(BoardItem it) => ColorOf(it.Color) is { } c ? new SolidColorBrush(c) : (Brush)FindResource(it.Kind == "group" ? "Line" : "CardEdge");
+
+    Brush GroupFill(BoardItem it) => ColorOf(it.Color) is { } c ? new SolidColorBrush(Color.FromArgb(0x16, c.R, c.G, c.B)) : (Brush)FindResource("CardBg");
+
+    /// JSON Canvas's preset colors "1".."6".
+    public static readonly (string Id, string Name, Color Color)[] NodeColors =
+    [
+        ("1", "Red", Color.FromRgb(0xFF, 0x5A, 0x5A)), ("2", "Orange", Color.FromRgb(0xFF, 0x8A, 0x3D)), ("3", "Yellow", Color.FromRgb(0xF5, 0xC5, 0x3D)),
+        ("4", "Green", Color.FromRgb(0x4C, 0xC3, 0x7A)), ("5", "Cyan", Color.FromRgb(0x2C, 0xC7, 0xC7)), ("6", "Purple", Color.FromRgb(0xB0, 0x7C, 0xFF)),
+    ];
+
+    static Color? ColorOf(string id) => NodeColors.FirstOrDefault(c => c.Id == id) is { Name: not null } c ? c.Color : null;
+
+    void ToFront(BoardItem it)
+    {
+        board.Items.Remove(it); // the end of the list is the top of the stack
+        board.Items.Add(it);
+        if (cards.TryGetValue(it, out var card) && !Kanban) { World.Children.Remove(card); World.Children.Add(card); }
+    }
+
+    void ToBack(BoardItem it)
+    {
+        board.Items.Remove(it);
+        board.Items.Insert(0, it);
+        if (cards.TryGetValue(it, out var card) && !Kanban) { World.Children.Remove(card); World.Children.Insert(0, card); }
+        Changed();
+    }
+
     /// Builds a node again in place (after its settings changed).
     void Rebuild(BoardItem it)
     {
-        Drop(it);
+        if (Kanban) { DrawKanban(); return; }
+        if (!cards.ContainsKey(it)) return;
+        var at = World.Children.IndexOf(cards[it]);
+        Detach(it);
         Show(it);
+        // Back to its place in the stack.
+        var card = cards[it];
+        World.Children.Remove(card);
+        World.Children.Insert(Math.Min(at, World.Children.Count), card);
+        ApplyTag();
         Changed();
     }
 
     /// Takes a node's card off the board and stops what it was doing (the item itself stays).
-    void Drop(BoardItem it)
+    void Detach(BoardItem it)
     {
         if (cleanups.Remove(it, out var stop)) stop();
-        World.Children.Remove(cards[it]);
-        cards.Remove(it);
+        if (cards.Remove(it, out var card)) World.Children.Remove(card);
     }
 
     void Remove(BoardItem it)
@@ -474,9 +651,16 @@ public partial class BoardPage : UserControl
         if (it.Kind == "note" && (it.Title + it.Text).Trim().Length > 0
             && !Dialog.Confirm("Remove note", "Remove this note from the board?", "This can't be undone.", "Remove")) return;
         board.Items.Remove(it);
-        Drop(it);
-        if (it.File is not null) try { File.Delete(System.IO.Path.Combine(BoardStore.Files, it.File)); } catch (IOException) { }
+        board.Edges.RemoveAll(e => e.From == it.Id || e.To == it.Id);
+        Detach(it);
+        DeleteFile(it);
+        if (Kanban) DrawKanban();
         Changed();
+    }
+
+    static void DeleteFile(BoardItem it)
+    {
+        if (it.File is not null) try { File.Delete(IOPath.Combine(BoardStore.Files, it.File)); } catch (IOException) { }
     }
 
     /// Focus can't land on an element until it's shown, which for a new card or a just-switched editor is after layout.
@@ -505,7 +689,7 @@ public partial class BoardPage : UserControl
         {
             var b = new BitmapImage();
             b.BeginInit();
-            b.UriSource = new Uri(System.IO.Path.Combine(BoardStore.Files, it.File!));
+            b.UriSource = new Uri(IOPath.Combine(BoardStore.Files, it.File!));
             b.CacheOption = BitmapCacheOption.OnLoad; // don't keep the file locked
             b.EndInit();
             b.Freeze();
@@ -518,17 +702,23 @@ public partial class BoardPage : UserControl
 
     void KeyPressed(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.V || Keyboard.Modifiers != ModifierKeys.Control || e.OriginalSource is TextBox) return;
-        var at = Surface.IsMouseOver ? ToBoard(Mouse.GetPosition(Surface)) : Middle;
+        if (e.Key != Key.V || Keyboard.Modifiers != ModifierKeys.Control || e.OriginalSource is TextBox || Kanban) return;
+        if (Paste(Surface.IsMouseOver ? ToBoard(Mouse.GetPosition(Surface)) : Middle)) e.Handled = true;
+    }
+
+    /// Whatever's on the clipboard, as nodes at a board point. False when there's nothing usable.
+    bool Paste(Point at)
+    {
         if (Clipboard.ContainsFileDropList()) AddFiles(Clipboard.GetFileDropList().Cast<string>(), at);
         else if (Clipboard.ContainsImage() && Clipboard.GetImage() is { } img) NewPicture(at, img);
         else if (Clipboard.ContainsText()) AddText(Clipboard.GetText(), at);
-        else return;
-        e.Handled = true;
+        else return false;
+        return true;
     }
 
     void Dropped(object sender, DragEventArgs e)
     {
+        if (Kanban) return;
         var at = ToBoard(e.GetPosition(Surface));
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files) AddFiles(files, at);
         else if (e.Data.GetData(DataFormats.UnicodeText) is string text) AddText(text, at);
@@ -543,12 +733,14 @@ public partial class BoardPage : UserControl
         else NewNote(at, text);
     }
 
-    /// Pictures become pictures; other files and folders become links.
+    /// Pictures become pictures; other files and folders become links. Obsidian .canvas files are imported as a new board.
     void AddFiles(IEnumerable<string> files, Point at)
     {
         foreach (var f in files)
         {
-            if (Pictures.Contains(System.IO.Path.GetExtension(f).ToLowerInvariant())) NewPicture(at, copyFrom: f);
+            var ext = IOPath.GetExtension(f).ToLowerInvariant();
+            if (ext == ".canvas") { ImportCanvas(f); continue; }
+            if (Pictures.Contains(ext)) NewPicture(at, copyFrom: f);
             else Add(new() { Kind = "link", W = 260, Text = f }, at);
             at.Offset(24, 24);
         }

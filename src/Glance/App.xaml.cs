@@ -36,14 +36,15 @@ public partial class App : Application
 
     /// Result of the last hotkey registration, for the Settings page.
     public static string HotkeyStatus { get; private set; } = "";
+    public static string CaptureStatus { get; private set; } = "";
 
-    const int HotkeyId = 1;
+    const int HotkeyId = 1, CaptureHotkeyId = 2;
     Mutex? mutex;
     Tray? tray;
     MainWindow? main;
     BarWindow? bar;
     IntPtr hwnd;
-    string? registeredHotkey;
+    string? registeredHotkey, registeredCapture;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -103,6 +104,7 @@ public partial class App : Application
         Media.TrackChanged += ShowTrack;
         Media.Start();
 
+        Timers.Start();
         Listen();
         Task.Run(SampleLoop);
         new DispatcherTimer(TimeSpan.FromSeconds(15), DispatcherPriority.Background, (_, _) => CheckReminders(), Dispatcher);
@@ -181,6 +183,7 @@ public partial class App : Application
     IntPtr WndProc(IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled)
     {
         if (msg == Native.WM_HOTKEY && (int)w == HotkeyId) ToggleMain(true);
+        else if (msg == Native.WM_HOTKEY && (int)w == CaptureHotkeyId) CaptureWindow.Open();
         else if (msg == Native.WM_CLIPBOARDUPDATE) ClipboardHistory.Capture();
         return IntPtr.Zero;
     }
@@ -197,6 +200,14 @@ public partial class App : Application
         else
             HotkeyStatus = "Active.";
         if (HotkeyStatus != "Active.") Db.Warn($"hotkey {Settings.Hotkey}: {HotkeyStatus}");
+
+        // Quick capture: optional (empty = off).
+        if (Settings.CaptureHotkey == registeredCapture) return;
+        registeredCapture = Settings.CaptureHotkey;
+        Native.UnregisterHotKey(hwnd, CaptureHotkeyId);
+        if (Settings.CaptureHotkey.Trim() == "") CaptureStatus = "Off.";
+        else if (!Native.TryParseHotkey(Settings.CaptureHotkey, out mods, out vk)) CaptureStatus = "Not a valid shortcut.";
+        else CaptureStatus = Native.RegisterHotKey(hwnd, CaptureHotkeyId, mods | 0x4000, vk) ? "Active." : "Taken by another app.";
     }
 
     public static void ShowAlert(Alert a, Proc? who = null)
@@ -230,6 +241,12 @@ public partial class App : Application
                 main!.ShowTab("Notes");
                 NoteStore.RequestFocus(note);
             });
+        }
+        foreach (var t in BoardStore.DueReminders(DateTime.Now))
+        {
+            Db.Info($"reminder {t.Board.Name}: {t.Text}");
+            AlertWindow.Show(new Toast($"Reminder · {t.Board.Name}", t.Text.Length > 0 ? t.Text : "(no text)", "",
+                "Due", t.Due!.Value.ToString("HH:mm"), Color.FromRgb(0x5A, 0xA9, 0xFF), true), () => ((Pages.BoardPage)Go("Board")).Reveal(t.Board, t.Item));
         }
         foreach (var (ev, minutes) in GoogleCalendar.DueAlerts(DateTime.Now))
         {
@@ -312,6 +329,14 @@ public partial class App : Application
 
     /// Where alerts hang: just under the bar, or at the top edge when the bar is off or stepped aside.
     internal static double AlertTop => ((App)Current).bar is { IsVisible: true } b ? b.Edge + 4 : SystemParameters.WorkArea.Top + 8;
+
+    /// Brings Glance up on a page (from a [[link]], a reminder, a timer alert) and returns it.
+    internal static System.Windows.Controls.UserControl Go(string tab)
+    {
+        var app = (App)Current;
+        app.ShowMain();
+        return app.main!.ShowTab(tab);
+    }
 
     void ShowMain()
     {

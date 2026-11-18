@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.IO;
 using System.Net.Http;
 using System.Windows;
 using Glance.Services;
@@ -37,13 +38,40 @@ static class SelfTest
             Check(Stocks.Parse("x", """{"chart":{"result":null,"error":{"code":"Not Found"}}}""") is null, "stock quote: unknown symbol");
 
             Check(new Pages.BoardPage().Content is not null, "board page loads");
-            Check(BoardStore.ParseDuration("25") == 1500 && BoardStore.ParseDuration("1:30") == 90 && BoardStore.ParseDuration("1:00:00") == 3600
-                && BoardStore.ParseDuration("0") is null && BoardStore.ParseDuration("abc") is null && BoardStore.ParseDuration("-5") is null, "timer lengths");
-            Check(BoardStore.Clock(90) == "01:30" && BoardStore.Clock(3725) == "1:02:05" && BoardStore.Clock(0.2) == "00:01" && BoardStore.Clock(-3) == "00:00", "timer clock");
+            Check(Timers.ParseDuration("25") == 1500 && Timers.ParseDuration("1:30") == 90 && Timers.ParseDuration("1:00:00") == 3600
+                && Timers.ParseDuration("0") is null && Timers.ParseDuration("abc") is null && Timers.ParseDuration("-5") is null, "timer lengths");
+            Check(Timers.Clock(90) == "01:30" && Timers.Clock(3725) == "1:02:05" && Timers.Clock(0.2) == "00:01" && Timers.Clock(-3) == "00:00", "timer clock");
+            Check(new Pages.TimerPage().Content is not null && new Pages.TasksPage().Content is not null, "timer and tasks pages load");
             const string md = "# Plan\r\n- [ ] buy **milk**\r\n- [x] call [mom](https://example.com)\r\n\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |";
-            var tasks = MarkdownView.Tasks(md);
-            Check(tasks.Length == 2 && MarkdownView.Toggle(md, tasks[0]).Contains("- [x] buy") && MarkdownView.Toggle(md, tasks[1]).Contains("- [ ] call")
-                && MarkdownView.Toggle(md, tasks[1]).Length == md.Length, $"markdown: task toggle {string.Join(",", tasks)}");
+            var tasks = MarkdownView.TaskLines(md).ToList();
+            Check(tasks.Count == 2 && !tasks[0].Done && tasks[1].Done && MarkdownView.Toggle(md, 0).Contains("- [x] buy") && MarkdownView.Toggle(md, 1).Contains("- [ ] call")
+                && MarkdownView.Toggle(md, 1).Length == md.Length, "markdown: task toggle");
+            Check(MarkdownView.Tags("Plan #work and #Home-2, not a#b or `#code`").OrderBy(t => t).SequenceEqual(["home-2", "work"]), $"markdown: tags {string.Join(",", MarkdownView.Tags("Plan #work and #Home-2, not a#b or `#code`"))}");
+            Check(MarkdownView.Links("see [[Shopping|the list]] and [[Board 2]]").SequenceEqual(["Shopping", "Board 2"]), "markdown: wikilinks");
+            Check(MarkdownView.Render("> [!warning] Careful\n> body [[x]] #t", _ => { }) is System.Windows.Controls.StackPanel { Children.Count: 1 }, "markdown: callout");
+            var fixedDue = BoardStore.FixDues("- [ ] call mom @tomorrow 9\n- [ ] keep @2026-01-02 10:00\nplain @tomorrow", new DateTime(2026, 11, 18, 12, 0, 0));
+            Check(fixedDue == "- [ ] call mom @2026-11-19 09:00\n- [ ] keep @2026-01-02 10:00\nplain @tomorrow", $"board task due dates: {fixedDue}");
+            var exit = Pages.BoardPage.Exit(new Rect(0, 0, 100, 50), new Point(250, 25));
+            Check(exit == new Point(100, 25) && Pages.BoardPage.Exit(new Rect(0, 0, 100, 50), new Point(50, -100)) == new Point(50, 0), $"arrow leaves the box at its edge: {exit}");
+            {
+                var dir = Path.Combine(Path.GetTempPath(), "glance-canvas-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(dir);
+                try
+                {
+                    var b = new Board { Name = "Trip" };
+                    BoardItem n1 = new() { Title = "Pack", Text = "- [ ] socks", X = 10, Y = 20, W = 200, Color = "4" }, n2 = new() { Kind = "link", Text = "https://example.com/" },
+                        g = new() { Kind = "group", Title = "Day 1", W = 400, H = 300 };
+                    b.Items.AddRange([n1, n2, g]);
+                    b.Edges.Add(new() { From = n1.Id, To = n2.Id, Label = "then" });
+                    JsonCanvas.Export(b, null, Path.Combine(dir, "Trip.canvas"));
+                    var again = JsonCanvas.Import(Path.Combine(dir, "Trip.canvas"));
+                    var p1 = again.Items.Single(i => i.Id == n1.Id);
+                    Check(again.Name == "Trip" && again.Items.Count == 3 && again.Items[0].Kind == "group" && again.Items.Single(i => i.Id == g.Id).Title == "Day 1"
+                        && p1 is { Title: "Pack", Text: "- [ ] socks", X: 10, Y: 20, W: 200, Color: "4" } && again.Items.Single(i => i.Id == n2.Id) is { Kind: "link", Text: "https://example.com/" }
+                        && again.Edges is [{ Label: "then" } e] && e.From == n1.Id && e.To == n2.Id, "json canvas round trip");
+                }
+                finally { Directory.Delete(dir, true); }
+            }
             Check(MarkdownView.Render(md, _ => { }) is System.Windows.Controls.StackPanel { Children.Count: 3 }, "markdown: heading, list, table"); // XAML parses, saved board reads
             HashSet<object> Keys(string f) => [.. new ResourceDictionary { Source = new Uri($"pack://application:,,,/Themes/{f}.xaml") }.Keys];
             Check(Keys("Mint").SetEquals(Keys("Flamingo")), "themes define the same keys");

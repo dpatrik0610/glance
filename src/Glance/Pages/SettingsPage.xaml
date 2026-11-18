@@ -93,6 +93,12 @@
                                 <Button Content="Apply" Margin="8,0,0,0" Click="SetHotkey" />
                             </StackPanel>
                         </local:SettingRow>
+                        <local:SettingRow x:Name="CaptureRow" Icon="&#xE70F;" Title="Quick capture shortcut">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="CaptureBox" Width="170" Tag="e.g. Win+Shift+N (empty: off)" KeyDown="HotkeyKey" />
+                                <Button Content="Apply" Margin="8,0,0,0" Click="SetHotkey" />
+                            </StackPanel>
+                        </local:SettingRow>
                         <local:SettingRow Icon="&#xE7E8;" Title="Start with Windows" Description="Opens in the tray when you sign in">
                             <CheckBox x:Name="AutoBox" Style="{StaticResource Switch}" Click="Toggled" />
                         </local:SettingRow>

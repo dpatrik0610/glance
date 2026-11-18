@@ -35,6 +35,8 @@ public partial class MainWindow : Window
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
         Merged("Notes", "Tools", "\uE70B", new("Notes", "\uE70B", () => new NotesPage()), new("Stickies", "\uE840", () => new StickiesPage())),
         new("Board", "Tools", "\uE80A", () => new BoardPage()),
+        new("Tasks", "Tools", "\uE73A", () => new TasksPage()),
+        new("Timer", "Tools", "\uE916", () => new TimerPage()),
         new("Calendar", "Tools", "\uE787", () => new CalendarPage()),
         new("Password", "Tools", "\uE8D7", () => new PasswordPage()),
         new("Color", "Tools", "\uE790", () => new ColorPage()),

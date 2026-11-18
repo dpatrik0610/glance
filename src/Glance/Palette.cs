@@ -126,6 +126,16 @@ public partial class MainWindow
             list.Add(new(n.DisplayTitle, "Note", n.Icon, Do(() => { Go("Notes"); NoteStore.RequestFocus(n); }),
                 n.Text + " " + string.Join(" ", n.Items.Select(i => i.Text)), true));
 
+        list.Add(new("Today's note", "Note", "", Do(() => { Go("Notes"); NoteStore.RequestFocus(NoteStore.Today()); })));
+        list.Add(new("Quick capture", "Note", "", Do(CaptureWindow.Open)));
+        foreach (var b in BoardStore.Data.All)
+        {
+            list.Add(new(b.Name, "Board", "", Do(() => ((BoardPage)ShowTab("Board")).Reveal(b)),
+                string.Join(" ", b.Items.Select(i => i.Title)), true));
+            foreach (var it in b.Items.Where(i => i.Kind == "note" && i.Title.Trim() != ""))
+                list.Add(new(it.Title, $"Board · {b.Name}", "", Do(() => ((BoardPage)ShowTab("Board")).Reveal(b, it)), it.Text, true));
+        }
+
         foreach (var p in PinStore.Pins)
             list.Add(new(p.Name, "Pin", "\uE707", Do(() => ((MapPage)ShowTab("Map")).ShowPin(p)), $"{p.Note} {p.Address} {p.Kind}", true));
 

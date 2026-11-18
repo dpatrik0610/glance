@@ -228,6 +228,16 @@ public static class NoteStore
     /// Notes and stickies: everything that can hold checklist items with due dates.
     public static IEnumerable<Note> Everything => Notes.Concat<Note>(Stickies.Items);
 
+    /// Today's daily note (a text note titled yyyy-MM-dd), made if there isn't one.
+    public static Note Today()
+    {
+        var name = DateTime.Today.ToString("yyyy-MM-dd");
+        if (Notes.FirstOrDefault(n => n.Kind == NoteKind.Text && n.Title.Trim() == name) is { } n) return n;
+        n = new Note { Title = name };
+        Notes.Insert(0, n);
+        return n;
+    }
+
     /// Items whose reminder is due now and hasn't shown yet.
     public static IEnumerable<(Note Note, TodoItem Item)> DueReminders(DateTime now) =>
         from n in Everything

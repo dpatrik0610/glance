@@ -11,17 +11,23 @@
         <!-- Note list -->
         <Border Style="{StaticResource Card}">
             <DockPanel>
-                <UniformGrid DockPanel.Dock="Top" Columns="2" Margin="0,0,0,12">
+                <UniformGrid DockPanel.Dock="Top" Columns="3" Margin="0,0,0,12">
                     <Button Margin="0,0,4,0" Click="NewText" ToolTip="New text note">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE70B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
                             <TextBlock Text="Note" />
                         </StackPanel>
                     </Button>
-                    <Button Margin="4,0,0,0" Click="NewChecklist" ToolTip="New checklist">
+                    <Button Margin="4,0,4,0" Click="NewChecklist" ToolTip="New checklist">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE9D5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <TextBlock Text="Checklist" />
+                            <TextBlock Text="List" />
+                        </StackPanel>
+                    </Button>
+                    <Button Margin="4,0,0,0" Click="OpenToday" ToolTip="Today's daily note (made if there isn't one)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8BF;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Today" />
                         </StackPanel>
                     </Button>
                 </UniformGrid>

@@ -65,6 +65,7 @@ public partial class SettingsPage : UserControl
         AlertsBox.IsChecked = s.AlertsEnabled;
         SoundBox.IsChecked = s.AlertSound;
         HotkeyBox.Text = s.Hotkey;
+        CaptureBox.Text = s.CaptureHotkey;
         CityBox.Text = s.City;
         MongoBox.Text = s.MongoUrl;
         IsVisibleChanged += (_, _) =>
@@ -125,11 +126,16 @@ public partial class SettingsPage : UserControl
     void SetHotkey(object sender, RoutedEventArgs e)
     {
         s.Hotkey = HotkeyBox.Text.Trim();
+        s.CaptureHotkey = CaptureBox.Text.Trim();
         App.ApplySettings();
         ShowHotkeyStatus();
     }
 
-    void ShowHotkeyStatus() => HotkeyRow.Description = $"Shows or hides Glance from anywhere. {App.HotkeyStatus}".TrimEnd();
+    void ShowHotkeyStatus()
+    {
+        HotkeyRow.Description = $"Shows or hides Glance from anywhere. {App.HotkeyStatus}".TrimEnd();
+        CaptureRow.Description = $"A line into today's note (Ctrl+Enter: a note on the board). {App.CaptureStatus}".TrimEnd();
+    }
 
     void HotkeyKey(object sender, KeyEventArgs e)
     {

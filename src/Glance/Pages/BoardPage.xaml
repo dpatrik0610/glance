@@ -11,35 +11,45 @@
         </StackPanel>
     </ScrollViewer>
     <Border Style="{StaticResource Card}" Padding="0">
-        <!-- Dotted canvas: drag the background to pan, scroll to zoom. Nodes live on World, which pans and zooms. -->
+        <!-- Canvas layout: drag the background to pan, scroll to zoom. Nodes, arrows and the pen layer live on World, which pans and zooms. -->
         <Grid x:Name="Surface" ClipToBounds="True" AllowDrop="True" Margin="1"
               MouseDown="SurfaceDown" MouseMove="SurfaceMove" MouseUp="SurfaceUp" PreviewMouseWheel="Wheel" Drop="Dropped">
             <Grid.Background>
-                <DrawingBrush x:Name="Dots" TileMode="Tile" ViewportUnits="Absolute" Viewport="0,0,24,24" ViewboxUnits="Absolute" Viewbox="0,0,24,24">
-                    <DrawingBrush.Drawing>
-                        <DrawingGroup Opacity="0.4">
-                            <GeometryDrawing Brush="{StaticResource Sub}">
-                                <GeometryDrawing.Geometry>
-                                    <EllipseGeometry Center="12,12" RadiusX="1.1" RadiusY="1.1" />
-                                </GeometryDrawing.Geometry>
-                            </GeometryDrawing>
-                        </DrawingGroup>
-                    </DrawingBrush.Drawing>
-                </DrawingBrush>
+                <DrawingBrush x:Name="Dots" TileMode="Tile" ViewportUnits="Absolute" Viewport="0,0,24,24" ViewboxUnits="Absolute" Viewbox="0,0,24,24" />
             </Grid.Background>
 
-            <Canvas x:Name="World" />
+            <Canvas x:Name="World">
+                <Canvas x:Name="EdgeLayer" Panel.ZIndex="-1" />
+                <InkCanvas x:Name="Ink" Panel.ZIndex="10" Canvas.Left="-50000" Canvas.Top="-50000" Width="100000" Height="100000"
+                           Background="{x:Null}" EditingMode="None" />
+            </Canvas>
+
+            <!-- Kanban layout: columns of cards, instead of the canvas -->
+            <ScrollViewer x:Name="KanbanHost" Visibility="Collapsed" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                          Padding="14,56,14,14" Background="Transparent">
+                <StackPanel x:Name="Columns" Orientation="Horizontal" />
+            </ScrollViewer>
 
             <TextBlock x:Name="Hint" Style="{StaticResource Label}" HorizontalAlignment="Center" VerticalAlignment="Center"
                        TextAlignment="Center" IsHitTestVisible="False" LineHeight="22"
-                       Text="Double-click to add a note, right-click for more (links, timers, live stats)&#10;Paste or drop pictures, links and files&#10;Drag the background to move around, scroll to zoom" />
+                       Text="Double-click to add a note, right-click for everything else&#10;Paste or drop pictures, links and files&#10;Drag the background to move around, scroll to zoom" />
+
+            <!-- Top left: the tag being shown, and the pen -->
+            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Orientation="Horizontal">
+                <ToggleButton x:Name="PenButton" Style="{StaticResource IconToggle}" Content="&#xED63;" ToolTip="Pen: draw on the board" Click="PenClick" />
+                <ToggleButton x:Name="EraserButton" Style="{StaticResource IconToggle}" Content="&#xE75C;" ToolTip="Eraser: remove whole strokes" Click="PenClick" Margin="4,0,0,0" />
+                <Button x:Name="TagButton" Visibility="Collapsed" Margin="10,0,0,0" Click="ClearTag" ToolTip="Show everything again" />
+            </StackPanel>
 
             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource Ghost}" Content="&#xE738;" FontFamily="{StaticResource Icons}" ToolTip="Zoom out" Click="ZoomOut" />
-                    <Button x:Name="ZoomText" Style="{StaticResource Ghost}" MinWidth="52" ToolTip="Back to 100%" Click="ZoomReset" />
-                    <Button Style="{StaticResource Ghost}" Content="&#xE710;" FontFamily="{StaticResource Icons}" ToolTip="Zoom in" Click="ZoomIn" />
-                    <Button Style="{StaticResource Ghost}" Content="&#xE9A6;" FontFamily="{StaticResource Icons}" ToolTip="Fit everything in view" Click="Fit" Margin="2,0,0,0" />
+                    <StackPanel x:Name="ZoomBar" Orientation="Horizontal">
+                        <Button Style="{StaticResource Ghost}" Content="&#xE738;" FontFamily="{StaticResource Icons}" ToolTip="Zoom out" Click="ZoomOut" />
+                        <Button x:Name="ZoomText" Style="{StaticResource Ghost}" MinWidth="52" ToolTip="Back to 100%" Click="ZoomReset" />
+                        <Button Style="{StaticResource Ghost}" Content="&#xE710;" FontFamily="{StaticResource Icons}" ToolTip="Zoom in" Click="ZoomIn" />
+                        <Button Style="{StaticResource Ghost}" Content="&#xE9A6;" FontFamily="{StaticResource Icons}" ToolTip="Fit everything in view" Click="Fit" Margin="2,0,0,0" />
+                    </StackPanel>
+                    <Button x:Name="MoreButton" Style="{StaticResource Ghost}" Content="&#xE712;" FontFamily="{StaticResource Icons}" ToolTip="Board options" Click="MoreClick" Margin="2,0,0,0" />
                     <Button x:Name="AddButton" Margin="6,0,0,0" Click="AddClick" ToolTip="Add a node (or right-click the board)">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE710;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />

@@ -1,0 +1,97 @@
+<UserControl x:Class="Glance.Pages.TimerPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="380" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Timers: as many as you like, each with its own name and length -->
+        <Border Style="{StaticResource Card}">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+                    <Button DockPanel.Dock="Right" Click="AddTimer" ToolTip="New timer">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE710;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Timer" />
+                        </StackPanel>
+                    </Button>
+                    <StackPanel>
+                        <TextBlock Text="Timers" Style="{StaticResource H}" />
+                        <TextBlock Text="An alert when one runs out, even with Glance closed to the tray" Style="{StaticResource Label}" Margin="0,2,0,0" />
+                    </StackPanel>
+                </DockPanel>
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <WrapPanel x:Name="TimerList" />
+                    </ScrollViewer>
+                    <TextBlock x:Name="NoTimers" Style="{StaticResource Label}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Text="No timers yet. Add one, give it a name and a length (25 = 25 min, 1:30 = 90 s)." />
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <StackPanel Grid.Column="1">
+            <!-- Stopwatch -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Stopwatch" Style="{StaticResource H}" />
+                    <TextBlock x:Name="WatchText" FontSize="40" FontWeight="Light" HorizontalAlignment="Center" Margin="0,8,0,8" FontFamily="{StaticResource Mono}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="WatchButton" Style="{StaticResource Primary}" MinWidth="90" Click="WatchStartStop" />
+                        <Button x:Name="LapButton" Content="Lap" MinWidth="70" Margin="8,0,0,0" Click="WatchLap" />
+                        <Button Content="Reset" MinWidth="70" Margin="8,0,0,0" Click="WatchReset" />
+                    </StackPanel>
+                    <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                        <StackPanel x:Name="LapList" />
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+
+            <!-- Pomodoro -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <DockPanel>
+                        <TextBlock x:Name="PomoRounds" DockPanel.Dock="Right" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                        <TextBlock Text="Pomodoro" Style="{StaticResource H}" />
+                    </DockPanel>
+                    <TextBlock x:Name="PomoPhase" Style="{StaticResource Label}" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    <TextBlock x:Name="PomoText" FontSize="40" FontWeight="Light" HorizontalAlignment="Center" Margin="0,2,0,6" />
+                    <Grid Height="4" Margin="0,0,0,12">
+                        <Border Background="{StaticResource Track}" CornerRadius="2" />
+                        <Border x:Name="PomoFill" Background="{StaticResource Accent}" CornerRadius="2" RenderTransformOrigin="0,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="PomoScale" ScaleX="0" />
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="PomoButton" Style="{StaticResource Primary}" MinWidth="90" Click="PomoStartPause" />
+                        <Button Content="Skip" MinWidth="70" Margin="8,0,0,0" Click="PomoSkip" ToolTip="On to the next work round or break" />
+                        <Button Content="Stop" MinWidth="70" Margin="8,0,0,0" Click="PomoStop" />
+                    </StackPanel>
+                    <!-- Lengths in minutes -->
+                    <UniformGrid Columns="4" Margin="0,14,0,0">
+                        <StackPanel Margin="0,0,6,0">
+                            <TextBlock Text="Work" Style="{StaticResource Label}" Margin="2,0,0,4" />
+                            <TextBox x:Name="WorkBox" LostFocus="PomoLengths" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,6,0">
+                            <TextBlock Text="Break" Style="{StaticResource Label}" Margin="2,0,0,4" />
+                            <TextBox x:Name="ShortBox" LostFocus="PomoLengths" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,6,0">
+                            <TextBlock Text="Long break" Style="{StaticResource Label}" Margin="2,0,0,4" />
+                            <TextBox x:Name="LongBox" LostFocus="PomoLengths" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="Long every" Style="{StaticResource Label}" Margin="2,0,0,4" />
+                            <TextBox x:Name="EveryBox" LostFocus="PomoLengths" ToolTip="Work rounds between long breaks" />
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Grid>
+</UserControl>
