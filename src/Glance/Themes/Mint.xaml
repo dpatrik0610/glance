@@ -1,4 +1,4 @@
-<!-- The default palette. Every palette (Vice.xaml…) defines the same keys; Skin.cs picks one at startup. -->
+<!-- The default palette. Every palette (Flamingo.xaml…) defines the same keys; Skin.cs picks one at startup. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
