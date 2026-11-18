@@ -21,9 +21,9 @@ public sealed class Treemap : FrameworkElement
     static readonly byte[] Shades = [0xE0, 0xB4, 0x90, 0x70];
     static readonly Brush[][] Fills = Hues.Select(h => Shades.Select(a => Frozen<Brush>(new SolidColorBrush(Color.FromArgb(a, h.R, h.G, h.B)))).ToArray()).ToArray();
     static readonly Pen Outline = Frozen(new Pen(Brushes.White, 1.5));
-    static readonly Brush LabelBg = Frozen<Brush>(new SolidColorBrush(Color.FromArgb(0xCC, 0x0C, 0x1B, 0x15)));
+    static readonly Brush LabelBg = Frozen<Brush>(new SolidColorBrush(Skin.Get("SurfaceColor", 0xCC)));
     static readonly Brush LabelText = Frozen<Brush>(new SolidColorBrush(Color.FromRgb(0xF4, 0xF4, 0xF5)));
-    static readonly Brush Hole = Frozen<Brush>(new SolidColorBrush(Color.FromRgb(0x0E, 0x1C, 0x16)));
+    static readonly Brush Hole = Frozen<Brush>(new SolidColorBrush(Skin.Get("SurfaceColor")));
     static readonly Brush Doom = Frozen<Brush>(new SolidColorBrush(Color.FromRgb(0xFF, 0x5A, 0x5A)));
     static readonly Typeface Face = new("Segoe UI Variable Text, Segoe UI");
     const double RevealS = 0.32, ZoomS = 0.42, VanishS = 0.4;

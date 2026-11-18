@@ -111,13 +111,16 @@
                 <TextBlock Text="Appearance" Style="{StaticResource Section}" />
                 <Border Style="{StaticResource Group}">
                     <StackPanel>
+                        <local:SettingRow Icon="&#xE2B1;" Title="Theme" Description="Changing it restarts Glance">
+                            <StackPanel x:Name="Themes" Orientation="Horizontal" />
+                        </local:SettingRow>
                         <local:SettingRow Icon="&#xE790;" Title="Window opacity">
                             <StackPanel x:Name="OpacityRow" Orientation="Horizontal">
                                 <Slider Minimum="0.1" Maximum="1" />
                                 <TextBlock Style="{StaticResource Value}" />
                             </StackPanel>
                         </local:SettingRow>
-                        <local:SettingRow Icon="&#xE793;" Title="Color glow" Description="Green and orange light on the glass">
+                        <local:SettingRow Icon="&#xE793;" Title="Color glow" Description="Colored light on the glass">
                             <StackPanel x:Name="GlowRow" Orientation="Horizontal">
                                 <Slider Minimum="0" Maximum="1" />
                                 <TextBlock Style="{StaticResource Value}" />

@@ -13,7 +13,7 @@
         </Grid.RenderTransform>
 
         <!-- Glance's window panel, as a card. Width/Height/Radius animate, so it's a Rectangle, not a Border. -->
-        <Rectangle x:Name="Shell" Fill="#F50F1D17" Stroke="{StaticResource Line}" RadiusX="20" RadiusY="20"
+        <Rectangle x:Name="Shell" Fill="{StaticResource Popup}" Stroke="{StaticResource Line}" RadiusX="20" RadiusY="20"
                    HorizontalAlignment="Center" VerticalAlignment="Center">
             <Rectangle.Effect>
                 <DropShadowEffect BlurRadius="30" ShadowDepth="4" Opacity="0.5" Color="Black" />

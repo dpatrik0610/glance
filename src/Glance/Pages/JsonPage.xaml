@@ -24,7 +24,7 @@
                         <Setter Property="BorderBrush" Value="Transparent" />
                         <Style.Triggers>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter Property="BorderBrush" Value="#B37FD6A4" />
+                                <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>

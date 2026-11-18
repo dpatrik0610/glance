@@ -40,6 +40,18 @@ public partial class SettingsPage : UserControl
             Sounds.Children.Add(chip);
         }
 
+        foreach (var name in Skin.Names)
+        {
+            var chip = new RadioButton { Style = (Style)FindResource("Chip"), GroupName = "theme", Content = name, Margin = new(0, 0, 6, 0), IsChecked = name == s.Theme };
+            chip.Checked += (_, _) =>
+            {
+                if (!IsLoaded || name == s.Theme) return;
+                s.Theme = name;
+                App.Restart(); // saves it, so a cancelled restart still applies it next start
+            };
+            Themes.Children.Add(chip);
+        }
+
         BlurBox.IsChecked = s.Blur;
         TopBox.IsChecked = s.Topmost;
         CompactBox.IsChecked = s.Compact;

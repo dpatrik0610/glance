@@ -131,7 +131,7 @@ public partial class BarWindow : Window
     }
 
     /// The pill's background (opacity applies to it only, so text stays readable) and size; alerts and the panel share them.
-    public static Brush PillBrush => new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255), 0x0A, 0x21, 0x17));
+    public static Brush PillBrush => new SolidColorBrush(Skin.Get("PanelColor", (byte)(Math.Clamp(App.Settings.BarOpacity, 0.1, 1) * 255)));
     public static double Scale => App.Settings.BarSize switch { "Medium" => 1.2, "Large" => 1.4, _ => 1 };
 
     void ApplyLook()

@@ -1,0 +1,46 @@
+<!-- The default palette. Every palette (Vice.xaml…) defines the same keys; Skin.cs picks one at startup. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="Text" Color="#E6EFE9" />
+    <SolidColorBrush x:Key="Sub" Color="#9FB5A8" />
+    <SolidColorBrush x:Key="CardBg" Color="#14AAE1C3" />
+    <SolidColorBrush x:Key="Line" Color="#21AAE1C3" />
+    <SolidColorBrush x:Key="Track" Color="#22AAE1C3" />
+    <SolidColorBrush x:Key="Accent" Color="#7FD6A4" />
+    <SolidColorBrush x:Key="OnAccent" Color="#06140D" />
+    <SolidColorBrush x:Key="Green" Color="#4CC37A" />
+    <SolidColorBrush x:Key="Amber" Color="#E6A65D" />
+    <SolidColorBrush x:Key="Red" Color="#FF5A5A" />
+    <SolidColorBrush x:Key="PillBg" Color="#224CC37A" />
+
+    <!-- Window glass tint (alpha comes from the opacity setting), and opaque surfaces: menus, popups, dialogs, labels. -->
+    <Color x:Key="PanelColor">#0B2419</Color>
+    <Color x:Key="SurfaceColor">#122219</Color>
+    <SolidColorBrush x:Key="Popup" Color="#F5122219" />
+
+    <!-- The three lights on the glass: top right, left, bottom. -->
+    <Color x:Key="Glow1">#8E2E8B57</Color>
+    <Color x:Key="Glow1Fade">#002E8B57</Color>
+    <Color x:Key="Glow2">#AA1F5C3F</Color>
+    <Color x:Key="Glow2Fade">#001F5C3F</Color>
+    <Color x:Key="Glow3">#4DE6A65D</Color>
+    <Color x:Key="Glow3Fade">#00E6A65D</Color>
+
+    <LinearGradientBrush x:Key="CardFill" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#267FD6A4" Offset="0" />
+        <GradientStop Color="#0FAAE1C3" Offset="0.6" />
+        <GradientStop Color="#14E6A65D" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="CardEdge" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#807FD6A4" Offset="0" />
+        <GradientStop Color="#21AAE1C3" Offset="0.3" />
+        <GradientStop Color="#21AAE1C3" Offset="0.7" />
+        <GradientStop Color="#73E6A65D" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="CardEdgeHot" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#D07FD6A4" Offset="0" />
+        <GradientStop Color="#40AAE1C3" Offset="0.4" />
+        <GradientStop Color="#C0E6A65D" Offset="1" />
+    </LinearGradientBrush>
+</ResourceDictionary>

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Net.Http;
 using System.Windows;
 using Glance.Services;
@@ -12,6 +12,10 @@ static class SelfTest
     {
         try
         {
+            // First, before anything reads a resource: styles built after the swap take the Vice colors.
+            Skin.Load("Vice City");
+            var sub = ((Style)Application.Current.FindResource("Label")).Setters.OfType<Setter>().First(x => x.Property == System.Windows.Controls.TextBlock.ForegroundProperty);
+            Check(sub.Value is System.Windows.Media.SolidColorBrush { Color: { R: 0xC9, G: 0xA3, B: 0xC0 } }, "theme swap reaches styles");
             for (var i = 0; i < 500; i++)
             {
                 var (p, bits) = Passwords.Generate(12, true, true, true, true, true);
@@ -31,6 +35,9 @@ static class SelfTest
             Check(quote is { Symbol: "AAPL", Name: "Apple Inc.", Currency: "USD", Price: 110 } && Math.Abs(quote.Change - 10) < 1e-9
                 && quote.Closes.Length == 4 && float.IsNaN(quote.Closes[1]), $"stock quote: {quote}");
             Check(Stocks.Parse("x", """{"chart":{"result":null,"error":{"code":"Not Found"}}}""") is null, "stock quote: unknown symbol");
+
+            HashSet<object> Keys(string f) => [.. new ResourceDictionary { Source = new Uri($"pack://application:,,,/Themes/{f}.xaml") }.Keys];
+            Check(Keys("Mint").SetEquals(Keys("Vice")), "themes define the same keys");
 
             Check(Native.TryParseHotkey("Win+Shift+G", out var m, out var vk) && m == 12 && vk == 0x47, "Win+Shift+G");
             Check(Native.TryParseHotkey("ctrl + alt + 1", out m, out vk) && m == 3 && vk == 0x31, "ctrl+alt+1");

@@ -144,7 +144,7 @@ public partial class MainWindow : Window
     void ApplySettings()
     {
         var s = App.Settings;
-        Panel.Background = new SolidColorBrush(Color.FromArgb((byte)(Math.Clamp(s.Opacity, 0.1, 1) * 255), 0x0B, 0x24, 0x19));
+        Panel.Background = new SolidColorBrush(Skin.Get("PanelColor", (byte)(Math.Clamp(s.Opacity, 0.1, 1) * 255)));
         Glow.Opacity = s.Glow;
         Topmost = s.Topmost;
         Nav.Tag = !s.NavCollapsed; // item labels and group headers bind to this

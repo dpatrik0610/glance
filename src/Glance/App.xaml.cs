@@ -47,6 +47,7 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        Skin.Load(Settings.Theme); // before anything reads a resource
         if (e.Args.Contains("--selftest")) { Shutdown(SelfTest.Run()); return; }
         // The Clean page's elevated half: `--clean id,id`. The megabytes freed go back as the exit code.
         if (Array.IndexOf(e.Args, "--clean") is >= 0 and var c) { Shutdown(Cleaner.Run(e.Args.ElementAtOrDefault(c + 1)?.Split(',') ?? [])); return; }
@@ -331,14 +332,18 @@ public partial class App : Application
         if (main!.IsVisible && (!requireFocus || Native.GetForegroundWindow() == hwnd)) main.Away(); else ShowMain();
     }
 
-    void RestartAsAdmin()
+    void RestartAsAdmin() => Relaunch("runas");
+
+    /// Starts a new instance (it waits for this one's mutex) and exits. Settings are saved first: the new one reads them at once.
+    internal static void Restart() => ((App)Current).Relaunch("");
+
+    void Relaunch(string verb)
     {
-        try
-        {
-            Process.Start(new ProcessStartInfo(Environment.ProcessPath!, "--wait") { UseShellExecute = true, Verb = "runas" });
-            Quit();
-        }
-        catch (System.ComponentModel.Win32Exception) { } // UAC prompt declined
+        if (!ConfirmQuit()) return;
+        Settings.Save();
+        try { Process.Start(new ProcessStartInfo(Environment.ProcessPath!, "--wait") { UseShellExecute = true, Verb = verb }); }
+        catch (System.ComponentModel.Win32Exception) { return; } // UAC prompt declined
+        Quit(ask: false);
     }
 
     /// tools\deploy.ps1 in the source tree this exe was built from; null for a build whose source isn't on this PC.
@@ -406,11 +411,13 @@ public partial class App : Application
         }
     }
 
+    static bool ConfirmQuit() => CliPage.Running == 0 || Dialog.Confirm("Exit Glance",
+        $"{CliPage.Running} terminal{(CliPage.Running == 1 ? " is" : "s are")} still open",
+        "They reopen next time, but anything running in them stops.", "Exit");
+
     void Quit(bool ask = true)
     {
-        if (ask && CliPage.Running > 0 && !Dialog.Confirm("Exit Glance",
-                $"{CliPage.Running} terminal{(CliPage.Running == 1 ? " is" : "s are")} still open",
-                "They reopen next time, but anything running in them stops.", "Exit")) return;
+        if (ask && !ConfirmQuit()) return;
         Db.Info("exit");
         if (saveTimer?.IsEnabled == true) Settings.Save();
         tray!.Hide();

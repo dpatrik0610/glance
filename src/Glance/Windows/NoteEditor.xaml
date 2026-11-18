@@ -65,7 +65,7 @@
 
         <!-- Font and size, opened from the pages' font button (ShowFontMenu) -->
         <Popup x:Name="FontMenu" Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
-            <Border Background="#F412221B" CornerRadius="12" Padding="12" BorderBrush="{StaticResource Line}" BorderThickness="1" Width="260">
+            <Border Background="{StaticResource Popup}" CornerRadius="12" Padding="12" BorderBrush="{StaticResource Line}" BorderThickness="1" Width="260">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,4">
                         <TextBlock DockPanel.Dock="Right" Text="{Binding FontSize}" Style="{StaticResource Label}" />
