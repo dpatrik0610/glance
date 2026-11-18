@@ -37,6 +37,9 @@ static class SelfTest
             Check(Stocks.Parse("x", """{"chart":{"result":null,"error":{"code":"Not Found"}}}""") is null, "stock quote: unknown symbol");
 
             Check(new Pages.BoardPage().Content is not null, "board page loads");
+            Check(BoardStore.ParseDuration("25") == 1500 && BoardStore.ParseDuration("1:30") == 90 && BoardStore.ParseDuration("1:00:00") == 3600
+                && BoardStore.ParseDuration("0") is null && BoardStore.ParseDuration("abc") is null && BoardStore.ParseDuration("-5") is null, "timer lengths");
+            Check(BoardStore.Clock(90) == "01:30" && BoardStore.Clock(3725) == "1:02:05" && BoardStore.Clock(0.2) == "00:01" && BoardStore.Clock(-3) == "00:00", "timer clock");
             const string md = "# Plan\r\n- [ ] buy **milk**\r\n- [x] call [mom](https://example.com)\r\n\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |";
             var tasks = MarkdownView.Tasks(md);
             Check(tasks.Length == 2 && MarkdownView.Toggle(md, tasks[0]).Contains("- [x] buy") && MarkdownView.Toggle(md, tasks[1]).Contains("- [ ] call")
