@@ -19,6 +19,63 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Glance.Pages;
 
+/// One shell. Started at the first size its pane reports; lives as long as Glance unless closed or exited.
+public class CliPane
+{
+    static int nextId;
+
+    public int Id { get; } = ++nextId;
+    public TermPTY Pty { get; } = new();
+    public required string Dir { get; init; }
+    /// Where the shell is now, from the prompt's OSC 9;9 mark; what a restart reopens in.
+    public string Cwd { get; set; } = "";
+    public string? Command { get; init; }
+    /// A restored Claude pane: picks its last conversation in this folder back up.
+    public bool Resume { get; init; }
+
+    // Shell output not yet handed to the page; flushed once per dispatcher turn so floods don't post per chunk.
+    internal readonly StringBuilder Pending = new();
+    internal bool FlushQueued, Starting;
+
+    public bool Exited => Pty.Process?.HasExited == true;
+}
+
+/// A tab's layout: one pane, or two nodes side by side (stacked when Column), A taking Ratio of the room.
+public class CliNode
+{
+    static int nextId;
+
+    public int Id { get; } = ++nextId;
+    public CliPane? Pane { get; set; }
+    public bool Column { get; set; }
+    public double Ratio { get; set; } = .5;
+    public CliNode? A { get; set; }
+    public CliNode? B { get; set; }
+
+    public IEnumerable<CliNode> All() => Pane is not null ? [this] : [this, .. A!.All(), .. B!.All()];
+
+    /// Puts `added` next to `at` on the given side (left, right, up, down).
+    public void Split(CliPane at, CliPane added, string side)
+    {
+        var leaf = All().First(n => n.Pane == at);
+        CliNode old = new() { Pane = at }, add = new() { Pane = added };
+        (leaf.Pane, leaf.Column, leaf.Ratio) = (null, side is "up" or "down", .5);
+        (leaf.A, leaf.B) = side is "left" or "up" ? (add, old) : (old, add);
+    }
+
+    /// This tree without the pane; its split collapses into the other side. Null when it was the only pane.
+    public CliNode? Without(CliPane p)
+    {
+        if (Pane is not null) return Pane == p ? null : this;
+        var (a, b) = (A!.Without(p), B!.Without(p));
+        if (a is null) return b;
+        if (b is null) return a;
+        (A, B) = (a, b);
+        return this;
+    }
+}
+
+/// A tab in the strip: a tree of panes split any way, any number of times.
 public class CliTab : Bindable
 {
     static int nextId;
@@ -27,25 +84,16 @@ public class CliTab : Bindable
     bool editing;
 
     public int Id { get; } = ++nextId;
-    public TermPTY Pty { get; } = new();
-    public required string Dir { get; init; }
-    /// Where the shell is now, from the prompt's OSC 9;9 mark; what a restart reopens in.
-    public string Cwd { get; set; } = "";
-    public string? Command { get; init; }
-    /// A restored Claude tab: picks its last conversation in this folder back up.
-    public bool Resume { get; set; }
+    public required CliNode Root { get; set; }
+    /// The pane keys go to; folder clicks and splits act on it.
+    public CliPane Focus { get; set; } = null!;
+    public IEnumerable<CliPane> Panes => Root.All().Select(n => n.Pane).OfType<CliPane>();
     public string Name { get => name; set => Set(ref name, value); }
     public bool Editing { get => editing; set => Set(ref editing, value); }
     public string Color { get => color; set { if (Set(ref color, value)) { Raise(nameof(Brush)); Raise(nameof(Tint)); } } }
 
     public Brush Brush => Solid(0xFF);
     public Brush Tint => Solid(0x2E);
-
-    // Shell output not yet handed to the page; flushed once per dispatcher turn so floods don't post per chunk.
-    internal readonly StringBuilder Pending = new();
-    internal bool FlushQueued, Starting;
-
-    public bool Exited => Pty.Process?.HasExited == true;
 
     Brush Solid(byte alpha)
     {
@@ -68,8 +116,11 @@ public partial class CliPage : UserControl
 
     public const string Claude = "claude";
 
-    record Msg(string T, int Id, string? D, int Cols, int Rows, string? Uri);
-    record Saved(string Dir, string? Command, string Name, string Color);
+    record Msg(string T, int Id, string? D, int Cols, int Rows, string? Uri, double R);
+    // A saved node: a pane (Dir, Command) or a split (Column, Ratio, A, B). A tab's root also carries Name and Color,
+    // which keeps files from before splits (one pane per tab) loading as they are.
+    record Saved(string? Dir, string? Command, bool Column = false, double Ratio = .5, Saved? A = null, Saved? B = null,
+        string? Name = null, string? Color = null);
     static readonly string SessionFile = Path.Combine(Settings.Dir, "cli-tabs.json");
 
     // Runs after the profile: wraps whatever prompt it set (Starship or not) to report the folder as OSC 9;9,
@@ -95,7 +146,7 @@ public partial class CliPage : UserControl
         ClaudeButton.Visibility = Shell.OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;
         IsVisibleChanged += (_, _) => FocusTerm();
         new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, (_, _) => Reap(), Dispatcher);
-        Application.Current.Exit += (_, _) => { Save(); foreach (var t in tabs) Kill(t); };
+        Application.Current.Exit += (_, _) => { Save(); foreach (var p in Panes) Kill(p); };
         // Windows may kill the shells before Glance at shutdown; don't let Reap save that as "no tabs".
         Application.Current.SessionEnding += (_, _) => { Save(); ending = true; };
         TabSelected(this, null!);
@@ -111,7 +162,7 @@ public partial class CliPage : UserControl
             if (!File.Exists(SessionFile)) return;
             restoring = true;
             foreach (var t in JsonSerializer.Deserialize<Saved[]>(File.ReadAllText(SessionFile)) ?? [])
-                Open(t.Dir, t.Command, t.Name, t.Color).Resume = t.Command == Claude;
+                Add(Build(t, true), t.Name, t.Color);
             if (tabs.Count > 0) TabList.SelectedIndex = 0;
         }
         catch (Exception e) when (e is IOException or JsonException) { Db.Warn($"cli restore: {e.Message}"); }
@@ -121,9 +172,17 @@ public partial class CliPage : UserControl
     void Save()
     {
         if (restoring || ending) return;
-        try { Settings.WriteAtomic(SessionFile, JsonSerializer.Serialize(tabs.Select(t => new Saved(t.Cwd, t.Command, t.Name, t.Color)))); }
+        try { Settings.WriteAtomic(SessionFile, JsonSerializer.Serialize(tabs.Select(t => Snapshot(t.Root) with { Name = t.Name, Color = t.Color }))); }
         catch (IOException e) { Db.Warn($"cli save: {e.Message}"); }
     }
+
+    static Saved Snapshot(CliNode n) => n.Pane is { } p
+        ? new(p.Cwd, p.Command)
+        : new(null, null, n.Column, n.Ratio, Snapshot(n.A!), Snapshot(n.B!));
+
+    static CliNode Build(Saved s, bool resume) => s is { A: { } a, B: { } b }
+        ? new() { Column = s.Column, Ratio = Math.Clamp(s.Ratio, .05, .95), A = Build(a, resume), B = Build(b, resume) }
+        : new() { Pane = NewPane(s.Dir, s.Command, resume && s.Command == Claude) };
 
     async void InitWeb()
     {
@@ -167,13 +226,25 @@ public partial class CliPage : UserControl
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
             return;
         }
-        if (tabs.FirstOrDefault(t => t.Id == m.Id) is not { } tab) return;
-        if (m.T == "in" && tab.Pty.TermProcIsStarted) tab.Pty.WriteToTerm(m.D);
-        else if (m.T == "size") Size(tab, m.Cols, m.Rows);
+        if (m.T == "ratio") // a divider was dragged
+        {
+            if (tabs.SelectMany(t => t.Root.All()).FirstOrDefault(n => n.Id == m.Id) is { } node) node.Ratio = Math.Clamp(m.R, .05, .95);
+            Save();
+            return;
+        }
+        if (Panes.FirstOrDefault(p => p.Id == m.Id) is not { } pane) return;
+        switch (m.T)
+        {
+            case "in" when pane.Pty.TermProcIsStarted: pane.Pty.WriteToTerm(m.D); break;
+            case "size": Size(pane, m.Cols, m.Rows); break;
+            case "active": TabOf(pane)!.Focus = pane; break;
+            case "split": Split(pane, m.D ?? "right"); break;
+            case "closepane": ClosePane(pane); break;
+        }
     }
 
     // The shell starts at the first size the page reports, so it never has to reflow from a guess.
-    void Size(CliTab t, int cols, int rows)
+    void Size(CliPane t, int cols, int rows)
     {
         if (t.Starting) { t.Pty.Resize(cols, rows); return; }
         t.Starting = true;
@@ -187,11 +258,11 @@ public partial class CliPage : UserControl
         new Thread(() => // Start blocks for the shell's lifetime, pumping its output
         {
             try { t.Pty.Start(command, cols, rows, false, null, t.Dir); }
-            catch (Exception e) { Db.Error($"cli start {t.Name}", e); }
+            catch (Exception e) { Db.Error($"cli start {t.Dir}", e); }
         }) { IsBackground = true, Name = "cli " + t.Id }.Start();
     }
 
-    void Output(CliTab t, string data)
+    void Output(CliPane t, string data)
     {
         // ponytail: a mark split across two output chunks is missed; the next prompt catches up.
         if (data.Contains("\x1b]9;9;") && CwdMark().Matches(data) is { Count: > 0 } marks && marks[^1].Groups[1].Value is var cwd && cwd != t.Cwd)
@@ -220,20 +291,29 @@ public partial class CliPage : UserControl
 
     CliTab? Current => TabList.SelectedItem as CliTab;
 
-    public CliTab Open(string? dir = null, string? command = null, string? name = null, string? color = null)
+    IEnumerable<CliPane> Panes => tabs.SelectMany(t => t.Panes);
+
+    CliTab? TabOf(CliPane p) => tabs.FirstOrDefault(t => t.Panes.Contains(p));
+
+    static CliPane NewPane(string? dir, string? command, bool resume = false)
     {
         if (!Directory.Exists(dir)) dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var tab = new CliTab
-        {
-            Dir = dir,
-            Command = command,
-            Name = name ?? LeafOf(dir),
-            Color = color ?? Palette[tabs.Count % Palette.Length],
-            Cwd = dir,
-        };
-        Post(new { t = "open", id = tab.Id });
+        return new() { Dir = dir, Cwd = dir, Command = command, Resume = resume };
+    }
+
+    public CliTab Open(string? dir = null, string? command = null, string? name = null, string? color = null)
+    {
+        var pane = NewPane(dir, command);
+        return Add(new() { Pane = pane }, name ?? LeafOf(pane.Dir), color);
+    }
+
+    CliTab Add(CliNode root, string? name, string? color)
+    {
+        var tab = new CliTab { Root = root, Color = color ?? Palette[tabs.Count % Palette.Length] };
+        tab.Focus = tab.Panes.First();
+        tab.Name = name ?? LeafOf(tab.Focus.Dir);
         tabs.Add(tab);
-        Running = tabs.Count;
+        Running = Panes.Count();
         TabList.SelectedItem = tab;
         Save();
         return tab;
@@ -241,26 +321,54 @@ public partial class CliPage : UserControl
 
     void Close(CliTab t)
     {
-        Kill(t);
-        Post(new { t = "close", id = t.Id });
+        foreach (var p in t.Panes)
+        {
+            Kill(p);
+            Post(new { t = "close", id = p.Id });
+        }
         var i = tabs.IndexOf(t);
         tabs.Remove(t);
-        Running = tabs.Count;
+        Running = Panes.Count();
         if (tabs.Count > 0) TabList.SelectedIndex = Math.Min(i, tabs.Count - 1);
         Save();
     }
 
-    // Whole tree: a dev server started from the shell goes with it.
-    static void Kill(CliTab t)
+    /// A new shell beside the pane, in the folder that pane is in now.
+    void Split(CliPane at, string side)
     {
-        try { if (t.Pty.Process is { HasExited: false } p) p.Kill(true); }
-        catch (Exception e) { Db.Warn($"cli kill {t.Name}: {e.Message}"); }
+        if (TabOf(at) is not { } tab) return;
+        var added = NewPane(at.Cwd, null);
+        tab.Root.Split(at, added, side);
+        tab.Focus = added;
+        Running = Panes.Count();
+        Save();
+        if (tab == Current) TabSelected(this, null!);
     }
 
-    // A shell that exited on its own (`exit`) closes its tab.
+    void ClosePane(CliPane p)
+    {
+        if (TabOf(p) is not { } tab) return;
+        if (tab.Root.Without(p) is not { } rest) { Close(tab); return; } // its last pane
+        Kill(p);
+        Post(new { t = "close", id = p.Id });
+        tab.Root = rest;
+        if (tab.Focus == p) tab.Focus = tab.Panes.First();
+        Running = Panes.Count();
+        Save();
+        if (tab == Current) TabSelected(this, null!);
+    }
+
+    // Whole tree: a dev server started from the shell goes with it.
+    static void Kill(CliPane t)
+    {
+        try { if (t.Pty.Process is { HasExited: false } p) p.Kill(true); }
+        catch (Exception e) { Db.Warn($"cli kill {t.Dir}: {e.Message}"); }
+    }
+
+    // A shell that exited on its own (`exit`) closes its pane, and the tab with its last one.
     void Reap()
     {
-        foreach (var t in tabs.Where(t => t.Exited).ToList()) Close(t);
+        foreach (var p in Panes.Where(p => p.Exited).ToList()) ClosePane(p);
     }
 
     void FocusTerm() => Dispatcher.BeginInvoke(() =>
@@ -275,22 +383,47 @@ public partial class CliPage : UserControl
         Screen.BorderBrush = Current?.Brush ?? (Brush)FindResource("Line");
         Empty.Visibility = tabs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Web.Visibility = tabs.Count == 0 ? Visibility.Hidden : Visibility.Visible;
-        if (Current is { } t) Post(new { t = "show", id = t.Id });
+        if (Current is { } t) Post(new { t = "show", tree = View(t.Root), focus = t.Focus.Id });
         FocusTerm();
     }
 
-    void NewShell(object sender, RoutedEventArgs e) => Open(Current?.Dir);
+    // The layout as term.html draws it: {id} for a pane, {node, col, r, a, b} for a split.
+    static object View(CliNode n) => n.Pane is { } p
+        ? new { id = p.Id }
+        : new { node = n.Id, col = n.Column, r = n.Ratio, a = View(n.A!), b = View(n.B!) };
 
-    void NewClaude(object sender, RoutedEventArgs e) => Open(Current?.Dir, Claude, "Claude", Palette[0]);
+    void NewShell(object sender, RoutedEventArgs e) => Open(Current?.Focus.Dir);
+
+    void NewClaude(object sender, RoutedEventArgs e) => Open(Current?.Focus.Dir, Claude, "Claude", Palette[0]);
 
     static CliTab TabOf(object sender) => (CliTab)((FrameworkElement)sender).DataContext;
 
     void CloseTab(object sender, RoutedEventArgs e) => Close(TabOf(sender));
 
+    // The whole layout again, each pane in the folder it's in now.
     void Duplicate(object sender, RoutedEventArgs e)
     {
         var t = TabOf(sender);
-        Open(t.Cwd, t.Command, t.Name, t.Color);
+        Add(Build(Snapshot(t.Root), false), t.Name, t.Color);
+    }
+
+    // Tab menu items act on that tab's focused pane; the toolbar's on the current tab's.
+    void SplitMenu(object sender, RoutedEventArgs e)
+    {
+        if ((((FrameworkElement)sender).DataContext as CliTab ?? Current) is { } t) Split(t.Focus, (string)((FrameworkElement)sender).Tag);
+    }
+
+    void ClosePaneMenu(object sender, RoutedEventArgs e)
+    {
+        if ((((FrameworkElement)sender).DataContext as CliTab ?? Current) is { } t) ClosePane(t.Focus);
+    }
+
+    void SplitButton(object sender, RoutedEventArgs e)
+    {
+        var b = (Button)sender;
+        b.ContextMenu.PlacementTarget = b;
+        b.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        b.ContextMenu.IsOpen = true;
     }
 
     // Double-click a tab to rename; single click puts the cursor back in its terminal (or starts a drag).
@@ -357,7 +490,7 @@ public partial class CliPage : UserControl
     void EditDone(object sender, KeyboardFocusChangedEventArgs e)
     {
         var t = TabOf(sender);
-        if (t.Name.Trim().Length == 0) t.Name = LeafOf(t.Dir);
+        if (t.Name.Trim().Length == 0) t.Name = LeafOf(t.Focus.Dir);
         t.Editing = false;
         Save();
     }
@@ -379,7 +512,7 @@ public partial class CliPage : UserControl
     void GoFolder(object sender, RoutedEventArgs e)
     {
         var path = FolderOf(sender);
-        if (Current?.Pty is not { TermProcIsStarted: true } pty) { Open(path); return; }
+        if (Current?.Focus.Pty is not { TermProcIsStarted: true } pty) { Open(path); return; }
         pty.WriteToTerm($"Set-Location -LiteralPath '{path.Replace("'", "''")}'\r");
         FocusTerm();
     }

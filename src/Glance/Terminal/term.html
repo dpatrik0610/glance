@@ -5,8 +5,20 @@
 <link rel="stylesheet" href="vendor/xterm.css">
 <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
-    .t { position: absolute; inset: 6px 4px 6px 10px; display: none; }
-    .t.on { display: block; }
+    #stage, #park { position: absolute; inset: 6px 4px 6px 10px; display: flex; }
+    #park { display: none; }
+    #stage > * { flex: 1 1 0; }
+    .split { display: flex; min-width: 0; min-height: 0; }
+    .split.col { flex-direction: column; }
+    .p { position: relative; min-width: 0; min-height: 0; overflow: hidden; transition: opacity .15s; }
+    #stage.many .p { padding: 2px 4px; }
+    #stage.many .p:not(.on) { opacity: .6; }
+    /* Divider: drag to resize; a hairline that brightens under the cursor */
+    .bar { flex: 0 0 9px; position: relative; cursor: col-resize; }
+    .col > .bar { cursor: row-resize; }
+    .bar::after { content: ''; position: absolute; inset: 0 4px; background: rgba(255, 255, 255, .1); transition: background .15s; }
+    .col > .bar::after { inset: 4px 0; }
+    .bar:hover::after, .bar.drag::after { background: rgba(255, 255, 255, .35); }
     /* xterm paints the viewport with the theme background; keep the glass visible */
     .xterm .xterm-viewport { background: transparent !important; }
     .xterm-viewport::-webkit-scrollbar { width: 6px; }
@@ -14,15 +26,18 @@
 </style>
 </head>
 <body>
+<div id="stage"></div><div id="park"></div>
 <script src="vendor/xterm.js"></script>
 <script src="vendor/addon-fit.js"></script>
 <script src="vendor/addon-webgl.js"></script>
 <script src="vendor/addon-unicode11.js"></script>
 <script src="vendor/addon-web-links.js"></script>
 <script>
-// Glance's CLI renderer. One xterm per tab; the host (CliPage.xaml.cs) owns the shells and talks over postMessage.
-// host → page: {t:'open'|'show'|'close', id} {t:'out', id, d} {t:'focus'}
-// page → host: {t:'in', id, d} {t:'size', id, cols, rows} {t:'link', uri} {t:'palette'}
+// Glance's CLI renderer. One xterm per pane; the host (CliPage.xaml.cs) owns the shells and the tabs' split layouts.
+// host → page: {t:'show', tree, focus} {t:'close', id} {t:'out', id, d} {t:'focus'}
+//   tree: {id} a pane, or {node, col, r, a, b} a split, a taking r of the room (b below a when col, else right of it)
+// page → host: {t:'in', id, d} {t:'size', id, cols, rows} {t:'active', id} {t:'split', id, d: side} {t:'closepane', id}
+//              {t:'ratio', id: node, r} {t:'link', uri} {t:'palette'}
 const host = window.chrome.webview;
 const send = m => host.postMessage(m);
 
@@ -57,13 +72,16 @@ function clearBlackBg(d) {
     });
 }
 
-const terms = new Map();
-let current = null;
+const panes = new Map();
+const stage = document.getElementById('stage'), park = document.getElementById('park');
+let active = null;
+const SIDES = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 
+// Panes of tabs not shown wait in #park (display: none) with their state intact.
 function open(id) {
     const el = document.createElement('div');
-    el.className = 't';
-    document.body.appendChild(el);
+    el.className = 'p';
+    park.appendChild(el);
     const term = new Terminal({
         allowTransparency: true, allowProposedApi: true, theme,
         fontFamily: '"FiraCode Nerd Font", "Cascadia Mono", monospace', fontSize: 14,
@@ -79,11 +97,23 @@ function open(id) {
 
     term.onData(d => send({ t: 'in', id, d }));
     term.onResize(({ cols, rows }) => send({ t: 'size', id, cols, rows }));
+    term.textarea.addEventListener('focus', () => { activate(id); send({ t: 'active', id }); });
+    new ResizeObserver(() => { if (el.clientWidth) fit.fit(); }).observe(el);
 
-    // Windows Terminal habits: Ctrl+C copies when something is selected, Ctrl+V pastes.
+    // Windows Terminal habits: Ctrl+C copies when something is selected, Ctrl+V pastes,
+    // Alt+Shift+arrow splits that way, Alt+arrow moves to the pane there, Ctrl+Shift+W closes the pane.
     term.attachCustomKeyEventHandler(e => {
-        if (e.type !== 'keydown' || !e.ctrlKey || e.altKey) return true;
+        if (e.type !== 'keydown') return true;
+        const side = SIDES[e.key];
+        if (side && e.altKey && !e.ctrlKey) {
+            if (e.shiftKey) send({ t: 'split', id, d: side });
+            else if (!move(side)) return true; // no pane that way: the shell gets the key
+            e.preventDefault();
+            return false;
+        }
+        if (!e.ctrlKey || e.altKey) return true;
         const k = e.key.toLowerCase();
+        if (k === 'w' && e.shiftKey) { e.preventDefault(); send({ t: 'closepane', id }); return false; }
         if (k === 'c' && (e.shiftKey || term.hasSelection())) {
             navigator.clipboard.writeText(term.getSelection());
             term.clearSelection();
@@ -100,31 +130,92 @@ function open(id) {
         else navigator.clipboard.readText().then(text => term.paste(text));
     });
 
-    terms.set(id, { term, fit, el });
+    const p = { term, fit, el };
+    panes.set(id, p);
+    return p;
 }
 
-function show(id) {
-    current = id;
-    for (const [k, v] of terms) v.el.classList.toggle('on', k === id);
-    const t = terms.get(id);
-    if (!t) return;
-    t.fit.fit();
-    // Always report: the host starts the shell on the first size, and fit() only fires onResize on change.
-    send({ t: 'size', id, cols: t.term.cols, rows: t.term.rows });
-    t.term.focus();
+function activate(id) {
+    active = id;
+    for (const [k, p] of panes) p.el.classList.toggle('on', k === id);
+}
+
+// Lays a tab out: its panes move onto the stage, everything else back to #park.
+function show(tree, focus) {
+    for (const p of panes.values()) park.appendChild(p.el);
+    const shown = [];
+    stage.replaceChildren(build(tree, shown));
+    stage.classList.toggle('many', shown.length > 1);
+    activate(focus);
+    for (const id of shown) {
+        const { term, fit } = panes.get(id);
+        fit.fit();
+        // Always report: the host starts a shell on its first size, and fit() only fires onResize on change.
+        send({ t: 'size', id, cols: term.cols, rows: term.rows });
+    }
+    panes.get(focus)?.term.focus();
+}
+
+function build(n, shown) {
+    if (n.id !== undefined) {
+        const p = panes.get(n.id) ?? open(n.id);
+        p.el.style.flex = '';
+        shown.push(n.id);
+        return p.el;
+    }
+    const box = document.createElement('div'), bar = document.createElement('div');
+    box.className = n.col ? 'split col' : 'split';
+    bar.className = 'bar';
+    const a = build(n.a, shown), b = build(n.b, shown);
+    const set = r => { a.style.flex = `${r} 1 0`; b.style.flex = `${1 - r} 1 0`; };
+    set(n.r);
+    bar.addEventListener('pointerdown', e => {
+        bar.setPointerCapture(e.pointerId);
+        bar.classList.add('drag');
+        let r = n.r;
+        bar.onpointermove = e => {
+            const rc = box.getBoundingClientRect();
+            r = Math.min(.95, Math.max(.05, n.col ? (e.clientY - rc.top) / rc.height : (e.clientX - rc.left) / rc.width));
+            set(r);
+        };
+        bar.onpointerup = () => {
+            bar.onpointermove = bar.onpointerup = null;
+            bar.classList.remove('drag');
+            n.r = r;
+            send({ t: 'ratio', id: n.node, r });
+            panes.get(active)?.term.focus();
+        };
+    });
+    box.append(a, bar, b);
+    return box;
+}
+
+// Focuses the nearest shown pane on that side of the active one.
+function move(side) {
+    const cur = panes.get(active)?.el.getBoundingClientRect();
+    if (!cur) return false;
+    let best = null, dist = Infinity;
+    for (const [id, p] of panes) {
+        if (id === active || p.el.parentElement === park) continue;
+        const r = p.el.getBoundingClientRect();
+        const there = side === 'left' ? r.right <= cur.left + 1 : side === 'right' ? r.left >= cur.right - 1
+            : side === 'up' ? r.bottom <= cur.top + 1 : r.top >= cur.bottom - 1;
+        const d = Math.hypot(r.x + r.width / 2 - cur.x - cur.width / 2, r.y + r.height / 2 - cur.y - cur.height / 2);
+        if (there && d < dist) [best, dist] = [p, d];
+    }
+    best?.term.focus();
+    return !!best;
 }
 
 host.addEventListener('message', ({ data: m }) => {
     switch (m.t) {
-        case 'out': terms.get(m.id)?.term.write(clearBlackBg(m.d)); break;
-        case 'open': open(m.id); break;
-        case 'show': show(m.id); break;
-        case 'close': { const t = terms.get(m.id); if (t) { t.term.dispose(); t.el.remove(); terms.delete(m.id); } break; }
-        case 'focus': terms.get(current)?.term.focus(); break;
+        case 'out': panes.get(m.id)?.term.write(clearBlackBg(m.d)); break;
+        case 'show': show(m.tree, m.focus); break;
+        case 'close': { const p = panes.get(m.id); if (p) { p.term.dispose(); p.el.remove(); panes.delete(m.id); } break; }
+        case 'focus': panes.get(active)?.term.focus(); break;
     }
 });
 
-new ResizeObserver(() => terms.get(current)?.fit.fit()).observe(document.body);
 send({ t: 'ready' });
 </script>
 </body>

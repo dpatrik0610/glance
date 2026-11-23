@@ -255,6 +255,16 @@ static class SelfTest
 
             var mark = Pages.CliPage.CwdMark().Match("x\x1b]9;9;\"F:\\Coding\\glance\"\x1b\\user");
             Check(mark.Success && mark.Groups[1].Value == @"F:\Coding\glance", "cli cwd mark");
+            {
+                Pages.CliPane[] ps = [new() { Dir = "" }, new() { Dir = "" }, new() { Dir = "" }];
+                var root = new Pages.CliNode { Pane = ps[0] };
+                root.Split(ps[0], ps[1], "left");
+                root.Split(ps[0], ps[2], "down");
+                Check(root is { Column: false, B.Column: true } && root.A!.Pane == ps[1] && root.B.A!.Pane == ps[0] && root.B.B!.Pane == ps[2],
+                    "cli split: left of, then below");
+                Check(root.Without(ps[0]) is { Pane: null } rest && rest.A!.Pane == ps[1] && rest.B!.Pane == ps[2], "cli unsplit collapses");
+                Check(new Pages.CliNode { Pane = ps[0] }.Without(ps[0]) is null, "cli last pane");
+            }
 
             Task<string?> Nop() => Task.FromResult<string?>(null);
             Cmd[] cmds = [new("Network", "Page", "", Nop), new("Copy public IP", "Network", "", Nop), new("glance", "Repo", "", Nop, @"F:\Coding\glance"),
