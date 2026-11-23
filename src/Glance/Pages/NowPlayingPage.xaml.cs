@@ -6,7 +6,7 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class NowPlayingPage : UserControl
+public partial class NowPlayingPage : UserControl, IDisposable
 {
     // Moves the progress bar between the player's own updates; only runs while the page is on screen and something plays.
     readonly DispatcherTimer tick;
@@ -20,6 +20,8 @@ public partial class NowPlayingPage : UserControl
         IsVisibleChanged += (_, _) => Show();
         Show();
     }
+
+    public void Dispose() { tick.Stop(); Media.Changed -= Show; }
 
     void Show()
     {

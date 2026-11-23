@@ -9,7 +9,7 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class NetworkPage : UserControl
+public partial class NetworkPage : UserControl, IDisposable
 {
     static readonly IPAddress Internet = IPAddress.Parse("1.1.1.1");
 
@@ -22,6 +22,14 @@ public partial class NetworkPage : UserControl
     List<ConnInfo> conns = [];
     DateTime ipAt;
     volatile bool stale = true; // adapters/addresses changed since the last look
+
+    void AddressChanged(object? sender, EventArgs e) => stale = true;
+
+    public void Dispose()
+    {
+        NetworkChange.NetworkAddressChanged -= AddressChanged;
+        SpeedRun.Changed -= ShowSpeed;
+    }
     bool busy;
     int ticks;
 
@@ -30,8 +38,8 @@ public partial class NetworkPage : UserControl
         InitializeComponent();
         timer.Tick += Tick;
         toastTimer.Tick += (_, _) => { toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
-        NetworkChange.NetworkAddressChanged += (_, _) => stale = true;
-        SpeedRun.Changed += ShowSpeed; // the page lives as long as the app
+        NetworkChange.NetworkAddressChanged += AddressChanged;
+        SpeedRun.Changed += ShowSpeed;
         ShowSpeed();
         // Everything here only runs while the page is on screen.
         IsVisibleChanged += (_, e) =>

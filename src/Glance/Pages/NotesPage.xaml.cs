@@ -4,16 +4,25 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class NotesPage : UserControl
+public partial class NotesPage : UserControl, IDisposable
 {
     public NotesPage()
     {
         InitializeComponent();
         List.ItemsSource = NoteStore.Notes;
-        NoteStore.FocusRequested += n => List.SelectedItem = n;
-        NoteStore.Notes.CollectionChanged += (_, _) => ShowSelected();
+        NoteStore.FocusRequested += FocusNote;
+        NoteStore.Notes.CollectionChanged += NotesChanged;
         List.SelectedIndex = NoteStore.Notes.Count > 0 ? 0 : -1;
         ShowSelected();
+    }
+
+    void FocusNote(Note n) => List.SelectedItem = n;
+    void NotesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => ShowSelected();
+
+    public void Dispose()
+    {
+        NoteStore.FocusRequested -= FocusNote;
+        NoteStore.Notes.CollectionChanged -= NotesChanged;
     }
 
     Note? Current => List.SelectedItem as Note;

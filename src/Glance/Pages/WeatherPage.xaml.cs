@@ -8,7 +8,7 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class WeatherPage : UserControl
+public partial class WeatherPage : UserControl, IDisposable
 {
     record HourBar(string Hour, string Temp, string Rain, GridLength Space, GridLength Fill, Brush Brush);
     record DayRow(string Day, string Glyph, string Rain, string Min, string Max, GridLength Before, GridLength Bar, GridLength After);
@@ -24,8 +24,12 @@ public partial class WeatherPage : UserControl
         InitializeComponent();
         // Only fetch when looked at and stale: no background polling.
         IsVisibleChanged += (_, e) => { if ((bool)e.NewValue && DateTime.Now - fetchedAt > MaxAge) _ = Load(); };
-        App.SettingsChanged += () => { if (Key() != fetchedFor) fetchedAt = default; };
+        App.SettingsChanged += SettingsChanged;
     }
+
+    void SettingsChanged() { if (Key() != fetchedFor) fetchedAt = default; }
+
+    public void Dispose() => App.SettingsChanged -= SettingsChanged;
 
     async Task Load()
     {

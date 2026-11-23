@@ -24,6 +24,12 @@ public static class WebHost
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.IsZoomControlEnabled = false;
         core.SetVirtualHostNameToFolderMapping(host, Path.Combine(AppContext.BaseDirectory, folder), CoreWebView2HostResourceAccessKind.DenyCors);
+        // Off screen (other page, Glance hidden), the browser gives back what it can: caches, unused heap. Shells keep running.
+        web.IsVisibleChanged += (_, e) =>
+        {
+            if (web.CoreWebView2 is { } c)
+                c.MemoryUsageTargetLevel = (bool)e.NewValue ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
+        };
         setup(core);
         core.Navigate($"https://{host}/{page}");
     }

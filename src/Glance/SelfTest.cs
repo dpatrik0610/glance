@@ -79,6 +79,17 @@ static class SelfTest
                 finally { Directory.Delete(dir, true); }
             }
             Check(new Pages.TimerPage().Content is not null && new Pages.TasksPage().Content is not null, "timer and tasks pages load");
+            {
+                // A page dropped when idle must let go of app-wide events, or they keep it (and its work) alive.
+                int Handlers(string name) => (typeof(App).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                    .GetValue(null) as Delegate)?.GetInvocationList().Length ?? 0;
+                var (sampled, settings) = (Handlers("Sampled"), Handlers("SettingsChanged"));
+                var merged = new Tabbed([new("Live", "", () => new Pages.SystemPage()), new("Weather", "", () => new Pages.WeatherPage())]);
+                merged.Show("Weather");
+                var grew = Handlers("Sampled") > sampled && Handlers("SettingsChanged") > settings;
+                merged.Dispose();
+                Check(grew && Handlers("Sampled") == sampled && Handlers("SettingsChanged") == settings, "dropped pages unsubscribe");
+            }
             const string md = "# Plan\r\n- [ ] buy **milk**\r\n- [x] call [mom](https://example.com)\r\n\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |";
             var tasks = MarkdownView.TaskLines(md).ToList();
             Check(tasks.Count == 2 && !tasks[0].Done && tasks[1].Done && MarkdownView.Toggle(md, 0).Contains("- [x] buy") && MarkdownView.Toggle(md, 1).Contains("- [ ] call")

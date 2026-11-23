@@ -10,7 +10,7 @@ using Glance.Services;
 namespace Glance.Pages;
 
 /// Leaflet (Map\map.html) in a WebView2, locked to one city or country. Pins are saved; search results are pins not yet saved.
-public partial class MapPage : UserControl
+public partial class MapPage : UserControl, IDisposable
 {
     const string Unnamed = "Dropped pin";
 
@@ -38,8 +38,8 @@ public partial class MapPage : UserControl
             SendPins();
         }, Dispatcher);
         saveSoon.Stop();
-        Application.Current.Exit += (_, _) => { if (saveSoon.IsEnabled) PinStore.Save(); };
-        PinStore.Pins.CollectionChanged += (_, _) => Title();
+        Application.Current.Exit += Exiting;
+        PinStore.Pins.CollectionChanged += PinsChanged;
         AreaName.Text = Area?.Name ?? "Not set";
         ShowPins();
         ShowDetails(null);
@@ -219,6 +219,17 @@ public partial class MapPage : UserControl
         List.ItemsSource = PinStore.Pins;
         BackButton.Visibility = Visibility.Collapsed;
         Title();
+    }
+
+    void Exiting(object sender, ExitEventArgs e) { if (saveSoon.IsEnabled) PinStore.Save(); }
+    void PinsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Title();
+
+    public void Dispose()
+    {
+        if (saveSoon.IsEnabled) PinStore.Save(); // a rename still waiting to save
+        saveSoon.Stop();
+        Application.Current.Exit -= Exiting;
+        PinStore.Pins.CollectionChanged -= PinsChanged;
     }
 
     void Title()

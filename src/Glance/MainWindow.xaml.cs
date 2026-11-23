@@ -15,10 +15,14 @@ public partial class MainWindow : Window
 {
     /// Needs: an exe that must be on PATH, or the tab is left out (checked at startup).
     /// Parts: a merged page, its related pages switched by chips at the top (Tabbed).
-    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null, Tabbed.Part[]? Parts = null);
+    /// Keep: never dropped when idle; it holds work or input that isn't saved anywhere (shells, jobs, scans, typed text).
+    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null, Tabbed.Part[]? Parts = null, bool Keep = false);
 
     static Tab Merged(string name, string group, string icon, params Tabbed.Part[] parts) =>
         new(name, group, icon, () => new Tabbed(parts), Parts: parts);
+
+    static Tab Kept(string name, string group, string icon, params Tabbed.Part[] parts) =>
+        new(name, group, icon, () => new Tabbed(parts), Parts: parts, Keep: true);
 
     // Add a page here; sidebar, Ctrl+N shortcuts and lazy creation follow. Keep tabs of a group together:
     // groups appear in first-seen order. Icons: Segoe Fluent Icons code points.
@@ -26,7 +30,7 @@ public partial class MainWindow : Window
     {
         Merged("System", "Monitor", "\uE7F4", new("Live", "\uE7F4", () => new SystemPage()), new("History", "\uE81C", () => new HistoryPage())),
         new("Network", "Monitor", "\uE839", () => new NetworkPage()),
-        Merged("Disk", "Monitor", "\uEDA2", new("Clean", "\uEA99", () => new CleanPage()), new("Scan", "\uEB05", () => new ScanPage())),
+        Kept("Disk", "Monitor", "\uEDA2", new("Clean", "\uEA99", () => new CleanPage()), new("Scan", "\uEB05", () => new ScanPage())),
         new("Weather", "Life", "\uE706", () => new WeatherPage()),
         new("Map", "Life", "\uE707", () => new MapPage()),
         Merged("Money", "Life", "\uE825", new("Budget", "\uE8C7", () => new BudgetPage()), new("Exchange", "\uE8AB", () => new ExchangePage()),
@@ -34,26 +38,29 @@ public partial class MainWindow : Window
         new("Now Playing", "Life", "\uEC4F", () => new NowPlayingPage()),
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
         Merged("Notes", "Tools", "\uE70B", new("Notes", "\uE70B", () => new NotesPage()), new("Stickies", "\uE840", () => new StickiesPage())),
-        new("Board", "Tools", "\uE80A", () => new BoardPage()),
+        new("Board", "Tools", "\uE80A", () => new BoardPage(), Keep: true),
         new("Tasks", "Tools", "\uE73A", () => new TasksPage()),
         new("Timer", "Tools", "\uE916", () => new TimerPage()),
         new("Calendar", "Tools", "\uE787", () => new CalendarPage()),
         new("Password", "Tools", "\uE8D7", () => new PasswordPage()),
         new("Color", "Tools", "\uE790", () => new ColorPage()),
-        Merged("Converters", "Tools", "\uE895", new("Images", "\uEB9F", () => new ImagePage()), new("Media", "\uE714", () => new MediaPage())),
-        new("Compare", "Tools", "\uE8C8", () => new ComparePage()),
-        new("CLI", "Dev", "\uE756", () => new CliPage()),
+        Kept("Converters", "Tools", "\uE895", new("Images", "\uEB9F", () => new ImagePage()), new("Media", "\uE714", () => new MediaPage())),
+        new("Compare", "Tools", "\uE8C8", () => new ComparePage(), Keep: true),
+        new("CLI", "Dev", "\uE756", () => new CliPage(), Keep: true),
         new("Ports", "Dev", "\uE943", () => new DevPage()),
         new("Git", "Dev", "\uF003", () => new GitPage(), "git.exe"),
         new("Docker", "Dev", "\uF158", () => new DockerPage(), "docker.exe"),
-        new("JSON", "Dev", "\uE8A5", () => new JsonPage()),
+        new("JSON", "Dev", "\uE8A5", () => new JsonPage(), Keep: true),
     }.Where(t => t.Needs is null || Shell.OnPath(t.Needs)).ToArray();
 
     // Pinned at the bottom of the sidebar, icon only.
     static readonly Tab SettingsTab = new("Settings", "", "\uE713", () => new SettingsPage());
 
     // Pages are built on first visit and kept, so switching back is instant and state survives.
+    // One left alone for IdleDrop is dropped (see Sweep) and built again on the next visit.
     readonly Dictionary<Tab, UserControl> pages = [];
+    readonly Dictionary<Tab, long> leftAt = []; // Environment.TickCount64 when the page was last on screen
+    static readonly TimeSpan IdleDrop = TimeSpan.FromMinutes(10);
     IntPtr hwnd;
     readonly ListCollectionView navView, stripView;
 
@@ -82,7 +89,32 @@ public partial class MainWindow : Window
         App.SettingsChanged += ApplySettings;
         PreviewKeyDown += Shortcut;
         Deactivated += (_, _) => Dispatcher.BeginInvoke(LostToOutside, System.Windows.Threading.DispatcherPriority.Input);
-        IsVisibleChanged += (_, _) => { if (!IsVisible) Undrop(); };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) Undrop(); else trimmed = false; };
+        new System.Windows.Threading.DispatcherTimer(TimeSpan.FromMinutes(2), System.Windows.Threading.DispatcherPriority.ApplicationIdle, (_, _) => Sweep(), Dispatcher);
+    }
+
+    // Drops pages nobody has looked at for a while: their controls, bitmaps and handlers go, and a compacting GC
+    // hands the memory back. The page on screen and Keep pages stay. Pages that listen to app-wide events
+    // unsubscribe in Dispose, or the event would keep the dropped page (and its work) alive.
+    bool trimmed; // collected since the window was last shown
+
+    void Sweep()
+    {
+        var now = Environment.TickCount64;
+        var dropped = false;
+        foreach (var (t, page) in pages.ToArray())
+        {
+            if (t.Keep || page == Page.Content || now - leftAt.GetValueOrDefault(t, now) < IdleDrop.TotalMilliseconds) continue;
+            pages.Remove(t);
+            leftAt.Remove(t);
+            (page as IDisposable)?.Dispose();
+            dropped = true;
+        }
+        // Also once per hide: a tray app sitting for hours should give back what the last session used.
+        if (!dropped && (IsVisible || trimmed)) return;
+        trimmed = !IsVisible;
+        System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+        GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
     }
 
     // ---- Dropped from the top bar: hangs under it, slides back up on Esc, the arrow, or a click elsewhere ----
@@ -224,6 +256,7 @@ public partial class MainWindow : Window
         if (Nav.Items.Contains(t) && App.Settings.FoldedGroups.Remove(t.Group)) Dispatcher.BeginInvoke(RefreshNav);
         if (!pages.TryGetValue(t, out var page)) pages[t] = page = t.Create();
         if (Page.Content == page) return; // re-selected after a sidebar refresh
+        if (pages.FirstOrDefault(p => p.Value == Page.Content).Key is { } left) leftAt[left] = Environment.TickCount64;
         Page.Content = page;
         PageTitle.Text = t.Name;
         // The terminal is a native window: it can't fade or move with WPF content, so it just appears.
@@ -336,6 +369,34 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // ---- Sidebar: the hamburger slides it fully out and back (Side clips, its width animates; the pane keeps its width meanwhile) ----
+
+    bool navShown = true;
+
+    void ShowNav(bool show)
+    {
+        if (show == navShown) return;
+        navShown = show;
+        NavToggle.ToolTip = show ? "Hide sidebar" : "Show sidebar";
+        if (compact) return; // no sidebar there; SetCompact restores it
+        if (!IsLoaded) { Side.Visibility = show ? Visibility.Visible : Visibility.Collapsed; return; }
+
+        var from = Side.IsVisible ? Side.ActualWidth : 0;
+        Side.Visibility = Visibility.Visible;
+        Pane.Width = double.NaN;
+        Pane.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var full = Pane.DesiredSize.Width; // includes the gap to the page
+        Pane.Width = full - Pane.Margin.Left - Pane.Margin.Right;
+        Motion.To(Pane, OpacityProperty, show ? 1 : 0, 220);
+        Motion.To(Side, WidthProperty, show ? full : 0, 260, from, () =>
+        {
+            if (navShown != show) return; // toggled again mid-slide
+            if (!show) { Side.Visibility = Visibility.Collapsed; return; }
+            Side.BeginAnimation(WidthProperty, null); // back to sizing to its content
+            Side.Width = Pane.Width = double.NaN;
+        });
+    }
+
     void ToggleNav(object sender, RoutedEventArgs e)
     {
         App.Settings.NavCollapsed = !App.Settings.NavCollapsed;
@@ -369,34 +430,6 @@ public partial class MainWindow : Window
     // Closing (Alt+F4) just hides; the tray menu is the only way out.
     protected override void OnClosing(CancelEventArgs e)
     {
-    // ---- Sidebar: the hamburger slides it fully out and back (Side clips, its width animates; the pane keeps its width meanwhile) ----
-
-    bool navShown = true;
-
-    void ShowNav(bool show)
-    {
-        if (show == navShown) return;
-        navShown = show;
-        NavToggle.ToolTip = show ? "Hide sidebar" : "Show sidebar";
-        if (compact) return; // no sidebar there; SetCompact restores it
-        if (!IsLoaded) { Side.Visibility = show ? Visibility.Visible : Visibility.Collapsed; return; }
-
-        var from = Side.IsVisible ? Side.ActualWidth : 0;
-        Side.Visibility = Visibility.Visible;
-        Pane.Width = double.NaN;
-        Pane.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var full = Pane.DesiredSize.Width; // includes the gap to the page
-        Pane.Width = full - Pane.Margin.Left - Pane.Margin.Right;
-        Motion.To(Pane, OpacityProperty, show ? 1 : 0, 220);
-        Motion.To(Side, WidthProperty, show ? full : 0, 260, from, () =>
-        {
-            if (navShown != show) return; // toggled again mid-slide
-            if (!show) { Side.Visibility = Visibility.Collapsed; return; }
-            Side.BeginAnimation(WidthProperty, null); // back to sizing to its content
-            Side.Width = Pane.Width = double.NaN;
-        });
-    }
-
         e.Cancel = true;
         Hide();
     }

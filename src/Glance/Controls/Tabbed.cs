@@ -5,7 +5,7 @@ using System.Windows.Media;
 namespace Glance;
 
 /// One sidebar page made of related pages, switched with chips along the top. Each part is built on first visit and kept.
-public sealed class Tabbed : UserControl
+public sealed class Tabbed : UserControl, IDisposable
 {
     /// Shown: whether the part is offered now (a setting can turn it off); null = always.
     public record Part(string Name, string Icon, Func<UserControl> Create, Func<bool>? Shown = null);
@@ -55,6 +55,12 @@ public sealed class Tabbed : UserControl
             chips[i].Visibility = on ? Visibility.Visible : Visibility.Collapsed;
             if (!on && chips[i].IsChecked == true) chips[0].IsChecked = true;
         }
+    }
+
+    public void Dispose()
+    {
+        App.SettingsChanged -= Sync;
+        foreach (var part in built) (part as IDisposable)?.Dispose();
     }
 
     public UserControl Current => (UserControl)host.Content;

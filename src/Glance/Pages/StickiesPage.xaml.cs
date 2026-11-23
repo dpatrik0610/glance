@@ -6,17 +6,21 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class StickiesPage : UserControl
+public partial class StickiesPage : UserControl, IDisposable
 {
     public StickiesPage()
     {
         InitializeComponent();
         List.ItemsSource = Stickies.Items;
-        Stickies.Items.CollectionChanged += (_, _) => ShowSelected();
+        Stickies.Items.CollectionChanged += ItemsChanged;
         List.SelectedIndex = Stickies.Items.Count > 0 ? 0 : -1;
         IsVisibleChanged += (_, _) => AllBox.IsChecked = App.Settings.StickiesShown; // the tray has the same switch
         ShowSelected();
     }
+
+    void ItemsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => ShowSelected();
+
+    public void Dispose() => Stickies.Items.CollectionChanged -= ItemsChanged;
 
     Sticky? Current => List.SelectedItem as Sticky;
 

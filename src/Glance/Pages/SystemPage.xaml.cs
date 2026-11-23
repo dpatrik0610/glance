@@ -7,7 +7,7 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class SystemPage : UserControl
+public partial class SystemPage : UserControl, IDisposable
 {
     static readonly Brush GreenBg = Frozen(0x22, 0x4C, 0xC3, 0x7A), AmberBg = Frozen(0x22, 0xF5, 0xB8, 0x3D), RedBg = Frozen(0x22, 0xFF, 0x5A, 0x5A);
 
@@ -16,8 +16,12 @@ public partial class SystemPage : UserControl
         InitializeComponent();
         // Only sample fast while this page is actually on screen.
         IsVisibleChanged += (_, e) => App.Live = (bool)e.NewValue;
-        App.Sampled += s => { if (s.Procs.Length > 0) Dispatcher.BeginInvoke(DispatcherPriority.Background, () => Show(s)); }; // live samples only
+        App.Sampled += Sampled;
     }
+
+    void Sampled(Snapshot s) { if (s.Procs.Length > 0) Dispatcher.BeginInvoke(DispatcherPriority.Background, () => Show(s)); } // live samples only
+
+    public void Dispose() => App.Sampled -= Sampled;
 
     void Show(Snapshot s)
     {
