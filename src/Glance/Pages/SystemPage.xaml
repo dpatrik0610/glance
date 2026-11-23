@@ -129,7 +129,7 @@
                             <ColumnDefinition Width="90" />
                             <ColumnDefinition Width="34" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Top processes" Style="{StaticResource H}" />
+                        <TextBlock Text="Processes" Style="{StaticResource H}" />
                         <!-- Click a column to sort by it -->
                         <TextBlock x:Name="ByCpu" Grid.Column="1" Tag="CPU" Text="CPU ↓" Style="{StaticResource Label}" HorizontalAlignment="Right"
                                    Cursor="Hand" Background="Transparent" Foreground="{StaticResource Text}" MouseLeftButtonUp="SortBy" />
@@ -180,7 +180,7 @@
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
                         <TextBlock x:Name="Uptime" DockPanel.Dock="Right" Style="{StaticResource Label}" VerticalAlignment="Center" ToolTip="Time since Windows started" />
-                        <TextBlock Text="Top consumers" Style="{StaticResource H}" />
+                        <TextBlock Text="Top processes" Style="{StaticResource H}" />
                     </DockPanel>
                     <ItemsControl x:Name="Busiest">
                         <ItemsControl.ItemTemplate>
