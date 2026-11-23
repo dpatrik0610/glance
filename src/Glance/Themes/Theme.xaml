@@ -115,12 +115,22 @@
                         <Setter.Value>
                             <ControlTemplate TargetType="ListBoxItem">
                                 <!-- Hover and selection are layers that fade, so moving between items cross-fades -->
+                                <!-- Fluent NavigationView look: selection is a soft fill plus a small accent pill, not a solid block -->
                                 <Grid Background="Transparent">
-                                    <Border x:Name="hov" CornerRadius="14" Background="{StaticResource CardBg}" Opacity="0" />
-                                    <Border x:Name="sel" CornerRadius="14" Background="{StaticResource Accent}" Opacity="0" />
+                                    <Border x:Name="hov" CornerRadius="10" Background="{StaticResource CardBg}" Opacity="0" />
+                                    <Border x:Name="sel" CornerRadius="10" Background="{StaticResource Track}" Opacity="0" />
+                                    <Border x:Name="pill" Width="3" Height="16" CornerRadius="1.5" Background="{StaticResource Accent}" Opacity="0"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center" />
                                     <ContentPresenter Margin="12,10"><ContentPresenter.Resources><Style TargetType="TextBlock" /></ContentPresenter.Resources></ContentPresenter>
                                 </Grid>
                                 <ControlTemplate.Triggers>
+                                    <!-- The compact strip runs sideways, so its pill sits under the icon -->
+                                    <DataTrigger Binding="{Binding Name, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="Strip">
+                                        <Setter TargetName="pill" Property="Width" Value="16" />
+                                        <Setter TargetName="pill" Property="Height" Value="3" />
+                                        <Setter TargetName="pill" Property="HorizontalAlignment" Value="Center" />
+                                        <Setter TargetName="pill" Property="VerticalAlignment" Value="Bottom" />
+                                    </DataTrigger>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter Property="Foreground" Value="{StaticResource Text}" />
                                         <Trigger.EnterActions>
@@ -139,11 +149,12 @@
                                         </Trigger.ExitActions>
                                     </Trigger>
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource OnAccent}" />
+                                        <Setter Property="Foreground" Value="{StaticResource Text}" />
                                         <Trigger.EnterActions>
                                             <BeginStoryboard>
                                                 <Storyboard>
                                                     <DoubleAnimation Storyboard.TargetName="sel" Storyboard.TargetProperty="Opacity" To="1" Duration="{StaticResource In}" />
+                                                    <DoubleAnimation Storyboard.TargetName="pill" Storyboard.TargetProperty="Opacity" To="1" Duration="{StaticResource In}" />
                                                 </Storyboard>
                                             </BeginStoryboard>
                                         </Trigger.EnterActions>
@@ -151,6 +162,7 @@
                                             <BeginStoryboard>
                                                 <Storyboard>
                                                     <DoubleAnimation Storyboard.TargetName="sel" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Out}" />
+                                                    <DoubleAnimation Storyboard.TargetName="pill" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Out}" />
                                                 </Storyboard>
                                             </BeginStoryboard>
                                         </Trigger.ExitActions>

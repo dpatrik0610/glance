@@ -150,7 +150,7 @@ public partial class MainWindow : Window
         Panel.Background = new SolidColorBrush(Skin.Get("PanelColor", (byte)(Math.Clamp(s.Opacity, 0.1, 1) * 255)));
         Glow.Opacity = s.Glow;
         Topmost = s.Topmost;
-        Nav.Tag = !s.NavCollapsed; // item labels and group headers bind to this
+        ShowNav(!s.NavCollapsed);
         SetCompact(s.Compact);
         PinButton.Content = s.StayOpen ? "\uE842" : "\uE718"; // pinned (filled) : pin
         PinButton.Foreground = s.StayOpen ? (Brush)FindResource("Accent") : (Brush)FindResource("Text");
@@ -171,9 +171,9 @@ public partial class MainWindow : Window
         (Width, Height) = (other.Width, other.Height);
         other = keep;
         var shown = on ? Visibility.Collapsed : Visibility.Visible;
-        Side.Visibility = Brand.Visibility = NavToggle.Visibility = shown;
+        Brand.Visibility = NavToggle.Visibility = shown;
+        Side.Visibility = on || !navShown ? Visibility.Collapsed : Visibility.Visible;
         Strip.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
-        Page.Margin = on ? new Thickness(0) : new Thickness(8, 0, 0, 0);
         Body.Margin = new Thickness(on ? 10 : 14);
         CompactButton.Content = on ? "\uE740" : "\uE73F";
         CompactButton.ToolTip = on ? "Full layout" : "Compact mode";
@@ -263,7 +263,7 @@ public partial class MainWindow : Window
 
     void GroupClick(object sender, MouseButtonEventArgs e)
     {
-        if (Nav.Tag is false || ((FrameworkElement)sender).DataContext is not CollectionViewGroup { Name: string g }) return;
+        if (((FrameworkElement)sender).DataContext is not CollectionViewGroup { Name: string g }) return;
         if (!App.Settings.FoldedGroups.Remove(g)) App.Settings.FoldedGroups.Add(g);
         RefreshNav();
     }
@@ -369,6 +369,34 @@ public partial class MainWindow : Window
     // Closing (Alt+F4) just hides; the tray menu is the only way out.
     protected override void OnClosing(CancelEventArgs e)
     {
+    // ---- Sidebar: the hamburger slides it fully out and back (Side clips, its width animates; the pane keeps its width meanwhile) ----
+
+    bool navShown = true;
+
+    void ShowNav(bool show)
+    {
+        if (show == navShown) return;
+        navShown = show;
+        NavToggle.ToolTip = show ? "Hide sidebar" : "Show sidebar";
+        if (compact) return; // no sidebar there; SetCompact restores it
+        if (!IsLoaded) { Side.Visibility = show ? Visibility.Visible : Visibility.Collapsed; return; }
+
+        var from = Side.IsVisible ? Side.ActualWidth : 0;
+        Side.Visibility = Visibility.Visible;
+        Pane.Width = double.NaN;
+        Pane.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var full = Pane.DesiredSize.Width; // includes the gap to the page
+        Pane.Width = full - Pane.Margin.Left - Pane.Margin.Right;
+        Motion.To(Pane, OpacityProperty, show ? 1 : 0, 220);
+        Motion.To(Side, WidthProperty, show ? full : 0, 260, from, () =>
+        {
+            if (navShown != show) return; // toggled again mid-slide
+            if (!show) { Side.Visibility = Visibility.Collapsed; return; }
+            Side.BeginAnimation(WidthProperty, null); // back to sizing to its content
+            Side.Width = Pane.Width = double.NaN;
+        });
+    }
+
         e.Cancel = true;
         Hide();
     }
