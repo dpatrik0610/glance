@@ -11,7 +11,7 @@
 
         <!-- Stat tiles -->
         <UniformGrid Columns="4">
-            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="CPU load" MouseLeftButtonUp="OpenHistory">
+            <Border x:Name="CpuTile" Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="CPU load" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <DockPanel>
                         <Border x:Name="CpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right" Tag="CPU temperature" ToolTip="Temperature history" MouseLeftButtonUp="OpenHistory">
@@ -24,7 +24,7 @@
                     <g:Spark x:Name="CpuSpark" Format="{}{0:0}%" Color="#E6A65D" Height="34" Margin="0,10,0,0" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="GPU load" MouseLeftButtonUp="OpenHistory">
+            <Border x:Name="GpuTile" Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="GPU load" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <DockPanel>
                         <Border x:Name="GpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right" Tag="GPU temperature" ToolTip="Temperature history" MouseLeftButtonUp="OpenHistory">
@@ -175,28 +175,25 @@
                     </ItemsControl>
                 </DockPanel>
             </Border>
+            <!-- The heaviest process per resource, whatever the table is sorted by -->
             <Border Grid.Column="1" Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="System" Style="{StaticResource H}" Margin="0,0,0,10" />
-                    <TextBlock Text="CPU" Style="{StaticResource Label}" />
-                    <TextBlock x:Name="CpuName" TextTrimming="CharacterEllipsis" Margin="0,0,0,8" />
-                    <TextBlock Text="GPU" Style="{StaticResource Label}" />
-                    <TextBlock x:Name="GpuName" TextTrimming="CharacterEllipsis" Margin="0,0,0,8" />
-                    <TextBlock Text="Uptime" Style="{StaticResource Label}" />
-                    <TextBlock x:Name="Uptime" />
-                    <TextBlock Text="Busiest now" Style="{StaticResource H}" Margin="0,14,0,8" />
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <TextBlock x:Name="Uptime" DockPanel.Dock="Right" Style="{StaticResource Label}" VerticalAlignment="Center" ToolTip="Time since Windows started" />
+                        <TextBlock Text="Top consumers" Style="{StaticResource H}" />
+                    </DockPanel>
                     <ItemsControl x:Name="Busiest">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <DockPanel Margin="0,0,0,4">
-                                    <TextBlock Text="{Binding What}" Style="{StaticResource Label}" Width="60" />
-                                    <TextBlock Text="{Binding Value}" Style="{StaticResource Label}" DockPanel.Dock="Right" />
-                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                <DockPanel Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding What}" Style="{StaticResource Label}" Width="64" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Value}" DockPanel.Dock="Right" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" VerticalAlignment="Center" ToolTip="{Binding Name}" />
                                 </DockPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </StackPanel>
+                </DockPanel>
             </Border>
         </Grid>
     </Grid>

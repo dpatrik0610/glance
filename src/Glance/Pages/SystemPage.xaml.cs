@@ -55,9 +55,9 @@ public partial class SystemPage : UserControl, IDisposable
         last = s.Procs;
         ShowProcs();
         ShowBusiest();
-        CpuName.Text = s.CpuName;
-        GpuName.Text = s.GpuName;
-        Uptime.Text = TimeSpan.FromMilliseconds(Environment.TickCount64).ToString(@"d\d\ hh\h\ mm\m");
+        CpuTile.ToolTip = $"{s.CpuName}\nOpen in History";
+        GpuTile.ToolTip = $"{s.GpuName}\nOpen in History";
+        Uptime.Text = "up " + TimeSpan.FromMilliseconds(Environment.TickCount64).ToString(@"d\d\ hh\h\ mm\m");
     }
 
     public record Busy(string What, string Name, string Value);
