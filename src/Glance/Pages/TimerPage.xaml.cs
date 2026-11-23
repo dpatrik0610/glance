@@ -45,7 +45,7 @@ public partial class TimerPage : UserControl
         var left = on ? Timers.PhaseRemaining(now) : d.Work * 60;
         PomoText.Text = Timers.Clock(left);
         PomoScale.ScaleX = on ? left / Timers.PhaseLength(d.Phase) : 0;
-        PomoFill.Background = (Brush)FindResource(d.Phase == "work" || !on ? "Accent" : "Green");
+        PomoFill.Background = Skin.Brush(d.Phase == "work" || !on ? "Accent" : "Green");
         PomoButton.Content = !on ? "Start" : d.PhaseEnds is null ? "Resume" : "Pause";
         PomoRounds.Text = on ? $"{d.Done} round{(d.Done == 1 ? "" : "s")} done" : "";
     }
@@ -71,11 +71,11 @@ public partial class TimerPage : UserControl
         var name = Field(t.Name, "Name", 15, FontWeights.SemiBold);
         name.TextChanged += (_, _) => { t.Name = name.Text; Timers.SaveSoon(); };
         var clock = new TextBlock { FontSize = 38, FontWeight = FontWeights.Light, HorizontalAlignment = HorizontalAlignment.Center, Margin = new(0, 4, 0, 4) };
-        var fill = new Border { Background = (Brush)FindResource("Accent"), CornerRadius = new(2), RenderTransform = new ScaleTransform(1, 1), RenderTransformOrigin = new(0, 0.5) };
-        var bar = new Grid { Height = 4, Margin = new(0, 0, 0, 10), Children = { new Border { Background = (Brush)FindResource("Track"), CornerRadius = new(2) }, fill } };
+        var fill = new Border { Background = Skin.Brush("Accent"), CornerRadius = new(2), RenderTransform = new ScaleTransform(1, 1), RenderTransformOrigin = new(0, 0.5) };
+        var bar = new Grid { Height = 4, Margin = new(0, 0, 0, 10), Children = { new Border { Background = Skin.Brush("Track"), CornerRadius = new(2) }, fill } };
         // Length: "25" = 25 min, "1:30" = 90 s. A new length resets the timer.
         var length = Field(Timers.Clock(t.Seconds), "Length", 12.5, FontWeights.Normal);
-        length.Foreground = (Brush)FindResource("Sub");
+        length.Foreground = Skin.Brush("Sub");
         length.ToolTip = "Length: 25 = 25 min, 1:30 = 90 s, 1:00:00 = an hour";
         void SetLength()
         {
@@ -91,7 +91,7 @@ public partial class TimerPage : UserControl
 
         Button Icon(string glyph, string tip, Action click)
         {
-            var b = new Button { Style = (Style)FindResource("Ghost"), Content = glyph, FontFamily = (FontFamily)FindResource("Icons"), ToolTip = tip, Margin = new(2, 0, 2, 0) };
+            var b = new Button { Style = Skin.Style("Ghost"), Content = glyph, FontFamily = Skin.Icons, ToolTip = tip, Margin = new(2, 0, 2, 0) };
             b.Click += (_, _) => { click(); Update(); };
             return b;
         }
@@ -118,7 +118,7 @@ public partial class TimerPage : UserControl
         card = new Border
         {
             Width = 230, Margin = new(0, 0, 12, 12), Padding = new(14, 12, 14, 10), CornerRadius = new(14),
-            Background = (Brush)FindResource("Popup"), BorderBrush = (Brush)FindResource("CardEdge"), BorderThickness = new(1),
+            Background = Skin.Brush("Popup"), BorderBrush = Skin.Brush("CardEdge"), BorderThickness = new(1),
             Child = new StackPanel
             {
                 Children =
@@ -161,10 +161,10 @@ public partial class TimerPage : UserControl
         {
             var split = d.Laps[i] - (i > 0 ? d.Laps[i - 1] : 0);
             var row = new DockPanel { Margin = new(4, 2, 4, 2) };
-            var total = new TextBlock { Text = Timers.Watch(d.Laps[i]), Style = (Style)FindResource("Label"), FontFamily = (FontFamily)FindResource("Mono") };
+            var total = new TextBlock { Text = Timers.Watch(d.Laps[i]), Style = Skin.Style("Label"), FontFamily = Skin.Font("Mono") };
             DockPanel.SetDock(total, Dock.Right);
             row.Children.Add(total);
-            row.Children.Add(new TextBlock { Text = $"Lap {i + 1}    {Timers.Watch(split)}", FontFamily = (FontFamily)FindResource("Mono") });
+            row.Children.Add(new TextBlock { Text = $"Lap {i + 1}    {Timers.Watch(split)}", FontFamily = Skin.Font("Mono") });
             LapList.Children.Add(row);
         }
     }

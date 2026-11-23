@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using System.IO;
 using System.Net.Http;
 using System.Windows;
 using Glance.Services;
@@ -16,7 +15,7 @@ static class SelfTest
             Check(Settings.Dir.StartsWith(Path.GetTempPath()), $"selftest data stays out of AppData: {Settings.Dir}");
             // First, before anything reads a resource: styles built after the swap take the Flamingo colors.
             Skin.Load("Flamingo");
-            var sub = ((Style)Application.Current.FindResource("Label")).Setters.OfType<Setter>().First(x => x.Property == System.Windows.Controls.TextBlock.ForegroundProperty);
+            var sub = (Skin.Style("Label")).Setters.OfType<Setter>().First(x => x.Property == System.Windows.Controls.TextBlock.ForegroundProperty);
             Check(sub.Value is System.Windows.Media.SolidColorBrush { Color: { R: 0xC9, G: 0xA3, B: 0xC0 } }, "theme swap reaches styles");
             for (var i = 0; i < 500; i++)
             {
@@ -477,7 +476,16 @@ static class SelfTest
             Check(!Compare.StillDuplicate(copy, keep), "recycle guard: edited since the scan");
             File.Delete(keep);
             Check(!Compare.StillDuplicate(copy, keep), "recycle guard: the copy that stays is gone");
-            Check(Compare.Size(1536) == "2 KB" && Compare.Size(5L << 30) == "5.0 GB" && Compare.Size(1863L << 30) == "1.8 TB", "size text");
+            Check(Units.Bytes(1536) == "2 KB" && Units.Bytes(5L << 30) == "5.0 GB" && Units.Bytes(1863L << 30) == "1.8 TB", "size text");
+            Check(Units.Megabytes(512) == "512 MB" && Units.Megabytes(1536) == "1.5 GB" && Units.Rate(2_500_000) == "2.5 MB/s", "memory and rate text");
+
+            // Debounce: a burst of pokes runs once; nothing pending, nothing runs
+            var runs = 0;
+            var debounce = new Debounce(TimeSpan.FromHours(1), () => runs++);
+            debounce.Flush();
+            debounce.Poke(); debounce.Poke(); debounce.Flush(); debounce.Flush();
+            debounce.Poke(); debounce.Cancel(); debounce.Flush();
+            Check(runs == 1, "debounce: one run per burst, none after cancel");
 
             // The page and every row template build and lay out (a bad resource name only shows up at runtime)
             var page = new Pages.ComparePage();

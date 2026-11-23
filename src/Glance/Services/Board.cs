@@ -2,7 +2,6 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
-using System.Windows.Threading;
 
 namespace Glance.Services;
 
@@ -79,7 +78,7 @@ public static partial class BoardStore
     static readonly string File_ = Path.Combine(Settings.Dir, "boards.json");
     static readonly string Single = Path.Combine(Settings.Dir, "board.json"); // before tabs: one board
     static Boards? data;
-    static DispatcherTimer? saveTimer;
+    static readonly Debounce pendingSave = new(TimeSpan.FromSeconds(1), Save);
     static bool readOnly; // the file exists but couldn't be read: never save over it
 
     public static Boards Data => data ??= Open();
@@ -143,21 +142,11 @@ public static partial class BoardStore
 
     public static void Save()
     {
-        saveTimer?.Stop();
+        pendingSave.Cancel();
         if (data is not null && !readOnly) Settings.WriteAtomic(File_, JsonSerializer.Serialize(data));
     }
 
-    public static void SaveSoon()
-    {
-        if (saveTimer is null)
-        {
-            saveTimer = new() { Interval = TimeSpan.FromSeconds(1) };
-            saveTimer.Tick += (_, _) => Save();
-            Application.Current.Exit += (_, _) => { if (saveTimer.IsEnabled) Save(); };
-        }
-        saveTimer.Stop();
-        saveTimer.Start();
-    }
+    public static void SaveSoon() => pendingSave.Poke();
 
     public static void Changed(BoardItem it)
     {

@@ -91,8 +91,8 @@ public partial class WeatherPage : UserControl, IDisposable
         double lo = double.MaxValue, hi = double.MinValue;
         foreach (var t in temps) { lo = Math.Min(lo, t); hi = Math.Max(hi, t); }
         var range = Math.Max(1, hi - lo);
-        var accent = (Brush)FindResource("Accent");
-        var dim = (Brush)FindResource("Track");
+        var accent = Skin.Brush("Accent");
+        var dim = Skin.Brush("Track");
         Hours.ItemsSource = Enumerable.Range(start, n).Select(i =>
         {
             var share = 0.25 + 0.75 * (shown[i] - lo) / range; // keep the coldest bar visible

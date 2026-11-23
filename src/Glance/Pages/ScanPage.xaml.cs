@@ -18,7 +18,7 @@ public partial class ScanPage : UserControl
     public record Row(Node? Node, string Icon, string Name, string Size, double Share);
     public record Kind(string Name, Brush Brush, string Size);
 
-    static readonly Color Accent = ((SolidColorBrush)Application.Current.Resources["Accent"]).Color, Free = Color.FromArgb(0x55, 0x9C, 0x9C, 0xA3), Blue = Color.FromRgb(0x3D, 0xA9, 0xFF);
+    static readonly Color Accent = Skin.BrushColor("Accent"), Free = Color.FromArgb(0x55, 0x9C, 0x9C, 0xA3), Blue = Color.FromRgb(0x3D, 0xA9, 0xFF);
     static readonly Dictionary<string, Color> KindColors = new()
     {
         ["Video"] = Color.FromRgb(0xFF, 0x5C, 0x8A), ["Images"] = Color.FromRgb(0x3D, 0xA9, 0xFF), ["Audio"] = Color.FromRgb(0x2C, 0xC7, 0xC7),
@@ -44,9 +44,9 @@ public partial class ScanPage : UserControl
         {
             var chip = new RadioButton
             {
-                Style = (Style)FindResource("Chip"), Tag = d.Name,
-                Content = $"{d.Name.TrimEnd('\\')}  {Compare.Size(d.AvailableFreeSpace)} free", Margin = new Thickness(0, 0, 0, 4),
-                ToolTip = $"{d.VolumeLabel} · {Compare.Size(d.AvailableFreeSpace)} free of {Compare.Size(d.TotalSize)}".TrimStart(' ', '·'),
+                Style = Skin.Style("Chip"), Tag = d.Name,
+                Content = $"{d.Name.TrimEnd('\\')}  {Units.Bytes(d.AvailableFreeSpace)} free", Margin = new Thickness(0, 0, 0, 4),
+                ToolTip = $"{d.VolumeLabel} · {Units.Bytes(d.AvailableFreeSpace)} free of {Units.Bytes(d.TotalSize)}".TrimStart(' ', '·'),
             };
             chip.Checked += (_, _) => Pick(d.Name);
             Drives.Children.Add(chip);
@@ -62,7 +62,7 @@ public partial class ScanPage : UserControl
         Say("Pick a drive or a folder, then scan it.");
     }
 
-    static string Describe(Node n) => $"{(n.Lump ? $"{n.Parent!.Path} · files under 1 MB" : n.Path)} · {Compare.Size(n.Size)}";
+    static string Describe(Node n) => $"{(n.Lump ? $"{n.Parent!.Path} · files under 1 MB" : n.Path)} · {Units.Bytes(n.Size)}";
 
     void Pick(string what)
     {
@@ -75,7 +75,7 @@ public partial class ScanPage : UserControl
         App.Settings.Save();
     }
 
-    static string Size(double v) => Compare.Size((long)v);
+    static string Size(double v) => Units.Bytes((long)v);
 
     static DriveInfo? DriveOf(string p)
     {
@@ -88,7 +88,7 @@ public partial class ScanPage : UserControl
     {
         if (DriveOf(path) is not { } d) { Ring.Set([]); Ring.Show(0, _ => "", ""); return; }
         Ring.Set([(Accent, d.TotalSize - d.TotalFreeSpace), (Free, d.TotalFreeSpace)]);
-        Ring.Show(d.AvailableFreeSpace, Size, $"free of {Compare.Size(d.TotalSize)}");
+        Ring.Show(d.AvailableFreeSpace, Size, $"free of {Units.Bytes(d.TotalSize)}");
     }
 
     void PickFolder(object sender, RoutedEventArgs e)
@@ -132,7 +132,7 @@ public partial class ScanPage : UserControl
             if (by == "Glance")
             {
                 var (files, bytes) = (Interlocked.Read(ref progress.Files), Interlocked.Read(ref progress.Bytes));
-                Ring.Show(bytes, Size, $"{files:N0} files");
+                Ring.Show(bytes, Units.Bytes, $"{files:N0} files");
                 if (drive > 0) Ring.Set([(Accent, bytes)], drive);
                 Ring.Pull(Accent, (int)Math.Clamp((files - seen) / 400, files > seen ? 1 : 0, 14)); // more found, more sparks
                 seen = files;
@@ -159,7 +159,7 @@ public partial class ScanPage : UserControl
                 Say($"Scanning {path}…");
                 tree = await Task.Run(() => DiskScan.Walk(path, progress, ct), ct);
             }
-            Summary.Text = $"{tree.Name} · {Compare.Size(tree.Size)} · scanned in {watch.Elapsed.TotalSeconds:0.0} s by {by}";
+            Summary.Text = $"{tree.Name} · {Units.Bytes(tree.Size)} · scanned in {watch.Elapsed.TotalSeconds:0.0} s by {by}";
             Show(tree);
         }
         catch (OperationCanceledException) { Say("Scan cancelled."); }
@@ -188,9 +188,9 @@ public partial class ScanPage : UserControl
         var kids = dir.Kids!;
         var top = Math.Max(1, kids.FirstOrDefault()?.Size ?? 1);
         var rows = kids.Take(MaxRows).Select(k => new Row(k, k.IsDir ? "" : k.Lump ? "" : "",
-            k.Lump ? "Files under 1 MB" : k.Name, Compare.Size(k.Size), k.Size / (double)top)).ToList();
+            k.Lump ? "Files under 1 MB" : k.Name, Units.Bytes(k.Size), k.Size / (double)top)).ToList();
         if (kids.Count > MaxRows)
-            rows.Add(new(null, "", $"and {kids.Count - MaxRows:N0} more", Compare.Size(kids.Skip(MaxRows).Sum(k => k.Size)), 0));
+            rows.Add(new(null, "", $"and {kids.Count - MaxRows:N0} more", Units.Bytes(kids.Skip(MaxRows).Sum(k => k.Size)), 0));
         List.ItemsSource = rows;
         ShowKinds(dir);
         if (kids.Count == 0) { Say("This folder is empty."); return; }
@@ -216,12 +216,12 @@ public partial class ScanPage : UserControl
             var seg = new Border
             {
                 Background = Brush(name), CornerRadius = new CornerRadius(3), Margin = new Thickness(i == 0 ? 0 : 1, 0, 0, 0),
-                ToolTip = $"{name} · {Compare.Size(bytes)} · {bytes * 100.0 / Math.Max(1, dir.Size):0.#}%",
+                ToolTip = $"{name} · {Units.Bytes(bytes)} · {bytes * 100.0 / Math.Max(1, dir.Size):0.#}%",
             };
             Grid.SetColumn(seg, i);
             KindBar.Children.Add(seg);
         }
-        KindLegend.ItemsSource = kinds.Select(k => new Kind(k.Kind, Brush(k.Kind), Compare.Size(k.Bytes))).ToArray();
+        KindLegend.ItemsSource = kinds.Select(k => new Kind(k.Kind, Brush(k.Kind), Units.Bytes(k.Bytes))).ToArray();
         Motion.To(KindGrow, ScaleTransform.ScaleXProperty, 1, 520, 0);
     }
 
@@ -265,13 +265,13 @@ public partial class ScanPage : UserControl
     static void Reveal(Node? n)
     {
         if (n is null) return;
-        Process.Start("explorer.exe", n.Lump ? $"\"{n.Parent!.Path}\"" : $"/select,\"{n.Path}\"");
+        if (n.Lump) Shell.Open(n.Parent!.Path); else Shell.Reveal(n.Path);
     }
 
     void Recycle(Node? n)
     {
         if (n is null || n.Lump || n.Parent is null || shown is null) return;
-        if (!Dialog.Confirm("Scan", $"Move {n.Name} to the Recycle Bin?", $"{n.Path} · {Compare.Size(n.Size)}", "Recycle")) return;
+        if (!Dialog.Confirm("Scan", $"Move {n.Name} to the Recycle Bin?", $"{n.Path} · {Units.Bytes(n.Size)}", "Recycle")) return;
         try
         {
             if (!Compare.Recycle(n.Path)) return; // the user said no to Windows' own prompt

@@ -18,7 +18,7 @@ public class TasksPage : UserControl
 
     public TasksPage()
     {
-        showDone = new CheckBox { Content = "Show done", Style = (Style)FindResource("Switch"), VerticalAlignment = VerticalAlignment.Center };
+        showDone = new CheckBox { Content = "Show done", Style = Skin.Style("Switch"), VerticalAlignment = VerticalAlignment.Center };
         showDone.Click += (_, _) => { withDone = showDone.IsChecked == true; Draw(); };
         DockPanel.SetDock(showDone, Dock.Right);
         var head = new DockPanel
@@ -31,8 +31,8 @@ public class TasksPage : UserControl
                 {
                     Children =
                     {
-                        new TextBlock { Text = "Tasks", Style = (Style)FindResource("H") },
-                        new TextBlock { Text = "From Notes, Stickies and board notes. A due date on a board task: - [ ] call mom @tomorrow 9", Style = (Style)FindResource("Label"), Margin = new(0, 2, 0, 0) },
+                        new TextBlock { Text = "Tasks", Style = Skin.Style("H") },
+                        new TextBlock { Text = "From Notes, Stickies and board notes. A due date on a board task: - [ ] call mom @tomorrow 9", Style = Skin.Style("Label"), Margin = new(0, 2, 0, 0) },
                     },
                 },
             },
@@ -40,7 +40,7 @@ public class TasksPage : UserControl
         DockPanel.SetDock(head, Dock.Top);
         Content = new Border
         {
-            Style = (Style)FindResource("Card"),
+            Style = Skin.Style("Card"),
             Child = new DockPanel { Children = { head, new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = list } } },
         };
         IsVisibleChanged += (_, _) => { if (IsVisible) Draw(); };
@@ -76,25 +76,25 @@ public class TasksPage : UserControl
         {
             list.Children.Add(new TextBlock
             {
-                Text = $"{g.Key}  {g.Count()}", Style = (Style)FindResource("Label"), FontWeight = FontWeights.SemiBold, Margin = new(2, list.Children.Count == 0 ? 0 : 16, 0, 6),
-                Foreground = (Brush)FindResource(g.Key == "Overdue" ? "Red" : "Sub"),
+                Text = $"{g.Key}  {g.Count()}", Style = Skin.Style("Label"), FontWeight = FontWeights.SemiBold, Margin = new(2, list.Children.Count == 0 ? 0 : 16, 0, 6),
+                Foreground = Skin.Brush(g.Key == "Overdue" ? "Red" : "Sub"),
             });
             foreach (var (row, done) in g.OrderBy(r => r.Row.Due ?? DateTime.MaxValue)) list.Children.Add(Line(row, done, g.Key == "Overdue"));
         }
         if (rows.Count == 0)
-            list.Children.Add(new TextBlock { Text = "Nothing to do. Add a checklist in Notes, or a - [ ] task to a board note.", Style = (Style)FindResource("Label"), Margin = new(2, 8, 0, 0) });
+            list.Children.Add(new TextBlock { Text = "Nothing to do. Add a checklist in Notes, or a - [ ] task to a board note.", Style = Skin.Style("Label"), Margin = new(2, 8, 0, 0) });
     }
 
     FrameworkElement Line(Row row, bool done, bool overdue)
     {
-        var box = new CheckBox { Style = (Style)FindResource("Check"), IsChecked = done, VerticalAlignment = VerticalAlignment.Top, Margin = new(0, 1, 10, 0) };
+        var box = new CheckBox { Style = Skin.Style("Check"), IsChecked = done, VerticalAlignment = VerticalAlignment.Top, Margin = new(0, 1, 10, 0) };
         box.Click += (_, _) => { row.Tick(); Draw(); };
-        var source = new Button { Style = (Style)FindResource("Ghost"), Content = row.Source, FontSize = 12, Padding = new(6, 2, 6, 2), ToolTip = "Go to it", VerticalAlignment = VerticalAlignment.Top };
+        var source = new Button { Style = Skin.Style("Ghost"), Content = row.Source, FontSize = 12, Padding = new(6, 2, 6, 2), ToolTip = "Go to it", VerticalAlignment = VerticalAlignment.Top };
         source.Click += (_, _) => row.Go();
         var text = new TextBlock { Text = row.Text.Length > 0 ? row.Text : "(no text)", TextWrapping = TextWrapping.Wrap, Opacity = done ? 0.55 : 1, VerticalAlignment = VerticalAlignment.Center };
         if (done) text.TextDecorations = TextDecorations.Strikethrough;
         if (row.Due is { } d)
-            text.Inlines.Add(new System.Windows.Documents.Run("   " + Due.Format(d, DateTime.Now)) { FontSize = 12, Foreground = (Brush)FindResource(overdue ? "Red" : "Sub") });
+            text.Inlines.Add(new System.Windows.Documents.Run("   " + Due.Format(d, DateTime.Now)) { FontSize = 12, Foreground = Skin.Brush(overdue ? "Red" : "Sub") });
         DockPanel.SetDock(box, Dock.Left);
         DockPanel.SetDock(source, Dock.Right);
         return new DockPanel { Margin = new(2, 0, 0, 6), Children = { box, source, text } };

@@ -115,13 +115,13 @@ public partial class MiniWindow : Window
         if (s.RamUsed is { } ram && s.RamTotal is > 0 and var total) Add(Meter("RAM", ram / total, $"{ram:0.0} / {total:0} GB"));
         if (s.VramUsed is { } vram && s.VramTotal is > 0 and var vtotal) Add(Meter("VRAM", vram / vtotal, $"{vram / 1024:0.0} / {vtotal / 1024:0} GB"));
         if (s.Procs.MaxBy(p => p.Cpu) is { Cpu: > 0 } top)
-            Add(Line($"Busiest: {top.Name} · {top.Cpu:0}% CPU · {top.MemMb / 1024:0.0} GB", 10));
+            Add(Line($"Busiest: {top.Name} · {top.Cpu:0}% CPU · {top.MemText}", 10));
     }
 
     void ShowNetwork()
     {
         if (bar.Snap is not { } s) { Add(Header(bar.ViewIcon, "Network", "Measuring…", "Network")); return; }
-        Add(Header(bar.ViewIcon, $"↓ {SystemPage.Rate(s.NetDown)}    ↑ {SystemPage.Rate(s.NetUp)}", "The last minute", "Network"));
+        Add(Header(bar.ViewIcon, $"↓ {Units.Rate(s.NetDown)}    ↑ {Units.Rate(s.NetUp)}", "The last minute", "Network"));
         Add(Graph("Download", bar.Downs, Color.FromRgb(0x5A, 0xA9, 0xFF), "rate"));
         Add(Graph("Upload", bar.Ups, Color.FromRgb(0xB0, 0x7C, 0xFF), "rate"));
         // The speed test: the page's dial, smaller; start it from either
@@ -176,21 +176,19 @@ public partial class MiniWindow : Window
 
     // ---- Pieces ----
 
-    Brush R(string key) => (Brush)FindResource(key);
-
     /// Like the player's song line: a tile with the view's glyph, a title and a line under it. Opens the view's page.
     FrameworkElement Header(string glyph, string title, string sub, string tab, bool iconFont = true)
     {
         var tile = new Grid { Width = 46, Height = 46, Margin = new(0, 0, 12, 0) };
-        tile.Children.Add(new Border { CornerRadius = new(8), Background = R("Track") });
-        var mark = new TextBlock { Text = glyph, FontSize = iconFont ? 18 : 22, Foreground = R("Accent"), HorizontalAlignment = HorizontalAlignment.Center,
+        tile.Children.Add(new Border { CornerRadius = new(8), Background = Skin.Brush("Track") });
+        var mark = new TextBlock { Text = glyph, FontSize = iconFont ? 18 : 22, Foreground = Skin.Brush("Accent"), HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center };
-        if (iconFont) mark.FontFamily = (FontFamily)FindResource("Icons");
+        if (iconFont) mark.FontFamily = Skin.Icons;
         tile.Children.Add(mark);
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(new TextBlock { Text = title, FontSize = 13.5, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
         if (sub.Length > 0)
-            text.Children.Add(new TextBlock { Text = sub, FontSize = 12, Foreground = R("Sub"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(0, 2, 0, 0) });
+            text.Children.Add(new TextBlock { Text = sub, FontSize = 12, Foreground = Skin.Brush("Sub"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(0, 2, 0, 0) });
         var head = new DockPanel { Cursor = Cursors.Hand, Background = Brushes.Transparent, ToolTip = $"Open {tab}" };
         DockPanel.SetDock(tile, Dock.Left);
         head.Children.Add(tile);
@@ -201,7 +199,7 @@ public partial class MiniWindow : Window
 
     TextBlock Line(string text, double top) => new()
     {
-        Text = text, FontSize = 11.5, Foreground = R("Sub"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(0, top, 0, 0),
+        Text = text, FontSize = 11.5, Foreground = Skin.Brush("Sub"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(0, top, 0, 0),
     };
 
     // Label, a bar filled to `fraction`, the value.
@@ -209,7 +207,7 @@ public partial class MiniWindow : Window
     {
         fraction = Math.Clamp(fraction, 0, 1);
         var row = new DockPanel { Margin = new(0, 9, 0, 0) };
-        var name = new TextBlock { Text = label, FontSize = 11.5, Foreground = R("Sub"), Width = 40, VerticalAlignment = VerticalAlignment.Center };
+        var name = new TextBlock { Text = label, FontSize = 11.5, Foreground = Skin.Brush("Sub"), Width = 40, VerticalAlignment = VerticalAlignment.Center };
         var val = new TextBlock { Text = value, FontSize = 12, FontWeight = FontWeights.SemiBold, MinWidth = 92, TextAlignment = TextAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(name, Dock.Left);
@@ -217,10 +215,10 @@ public partial class MiniWindow : Window
         var track = new Grid { Height = 5, VerticalAlignment = VerticalAlignment.Center, Margin = new(4, 0, 10, 0) };
         track.ColumnDefinitions.Add(new ColumnDefinition { Width = new(fraction, GridUnitType.Star) });
         track.ColumnDefinitions.Add(new ColumnDefinition { Width = new(1 - fraction, GridUnitType.Star) });
-        var back = new Border { CornerRadius = new(2.5), Background = R("Track") };
+        var back = new Border { CornerRadius = new(2.5), Background = Skin.Brush("Track") };
         Grid.SetColumnSpan(back, 2);
         track.Children.Add(back);
-        track.Children.Add(new Border { CornerRadius = new(2.5), Background = R("Accent") });
+        track.Children.Add(new Border { CornerRadius = new(2.5), Background = Skin.Brush("Accent") });
         row.Children.Add(name);
         row.Children.Add(val);
         row.Children.Add(track);
@@ -230,7 +228,7 @@ public partial class MiniWindow : Window
     FrameworkElement Stat(string label, string value)
     {
         var s = new StackPanel();
-        s.Children.Add(new TextBlock { Text = label, FontSize = 11, Foreground = R("Sub") });
+        s.Children.Add(new TextBlock { Text = label, FontSize = 11, Foreground = Skin.Brush("Sub") });
         s.Children.Add(new TextBlock { Text = value, FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new(0, 2, 0, 0) });
         return s;
     }
@@ -238,7 +236,7 @@ public partial class MiniWindow : Window
     FrameworkElement Graph(string label, IReadOnlyList<float> series, Color color, string format)
     {
         var s = new StackPanel { Margin = new(0, 10, 0, 0) };
-        s.Children.Add(new TextBlock { Text = label, FontSize = 11, Foreground = R("Sub") });
+        s.Children.Add(new TextBlock { Text = label, FontSize = 11, Foreground = Skin.Brush("Sub") });
         s.Children.Add(new Spark { Series = series.ToArray(), Color = color, Max = 0, Format = format, Height = 26, Margin = new(0, 4, 0, 0) });
         return s;
     }
@@ -247,7 +245,7 @@ public partial class MiniWindow : Window
     FrameworkElement Rate(string code, float[] days)
     {
         var row = new DockPanel { Margin = new(0, 10, 0, 0) };
-        var name = new TextBlock { Text = code, FontSize = 11.5, Foreground = R("Sub"), Width = 40, VerticalAlignment = VerticalAlignment.Center };
+        var name = new TextBlock { Text = code, FontSize = 11.5, Foreground = Skin.Brush("Sub"), Width = 40, VerticalAlignment = VerticalAlignment.Center };
         var value = new StackPanel { Width = 112, VerticalAlignment = VerticalAlignment.Center };
         value.Children.Add(new TextBlock { Text = $"{days[^1]:0.00} Ft", FontSize = 13, FontWeight = FontWeights.SemiBold });
         if (days.Length > 1)
@@ -256,7 +254,7 @@ public partial class MiniWindow : Window
             value.Children.Add(new TextBlock
             {
                 Text = change == 0 ? "no change" : $"{(change > 0 ? "▲" : "▼")} {Math.Abs(change):0.00}", FontSize = 11,
-                Foreground = change == 0 ? R("Sub") : new SolidColorBrush(change > 0 ? Up : Down),
+                Foreground = change == 0 ? Skin.Brush("Sub") : new SolidColorBrush(change > 0 ? Up : Down),
             });
         }
         DockPanel.SetDock(name, Dock.Left);
@@ -271,19 +269,19 @@ public partial class MiniWindow : Window
     FrameworkElement Reminder(Note note, TodoItem item, DateTime now)
     {
         var row = new DockPanel { Margin = new(0, 10, 0, 0) };
-        var check = new CheckBox { Style = (Style)FindResource("Check"), DataContext = item, VerticalAlignment = VerticalAlignment.Top, Margin = new(0, 1, 10, 0),
+        var check = new CheckBox { Style = Skin.Style("Check"), DataContext = item, VerticalAlignment = VerticalAlignment.Top, Margin = new(0, 1, 10, 0),
             ToolTip = "Done" };
         check.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, new Binding(nameof(TodoItem.Done)));
         check.Click += (_, _) => bar.Refresh(); // the bar and this list move on to the next one
         var when = new TextBlock
         {
             Text = Due.Format(item.Due!.Value, now), FontSize = 11.5, Margin = new(8, 2, 0, 0), VerticalAlignment = VerticalAlignment.Top,
-            Foreground = item.Due < now ? R("Red") : R("Sub"),
+            Foreground = item.Due < now ? Skin.Brush("Red") : Skin.Brush("Sub"),
         };
         var text = new StackPanel();
         text.Children.Add(new TextBlock { Text = item.Text.Length > 0 ? item.Text : "(no text)", FontSize = 12.5, FontWeight = FontWeights.SemiBold,
             TextTrimming = TextTrimming.CharacterEllipsis });
-        text.Children.Add(new TextBlock { Text = (note is Sticky ? "Sticky · " : "Note · ") + note.DisplayTitle, FontSize = 11, Foreground = R("Sub"),
+        text.Children.Add(new TextBlock { Text = (note is Sticky ? "Sticky · " : "Note · ") + note.DisplayTitle, FontSize = 11, Foreground = Skin.Brush("Sub"),
             TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(0, 1, 0, 0) });
         DockPanel.SetDock(check, Dock.Left);
         DockPanel.SetDock(when, Dock.Right);

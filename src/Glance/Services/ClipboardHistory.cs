@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -131,7 +130,7 @@ public static class ClipboardHistory
         Directory.CreateDirectory(TempDir);
         var path = Path.Combine(TempDir, $"clipboard {item.Time:yyyy-MM-dd HH.mm.ss}.png");
         File.WriteAllBytes(path, item.Png!);
-        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        Shell.Open(path);
         if (cleanupHooked) return;
         cleanupHooked = true;
         Application.Current.Exit += (_, _) =>

@@ -99,6 +99,21 @@ public class Settings
 
     public void Save() => WriteAtomic(File_, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
 
+    /// A JSON store's contents; default when there's no file yet. A file that won't parse is renamed aside and logged,
+    /// so the next save can't write over what might be recovered from it. Other IO errors (locked, no access) throw.
+    public static T? ReadJson<T>(string path, JsonSerializerOptions? options = null)
+    {
+        try { return JsonSerializer.Deserialize<T>(File.ReadAllText(path), options); }
+        catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) { return default; }
+        catch (JsonException e)
+        {
+            var parked = $"{path}.unreadable-{DateTime.Now:yyyyMMdd-HHmmss}";
+            File.Move(path, parked);
+            Db.Error($"{Path.GetFileName(path)} unreadable, moved to {parked}", e);
+            return default;
+        }
+    }
+
     /// Write-then-rename, so a crash mid-write never leaves a truncated file.
     public static void WriteAtomic(string path, string text)
     {

@@ -20,16 +20,7 @@ public static class Money
 
     static ObservableCollection<Entry> Load()
     {
-        ObservableCollection<Entry> list;
-        try { list = JsonSerializer.Deserialize<ObservableCollection<Entry>>(File.ReadAllText(File_)) ?? []; }
-        catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) { list = []; }
-        catch (JsonException e)
-        {
-            var parked = $"{File_}.unreadable-{DateTime.Now:yyyyMMdd-HHmmss}";
-            File.Move(File_, parked);
-            Db.Error($"money.json unreadable, moved to {parked}", e);
-            list = [];
-        }
+        var list = Settings.ReadJson<ObservableCollection<Entry>>(File_) ?? [];
         list.CollectionChanged += (_, _) => Save();
         Application.Current.Exit += (_, _) => Save();
         return list;

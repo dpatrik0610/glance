@@ -26,10 +26,10 @@ public sealed class Tabbed : UserControl, IDisposable
         chips = parts.Select((p, i) =>
         {
             var label = new StackPanel { Orientation = Orientation.Horizontal };
-            label.Children.Add(new TextBlock { Text = p.Icon, FontFamily = (FontFamily)FindResource("Icons"), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+            label.Children.Add(new TextBlock { Text = p.Icon, FontFamily = Skin.Icons, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
             label.Children.Add(new TextBlock { Text = p.Name });
             // Same parent panel = one radio group (no GroupName: those are shared window-wide)
-            var chip = new RadioButton { Content = label, Style = (Style)FindResource("Chip") };
+            var chip = new RadioButton { Content = label, Style = Skin.Style("Chip") };
             System.Windows.Automation.AutomationProperties.SetName(chip, p.Name);
             chip.Checked += (_, _) => Switch(i);
             row.Children.Add(chip);

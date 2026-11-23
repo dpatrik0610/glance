@@ -26,19 +26,19 @@ public class CaptureWindow : Window
         (WindowStyle, AllowsTransparency, Background, ResizeMode, Topmost, ShowInTaskbar) = (WindowStyle.None, true, Brushes.Transparent, ResizeMode.NoResize, true, false);
         (Width, SizeToContent, WindowStartupLocation) = (560, SizeToContent.Height, WindowStartupLocation.CenterScreen);
         FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
-        Foreground = (Brush)FindResource("Text");
+        Foreground = Skin.Brush("Text");
         box = new TextBox { FontSize = 16, Tag = "Into today's note…", BorderThickness = new(0), Background = Brushes.Transparent, Padding = new(0) };
         Content = new Border
         {
-            Margin = new(24), Padding = new(18, 14, 18, 12), CornerRadius = new(16), Background = (Brush)FindResource("Popup"),
-            BorderBrush = (Brush)FindResource("Line"), BorderThickness = new(1),
+            Margin = new(24), Padding = new(18, 14, 18, 12), CornerRadius = new(16), Background = Skin.Brush("Popup"),
+            BorderBrush = Skin.Brush("Line"), BorderThickness = new(1),
             Effect = new DropShadowEffect { BlurRadius = 30, ShadowDepth = 4, Opacity = 0.5, Color = Colors.Black },
             Child = new StackPanel
             {
                 Children =
                 {
                     box,
-                    new TextBlock { Text = "Enter: today's note   ·   Ctrl+Enter: a note on the board   ·   Esc: close", Style = (Style)FindResource("Label"), FontSize = 11.5, Margin = new(0, 8, 0, 0) },
+                    new TextBlock { Text = "Enter: today's note   ·   Ctrl+Enter: a note on the board   ·   Esc: close", Style = Skin.Style("Label"), FontSize = 11.5, Margin = new(0, 8, 0, 0) },
                 },
             },
         };

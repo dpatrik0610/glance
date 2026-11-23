@@ -88,7 +88,7 @@ public partial class StickyWindow : Window
         var colors = new WrapPanel { Margin = new(0, 0, 0, 10) };
         foreach (var (name, _, dot) in Sticky.Colors)
         {
-            var b = new Button { Style = (Style)FindResource("Ghost"), Padding = new(5), ToolTip = name };
+            var b = new Button { Style = Skin.Style("Ghost"), Padding = new(5), ToolTip = name };
             b.Content = new Ellipse
             {
                 Width = 16, Height = 16, Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(dot)),
@@ -105,10 +105,10 @@ public partial class StickyWindow : Window
             Child = new Border
             {
                 Background = new SolidColorBrush(Skin.Get("SurfaceColor", 0xF4)), CornerRadius = new(12), Padding = new(12),
-                BorderBrush = (Brush)FindResource("Line"), BorderThickness = new(1),
+                BorderBrush = Skin.Brush("Line"), BorderThickness = new(1),
                 Child = new StackPanel
                 {
-                    Children = { colors, new TextBlock { Text = "Solid", Style = (Style)FindResource("Label"), Margin = new(0, 0, 0, 4) }, see },
+                    Children = { colors, new TextBlock { Text = "Solid", Style = Skin.Style("Label"), Margin = new(0, 0, 0, 4) }, see },
                 },
             },
         };

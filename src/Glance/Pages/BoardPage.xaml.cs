@@ -39,6 +39,7 @@ public partial class BoardPage : UserControl
     public BoardPage()
     {
         InitializeComponent();
+        board = boards.All.FirstOrDefault(b => b.Id == boards.Current) ?? boards.All[0];
         // The card's corners are round; keep the dots inside them.
         Surface.SizeChanged += (_, _) =>
         {
@@ -54,7 +55,6 @@ public partial class BoardPage : UserControl
             if (cards.ContainsKey(it) || Kanban) Rebuild(it);
             else { Show(it); ApplyTag(); Changed(); }
         };
-        board = boards.All.FirstOrDefault(b => b.Id == boards.Current) ?? boards.All[0];
         DrawTabs();
         Refresh();
     }
@@ -108,7 +108,7 @@ public partial class BoardPage : UserControl
         {
             var chip = new RadioButton
             {
-                Style = (Style)FindResource("Chip"), GroupName = "boards", Content = b.Name, IsChecked = b == board,
+                Style = Skin.Style("Chip"), GroupName = "boards", Content = b.Name, IsChecked = b == board,
                 ToolTip = "Double-click to rename, right-click for more",
             };
             chip.Checked += (_, _) => Switch(b);
@@ -208,7 +208,7 @@ public partial class BoardPage : UserControl
     void Flash(Border card)
     {
         var was = card.BorderBrush;
-        card.BorderBrush = (Brush)FindResource("Accent");
+        card.BorderBrush = Skin.Brush("Accent");
         card.BorderThickness = new(2);
         new System.Windows.Threading.DispatcherTimer(TimeSpan.FromSeconds(1.2), System.Windows.Threading.DispatcherPriority.Background,
             (s, _) => { ((System.Windows.Threading.DispatcherTimer)s!).Stop(); card.BorderBrush = was; card.BorderThickness = new(1); }, Dispatcher);
@@ -361,10 +361,10 @@ public partial class BoardPage : UserControl
 
     void DrawBackground()
     {
-        var mark = new SolidColorBrush(((SolidColorBrush)FindResource("Sub")).Color) { Opacity = 0.4 };
+        var mark = new SolidColorBrush(Skin.BrushColor("Sub")) { Opacity = 0.4 };
         Dots.Drawing = board.Background switch
         {
-            "grid" => new GeometryDrawing(null, new Pen(new SolidColorBrush(((SolidColorBrush)FindResource("Sub")).Color) { Opacity = 0.12 }, 1),
+            "grid" => new GeometryDrawing(null, new Pen(new SolidColorBrush(Skin.BrushColor("Sub")) { Opacity = 0.12 }, 1),
                 Geometry.Parse("M0,0 H24 M0,0 V24")),
             "plain" => new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, 24, 24))),
             _ => new GeometryDrawing(mark, null, new EllipseGeometry(new Point(12, 12), 1.1, 1.1)),
@@ -436,9 +436,9 @@ public partial class BoardPage : UserControl
             mapOffset = new Vector((w - all.Width * mapScale) / 2 - all.X * mapScale, (h - all.Height * mapScale) / 2 - all.Y * mapScale);
         }
         Map.Children.Clear();
-        var node = (Brush)FindResource("Sub");
+        var node = Skin.Brush("Sub");
         foreach (var it in board.Items) Map.Children.Add(MapRect(Bounds(it), it.Kind == "group" ? null : node, it.Kind == "group" ? node : null, 0.55));
-        Map.Children.Add(MapRect(view, null, (Brush)FindResource("Accent"), 1));
+        Map.Children.Add(MapRect(view, null, Skin.Brush("Accent"), 1));
     }
 
     Rectangle MapRect(Rect r, Brush? fill, Brush? stroke, double opacity)
@@ -645,12 +645,12 @@ public partial class BoardPage : UserControl
 
         var remove = new Button
         {
-            Style = (Style)FindResource("Ghost"), Content = "", FontFamily = (FontFamily)FindResource("Icons"), FontSize = 10,
+            Style = Skin.Style("Ghost"), Content = "", FontFamily = Skin.Icons, FontSize = 10,
             Padding = new(5), HorizontalAlignment = HorizontalAlignment.Right, ToolTip = "Remove", Opacity = 0,
         };
         var lockMark = new TextBlock
         {
-            Text = "", FontFamily = (FontFamily)FindResource("Icons"), FontSize = 10, Foreground = (Brush)FindResource("Sub"),
+            Text = "", FontFamily = Skin.Icons, FontSize = 10, Foreground = Skin.Brush("Sub"),
             VerticalAlignment = VerticalAlignment.Center, ToolTip = "Locked (right-click to unlock)",
             Visibility = it.Locked ? Visibility.Visible : Visibility.Collapsed,
         };
@@ -664,18 +664,18 @@ public partial class BoardPage : UserControl
             Width = 16, Height = 16, Background = Brushes.Transparent, Cursor = Cursors.SizeNWSE, Opacity = 0,
             HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new(0, 0, -10, -10),
             ToolTip = "Drag to resize",
-            Child = new System.Windows.Shapes.Path { Data = Geometry.Parse("M10,2 L2,10 M10,6 L6,10"), Stroke = (Brush)FindResource("Sub"), StrokeThickness = 1.3 },
+            Child = new System.Windows.Shapes.Path { Data = Geometry.Parse("M10,2 L2,10 M10,6 L6,10"), Stroke = Skin.Brush("Sub"), StrokeThickness = 1.3 },
         };
         // Connect: drag from the dot on the right edge onto another node.
         var handle = new Ellipse
         {
-            Width = 12, Height = 12, Fill = (Brush)FindResource("Popup"), Stroke = (Brush)FindResource("Accent"), StrokeThickness = 2, Opacity = 0,
+            Width = 12, Height = 12, Fill = Skin.Brush("Popup"), Stroke = Skin.Brush("Accent"), StrokeThickness = 2, Opacity = 0,
             HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, -19, 0),
             Cursor = Cursors.Cross, ToolTip = "Drag onto another node to connect",
         };
         var card = new Border
         {
-            Background = group ? GroupFill(it) : (Brush)FindResource("Popup"), BorderBrush = Edge(it), BorderThickness = new(1),
+            Background = group ? GroupFill(it) : Skin.Brush("Popup"), BorderBrush = Edge(it), BorderThickness = new(1),
             CornerRadius = new(group ? 16 : 12), Padding = new(12, 2, 12, 12), Cursor = Cursors.SizeAll,
             Child = new Grid { Children = { inner, grip, handle } },
         };
@@ -700,7 +700,7 @@ public partial class BoardPage : UserControl
             var rubber = new Line
             {
                 X1 = from.X + from.Width / 2, Y1 = from.Y + from.Height / 2, X2 = from.Right, Y2 = from.Y + from.Height / 2,
-                Stroke = (Brush)FindResource("Accent"), StrokeThickness = 2, StrokeDashArray = [4, 3], IsHitTestVisible = false,
+                Stroke = Skin.Brush("Accent"), StrokeThickness = 2, StrokeDashArray = [4, 3], IsHitTestVisible = false,
             };
             Panel.SetZIndex(rubber, 5);
             World.Children.Add(rubber);
@@ -730,9 +730,9 @@ public partial class BoardPage : UserControl
     }
 
     /// The card's edge: its color when it has one.
-    Brush Edge(BoardItem it) => ColorOf(it.Color) is { } c ? new SolidColorBrush(c) : (Brush)FindResource(it.Kind == "group" ? "Line" : "CardEdge");
+    Brush Edge(BoardItem it) => ColorOf(it.Color) is { } c ? new SolidColorBrush(c) : Skin.Brush(it.Kind == "group" ? "Line" : "CardEdge");
 
-    Brush GroupFill(BoardItem it) => ColorOf(it.Color) is { } c ? new SolidColorBrush(Color.FromArgb(0x16, c.R, c.G, c.B)) : (Brush)FindResource("CardBg");
+    Brush GroupFill(BoardItem it) => ColorOf(it.Color) is { } c ? new SolidColorBrush(Color.FromArgb(0x16, c.R, c.G, c.B)) : Skin.Brush("CardBg");
 
     /// JSON Canvas's preset colors "1".."6".
     public static readonly (string Id, string Name, Color Color)[] NodeColors =

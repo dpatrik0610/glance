@@ -48,7 +48,7 @@ public partial class EventDialog : Window
         // An event stays in its calendar: moving between calendars isn't offered.
         foreach (var c in e is null ? writable : [e.Calendar])
         {
-            var chip = new RadioButton { Content = c.Name, GroupName = "cal", IsChecked = c == calendar, Style = (Style)FindResource("Chip"), Margin = new(0, 0, 6, 6) };
+            var chip = new RadioButton { Content = c.Name, GroupName = "cal", IsChecked = c == calendar, Style = Skin.Style("Chip"), Margin = new(0, 0, 6, 6) };
             chip.Checked += (_, _) => calendar = c;
             CalendarChips.Children.Add(chip);
         }
@@ -71,14 +71,14 @@ public partial class EventDialog : Window
         reminder = e is null || e.UsesDefaultReminders ? null : e.Popups.Length > 0 ? e.Popups.Min() : -1;
         foreach (var (label, minutes) in Reminders)
         {
-            var chip = new RadioButton { Content = label, GroupName = "rem", IsChecked = minutes == reminder, Style = (Style)FindResource("Chip"), Margin = new(0, 0, 6, 6) };
+            var chip = new RadioButton { Content = label, GroupName = "rem", IsChecked = minutes == reminder, Style = Skin.Style("Chip"), Margin = new(0, 0, 6, 6) };
             chip.Checked += (_, _) => reminder = minutes;
             ReminderChips.Children.Add(chip);
         }
         if (reminder is > 0 && Reminders.All(r => r.Minutes != reminder)) // one set elsewhere: keep it, as its own chip
         {
             var custom = reminder;
-            var chip = new RadioButton { Content = $"{custom} min", GroupName = "rem", IsChecked = true, Style = (Style)FindResource("Chip"), Margin = new(0, 0, 6, 6) };
+            var chip = new RadioButton { Content = $"{custom} min", GroupName = "rem", IsChecked = true, Style = Skin.Style("Chip"), Margin = new(0, 0, 6, 6) };
             chip.Checked += (_, _) => reminder = custom;
             ReminderChips.Children.Add(chip);
         }

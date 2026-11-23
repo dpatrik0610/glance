@@ -1,6 +1,5 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,7 +21,7 @@ public partial class BoardPage
             case "image":
                 return (LoadPicture(it) is { } pic
                     ? new Image { Source = pic, Stretch = Stretch.Uniform }
-                    : new TextBlock { Text = "Picture missing", Style = (Style)FindResource("Label") }, null, null);
+                    : new TextBlock { Text = "Picture missing", Style = Skin.Style("Label") }, null, null);
             case "link": return Link(it, focus);
             case "stat": return Stat(it);
             case "group": return Group(it, focus);
@@ -47,7 +46,7 @@ public partial class BoardPage
 
     Button IconButton(string glyph, string tip, Action click)
     {
-        var b = new Button { Style = (Style)FindResource("Ghost"), Content = glyph, FontFamily = (FontFamily)FindResource("Icons"), ToolTip = tip };
+        var b = new Button { Style = Skin.Style("Ghost"), Content = glyph, FontFamily = Skin.Icons, ToolTip = tip };
         b.Click += (_, _) => click();
         return b;
     }
@@ -93,7 +92,7 @@ public partial class BoardPage
             view.Children.Clear();
             view.Children.Add(Heading(it.Title));
             view.Children.Add(it.Text.Trim() == "" && it.Title.Trim() == ""
-                ? new TextBlock { Text = "Empty note", Style = (Style)FindResource("Label") }
+                ? new TextBlock { Text = "Empty note", Style = Skin.Style("Label") }
                 : MarkdownView.Render(it.Text, n => box.Text = MarkdownView.Toggle(it.Text, n), Go, ShowTag)); // box saves it
         }
         var (body, edit) = Editable(it, view, new StackPanel { Children = { title, box } }, box, Draw,
@@ -107,7 +106,7 @@ public partial class BoardPage
     {
         var name = Field(it.Title, "Group name", 15, bold: true);
         name.TextChanged += (_, _) => { it.Title = name.Text; Changed(); };
-        var label = new TextBlock { FontSize = 15, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("Sub"), TextTrimming = TextTrimming.CharacterEllipsis };
+        var label = new TextBlock { FontSize = 15, FontWeight = FontWeights.SemiBold, Foreground = Skin.Brush("Sub"), TextTrimming = TextTrimming.CharacterEllipsis };
         void Draw() => label.Text = it.Title.Trim() == "" ? "Group" : it.Title;
         var (body, edit) = Editable(it, label, name, name, Draw, () => false, focus);
         body.VerticalAlignment = VerticalAlignment.Top;
@@ -131,7 +130,7 @@ public partial class BoardPage
             view.Children.Clear();
             if (note is null || !NoteStore.Notes.Contains(note))
             {
-                view.Children.Add(new TextBlock { Text = "This note was deleted", Style = (Style)FindResource("Label") });
+                view.Children.Add(new TextBlock { Text = "This note was deleted", Style = Skin.Style("Label") });
                 return;
             }
             view.Children.Add(new DockPanel
@@ -139,7 +138,7 @@ public partial class BoardPage
                 Margin = new(0, 0, 0, 6),
                 Children =
                 {
-                    new TextBlock { Text = note.Icon, FontFamily = (FontFamily)FindResource("Icons"), Foreground = (Brush)FindResource("Accent"), Margin = new(0, 2, 8, 0), ToolTip = "From Notes (double-click to open it there)" },
+                    new TextBlock { Text = note.Icon, FontFamily = Skin.Icons, Foreground = Skin.Brush("Accent"), Margin = new(0, 2, 8, 0), ToolTip = "From Notes (double-click to open it there)" },
                     new TextBlock { Text = note.DisplayTitle, FontSize = 15, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap },
                 },
             });
@@ -150,12 +149,12 @@ public partial class BoardPage
                 {
                     var box = new CheckBox
                     {
-                        Style = (Style)FindResource("Check"), IsChecked = item.Done, LayoutTransform = new ScaleTransform(0.8, 0.8),
+                        Style = Skin.Style("Check"), IsChecked = item.Done, LayoutTransform = new ScaleTransform(0.8, 0.8),
                         Margin = new(0, 1, 8, 0), VerticalAlignment = VerticalAlignment.Top,
                     };
                     box.Click += (_, _) => item.Done = box.IsChecked == true;
                     var text = new TextBlock { Text = item.Text, TextWrapping = TextWrapping.Wrap, Opacity = item.Done ? 0.55 : 1 };
-                    if (item.Due is not null) text.Inlines.Add(new System.Windows.Documents.Run("  " + item.DueText) { Foreground = (Brush)FindResource(item.IsOverdue ? "Red" : "Sub"), FontSize = 12 });
+                    if (item.Due is not null) text.Inlines.Add(new System.Windows.Documents.Run("  " + item.DueText) { Foreground = Skin.Brush(item.IsOverdue ? "Red" : "Sub"), FontSize = 12 });
                     DockPanel.SetDock(box, Dock.Left);
                     view.Children.Add(new DockPanel { Margin = new(0, 0, 0, 3), Children = { box, text } });
                 }
@@ -208,8 +207,8 @@ public partial class BoardPage
             DockPanel.SetDock(open, Dock.Right);
             var icon = new TextBlock
             {
-                Text = web is not null ? "" : folder ? "" : "", FontFamily = (FontFamily)FindResource("Icons"), FontSize = 20,
-                Foreground = (Brush)FindResource("Accent"), Margin = new(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center,
+                Text = web is not null ? "" : folder ? "" : "", FontFamily = Skin.Icons, FontSize = 20,
+                Foreground = Skin.Brush("Accent"), Margin = new(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center,
             };
             DockPanel.SetDock(icon, Dock.Left);
             var shown = it.Title.Trim() != "" ? it.Title : web?.Host.Replace("www.", "") ?? (Path.GetFileName(t.TrimEnd('\\', '/')) is { Length: > 0 } f ? f : t);
@@ -221,7 +220,7 @@ public partial class BoardPage
                 Children =
                 {
                     new TextBlock { Text = shown, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis },
-                    new TextBlock { Text = t, Style = (Style)FindResource("Label"), FontSize = 11.5, TextTrimming = TextTrimming.CharacterEllipsis },
+                    new TextBlock { Text = t, Style = Skin.Style("Label"), FontSize = 11.5, TextTrimming = TextTrimming.CharacterEllipsis },
                 },
             });
         }
@@ -241,7 +240,7 @@ public partial class BoardPage
     {
         var target = WebAddress(t)?.AbsoluteUri ?? (File.Exists(t) || Directory.Exists(t) ? t : null);
         if (target is null) return;
-        try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
+        try { Shell.Open(target); }
         catch (Win32Exception) { } // no app for it, or cancelled
     }
 
@@ -267,14 +266,14 @@ public partial class BoardPage
             _ => s.CpuLoad,
         };
 
-        var pick = new Button { Style = (Style)FindResource("Ghost"), Padding = new(6, 2, 6, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Show something else" };
+        var pick = new Button { Style = Skin.Style("Ghost"), Padding = new(6, 2, 6, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Show something else" };
         pick.Content = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Children =
             {
                 new TextBlock { Text = metric, FontWeight = FontWeights.SemiBold },
-                new TextBlock { Text = "", FontFamily = (FontFamily)FindResource("Icons"), FontSize = 9, Margin = new(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = "", FontFamily = Skin.Icons, FontSize = 9, Margin = new(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center },
             },
         };
         pick.Click += (_, _) =>

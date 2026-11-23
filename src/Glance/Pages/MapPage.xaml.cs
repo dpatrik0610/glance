@@ -1,10 +1,8 @@
-using System.Diagnostics;
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Threading;
 using Glance.Services;
 
 namespace Glance.Pages;
@@ -18,7 +16,7 @@ public partial class MapPage : UserControl, IDisposable
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     readonly List<object> queued = []; // messages sent before the page loaded
-    readonly DispatcherTimer saveSoon;
+    readonly Debounce pendingSave;
     List<Pin> results = [];
     Places.Area? view; // the part of the map on screen
     bool ready, showingResults, fromMap;
@@ -31,14 +29,7 @@ public partial class MapPage : UserControl, IDisposable
         InitializeComponent();
         Swatches.ItemsSource = CliPage.Palette;
         // Typing in name/note: save and relabel the marker once typing pauses.
-        saveSoon = new DispatcherTimer(TimeSpan.FromMilliseconds(600), DispatcherPriority.Background, (_, _) =>
-        {
-            saveSoon!.Stop();
-            PinStore.Save();
-            SendPins();
-        }, Dispatcher);
-        saveSoon.Stop();
-        Application.Current.Exit += Exiting;
+        pendingSave = new(TimeSpan.FromMilliseconds(600), () => { PinStore.Save(); SendPins(); });
         PinStore.Pins.CollectionChanged += PinsChanged;
         AreaName.Text = Area?.Name ?? "Not set";
         ShowPins();
@@ -75,7 +66,7 @@ public partial class MapPage : UserControl, IDisposable
             await WebHost.Open(web, "glance.map", "Map", "map.html", core =>
             {
                 core.WebMessageReceived += (_, e) => Receive(JsonSerializer.Deserialize<Msg>(e.WebMessageAsJson, Json)!);
-                core.NewWindowRequested += (_, e) => { e.Handled = true; Browse(e.Uri); }; // attribution links
+                core.NewWindowRequested += (_, e) => { e.Handled = true; Shell.OpenLink(e.Uri); }; // attribution links
             });
         }
         catch (Exception) when (web != Web) { } // closed again before it finished loading
@@ -221,14 +212,11 @@ public partial class MapPage : UserControl, IDisposable
         Title();
     }
 
-    void Exiting(object sender, ExitEventArgs e) { if (saveSoon.IsEnabled) PinStore.Save(); }
     void PinsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Title();
 
     public void Dispose()
     {
-        if (saveSoon.IsEnabled) PinStore.Save(); // a rename still waiting to save
-        saveSoon.Stop();
-        Application.Current.Exit -= Exiting;
+        pendingSave.Flush(); // a rename still waiting to save
         PinStore.Pins.CollectionChanged -= PinsChanged;
     }
 
@@ -312,7 +300,7 @@ public partial class MapPage : UserControl, IDisposable
 
     void Edited(object sender, TextChangedEventArgs e)
     {
-        if (Shown is { } p && PinStore.Pins.Contains(p)) { saveSoon.Stop(); saveSoon.Start(); }
+        if (Shown is { } p && PinStore.Pins.Contains(p)) pendingSave.Poke();
     }
 
     void SetColor(object sender, RoutedEventArgs e)
@@ -336,13 +324,7 @@ public partial class MapPage : UserControl, IDisposable
 
     void CopyCoords(object sender, RoutedEventArgs e) { if (Shown is { } p) ClipboardHistory.Copy(p.Coords); }
 
-    void OpenWebsite(object sender, RoutedEventArgs e) { if (Shown?.WebsiteUri is { } u) Browse(u.AbsoluteUri); }
+    void OpenWebsite(object sender, RoutedEventArgs e) { if (Shown?.WebsiteUri is { } u) Shell.OpenLink(u.AbsoluteUri); }
 
-    void OpenGoogle(object sender, RoutedEventArgs e) { if (Shown is { } p) Browse(Places.GoogleMaps(p)); }
-
-    static void Browse(string uri)
-    {
-        if (Uri.TryCreate(uri, UriKind.Absolute, out var u) && u.Scheme is "http" or "https")
-            Process.Start(new ProcessStartInfo(u.AbsoluteUri) { UseShellExecute = true });
-    }
+    void OpenGoogle(object sender, RoutedEventArgs e) { if (Shown is { } p) Shell.OpenLink(Places.GoogleMaps(p)); }
 }

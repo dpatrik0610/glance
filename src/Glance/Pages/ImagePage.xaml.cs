@@ -47,7 +47,7 @@ public partial class ImagePage : UserControl
         }
         foreach (var pct in new[] { 25, 50, 75, 100 })
         {
-            var b = new Button { Content = pct + "%", Style = (Style)FindResource("Ghost"), Margin = new(0, 0, 6, 0) };
+            var b = new Button { Content = pct + "%", Style = Skin.Style("Ghost"), Margin = new(0, 0, 6, 0) };
             b.Click += (_, _) => { scaleX = scaleY = pct / 100.0; Changed(); };
             Scales.Children.Add(b);
         }
@@ -62,7 +62,7 @@ public partial class ImagePage : UserControl
     }
 
     RadioButton Chip(string text, string group, bool on) =>
-        new() { Content = text, GroupName = group, IsChecked = on, Style = (Style)FindResource("Chip"), Margin = new(0, 0, 6, 6) };
+        new() { Content = text, GroupName = group, IsChecked = on, Style = Skin.Style("Chip"), Margin = new(0, 0, 6, 6) };
 
     // ---- Opening ----
 
@@ -101,7 +101,7 @@ public partial class ImagePage : UserControl
         foreach (RadioButton chip in FormatChips.Children)
             if (ImageOps.Formats.First(f => f.Name == (string)chip.Content).Ext == ext) chip.IsChecked = true;
         Status.Text = "";
-        FileText.Text = $"{System.IO.Path.GetFileName(file)} · {W} × {H} · {ImageOps.Size(new FileInfo(file).Length)}";
+        FileText.Text = $"{System.IO.Path.GetFileName(file)} · {W} × {H} · {Units.Bytes(new FileInfo(file).Length)}";
         Picture.Source = src;
         Show();
     }
@@ -291,7 +291,7 @@ public partial class ImagePage : UserControl
         var (img, f, q) = (Result(), format, (int)Quality.Value);
         SizeText.Text = "Working out the size…";
         var bytes = await Task.Run(() => ImageOps.Encode(img, f, q).Length);
-        if (id == estimateId) SizeText.Text = $"≈ {ImageOps.Size(bytes)} · {OutW} × {OutH} px {f.Name}";
+        if (id == estimateId) SizeText.Text = $"≈ {Units.Bytes(bytes)} · {OutW} × {OutH} px {f.Name}";
     }
 
     async void Save(object sender, RoutedEventArgs e)
@@ -311,7 +311,7 @@ public partial class ImagePage : UserControl
         {
             var bytes = await Task.Run(() => ImageOps.Encode(img, f, q));
             await File.WriteAllBytesAsync(d.FileName, bytes);
-            Status.Text = $"Saved {System.IO.Path.GetFileName(d.FileName)} · {ImageOps.Size(bytes.Length)}";
+            Status.Text = $"Saved {System.IO.Path.GetFileName(d.FileName)} · {Units.Bytes(bytes.Length)}";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

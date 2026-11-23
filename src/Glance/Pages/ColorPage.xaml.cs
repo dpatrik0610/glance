@@ -77,7 +77,7 @@ public partial class ColorPage : UserControl
             Palettes.Children.Add(new TextBlock
             {
                 Inlines = { new System.Windows.Documents.Run(name) { FontWeight = FontWeights.SemiBold },
-                    new System.Windows.Documents.Run("  ·  " + hint) { Foreground = (Brush)FindResource("Sub") } },
+                    new System.Windows.Documents.Run("  ·  " + hint) { Foreground = Skin.Brush("Sub") } },
                 Margin = new(0, 8, 0, 0),
             });
             Palettes.Children.Add(row);
@@ -91,10 +91,10 @@ public partial class ColorPage : UserControl
         cell.Children.Add(new Border
         {
             Width = 72, Height = 40, CornerRadius = new(8), Background = new SolidColorBrush(c),
-            BorderBrush = (Brush)FindResource("Line"), BorderThickness = new(1),
+            BorderBrush = Skin.Brush("Line"), BorderThickness = new(1),
         });
-        cell.Children.Add(new TextBlock { Text = hex, FontFamily = (FontFamily)FindResource("Mono"), FontSize = 11, Margin = new(2, 4, 0, 0),
-            Foreground = (Brush)FindResource("Sub") });
+        cell.Children.Add(new TextBlock { Text = hex, FontFamily = Skin.Font("Mono"), FontSize = 11, Margin = new(2, 4, 0, 0),
+            Foreground = Skin.Brush("Sub") });
         cell.MouseLeftButtonDown += (_, e) =>
         {
             if (e.ClickCount == 2) Use(c, remember: true);
@@ -208,7 +208,7 @@ public partial class ColorPage : UserControl
             var dot = new Border
             {
                 Width = 28, Height = 28, CornerRadius = new(8), Margin = new(0, 0, 6, 6), Background = new SolidColorBrush(c),
-                BorderBrush = (Brush)FindResource("Line"), BorderThickness = new(1), Cursor = Cursors.Hand, ToolTip = hex,
+                BorderBrush = Skin.Brush("Line"), BorderThickness = new(1), Cursor = Cursors.Hand, ToolTip = hex,
             };
             dot.MouseLeftButtonUp += (_, _) => Use(c);
             Recent.Children.Add(dot);

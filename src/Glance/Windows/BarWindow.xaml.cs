@@ -289,7 +289,7 @@ public partial class BarWindow : Window
     // The shown view in the accent color.
     void MarkMenu()
     {
-        for (var i = 0; i < Views.Length; i++) ((Button)ViewButtons.Children[i]).Foreground = (Brush)FindResource(i == index ? "Accent" : "Text");
+        for (var i = 0; i < Views.Length; i++) ((Button)ViewButtons.Children[i]).Foreground = Skin.Brush(i == index ? "Accent" : "Text");
     }
 
     // Pick → hex on the clipboard, an alert in that color; clicking the alert opens the Color page on it.
@@ -368,7 +368,7 @@ public partial class BarWindow : Window
         {
             if (Segs.Children.Count > 0) Segs.Children.Add(new Border { Width = 14 });
             if (dim.Length > 0)
-                Segs.Children.Add(new TextBlock { Text = dim, FontSize = 11, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = Brush("Sub"), Margin = new(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center });
+                Segs.Children.Add(new TextBlock { Text = dim, FontSize = 11, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = Skin.Brush("Sub"), Margin = new(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center });
             Segs.Children.Add(new TextBlock
             {
                 Text = bright, FontSize = 12, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center,
@@ -410,8 +410,6 @@ public partial class BarWindow : Window
     void TrackToggle(object sender, RoutedEventArgs e) { if (Media.Current is { } p) Media.Do(p.Toggle); }
     void TrackNext(object sender, RoutedEventArgs e) { if (Media.Current is { } p) Media.Do(p.Next); }
 
-    static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
-
     /// Nothing to show: no song, no hometown, no reminder. Still pickable from the menu; the wheel passes them by.
     static bool Empty(View v) => v.Name switch
     {
@@ -435,7 +433,7 @@ public partial class BarWindow : Window
                 if (snap.RamUsed is { } used && snap.RamTotal is > 0 and var total) sys.Add(("RAM", $"{used / total * 100:0}%"));
                 return [.. sys];
             case "Network":
-                return snap is null ? [("", "…")] : [("↓", SystemPage.Rate(snap.NetDown)), ("↑", SystemPage.Rate(snap.NetUp))];
+                return snap is null ? [("", "…")] : [("↓", Units.Rate(snap.NetDown)), ("↑", Units.Rate(snap.NetUp))];
             case "Music":
                 if (Media.Current is not { Title.Length: > 0 } p) return [("", "Nothing playing")];
                 return [(p.Artist, p.Title)];

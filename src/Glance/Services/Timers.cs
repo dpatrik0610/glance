@@ -42,33 +42,23 @@ public static class Timers
 {
     static readonly string File_ = Path.Combine(Settings.Dir, "timers.json");
     static TimerData? data;
-    static DispatcherTimer? saveTimer;
+    static readonly Debounce pendingSave = new(TimeSpan.FromSeconds(1), Save);
 
     public static TimerData Data => data ??= Load();
 
     static TimerData Load()
     {
-        try { return JsonSerializer.Deserialize<TimerData>(File.ReadAllText(File_)) ?? new(); }
-        catch (Exception e) when (e is IOException or JsonException) { return new(); }
+        try { return Settings.ReadJson<TimerData>(File_) ?? new(); }
+        catch (IOException) { return new(); } // locked: start empty rather than not at all
     }
 
     public static void Save()
     {
-        saveTimer?.Stop();
+        pendingSave.Cancel();
         if (data is not null) Settings.WriteAtomic(File_, JsonSerializer.Serialize(data));
     }
 
-    public static void SaveSoon()
-    {
-        if (saveTimer is null)
-        {
-            saveTimer = new() { Interval = TimeSpan.FromSeconds(1) };
-            saveTimer.Tick += (_, _) => Save();
-            Application.Current.Exit += (_, _) => { if (saveTimer.IsEnabled) Save(); };
-        }
-        saveTimer.Stop();
-        saveTimer.Start();
-    }
+    public static void SaveSoon() => pendingSave.Poke();
 
     /// At startup: timers left running across a restart alert on time (or right away, if they ended meanwhile).
     public static void Start()
@@ -90,7 +80,7 @@ public static class Timers
     }
 
     static void Alert(string label, string headline, string side, string sideText) =>
-        AlertWindow.Show(new Toast(label, headline, "", side, sideText, ((SolidColorBrush)Application.Current.Resources["Accent"]).Color, true),
+        AlertWindow.Show(new Toast(label, headline, "", side, sideText, Skin.BrushColor("Accent"), true),
             () => App.Go("Timer"));
 
     // ---- timers ----

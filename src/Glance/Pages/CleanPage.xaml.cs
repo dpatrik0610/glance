@@ -20,8 +20,6 @@ public partial class CleanPage : UserControl
     };
     static readonly Color Green = Color.FromRgb(0x4C, 0xC3, 0x7A);
 
-    static Brush Res(string key) => (Brush)Application.Current.Resources[key];
-
     public sealed class Row(Cleaner.Item item, bool on, Action changed) : INotifyPropertyChanged
     {
         bool on = on;
@@ -48,12 +46,12 @@ public partial class CleanPage : UserControl
         {
             null => "…",
             { Unreadable: true, Bytes: 0 } => "needs admin",
-            var f => Compare.Size(f.Bytes) + (f.Unreadable ? " +" : ""),
+            var f => Units.Bytes(f.Bytes) + (f.Unreadable ? " +" : ""),
         };
 
         public string Note => Running ? $"{item.Name.Split(' ')[0]} is open: close it to clean this"
-            : Freed is { } f ? (f > 0 ? $"✓ Freed {Compare.Size(f)}" : "✓ Cleaned") : item.Note;
-        public Brush NoteBrush => Res(Running ? "Amber" : Freed is not null ? "Green" : "Sub");
+            : Freed is { } f ? (f > 0 ? $"✓ Freed {Units.Bytes(f)}" : "✓ Cleaned") : item.Note;
+        public Brush NoteBrush => Skin.Brush(Running ? "Amber" : Freed is not null ? "Green" : "Sub");
         /// Something to clean on its own: measured, not held by a browser, and not empty (unreadable may still hold some).
         public bool CanClean => !Running && Found is { } f && (f.Bytes > 0 || f.Unreadable);
 
@@ -115,17 +113,17 @@ public partial class CleanPage : UserControl
         Changed();
     }
 
-    static string Size(double v) => Compare.Size((long)v);
+    static string Size(double v) => Units.Bytes((long)v);
 
     void Changed()
     {
         var total = rows.Sum(r => r.Bytes);
         var per = groups.Select(g => (Group: g, Bytes: rows.Where(r => r.Item.Group == g).Sum(r => r.Bytes))).ToArray();
         Ring.Set(per.Select(p => (GroupColors.GetValueOrDefault(p.Group, Colors.Gray), (double)p.Bytes)).ToArray(), before);
-        if (before is not null) Ring.Show(freed, Size, "freed", Green);
-        else Ring.Show(total, Size, rows.All(r => r.Found is not null) ? "can be freed" : "measuring…");
+        if (before is not null) Ring.Show(freed, Units.Bytes, "freed", Green);
+        else Ring.Show(total, Units.Bytes, rows.All(r => r.Found is not null) ? "can be freed" : "measuring…");
         Legend.ItemsSource = per.Where(p => rows.Any(r => r.On && r.Item.Group == p.Group))
-            .Select(p => new Key(p.Group, Brush(p.Group), Compare.Size(p.Bytes))).ToArray();
+            .Select(p => new Key(p.Group, Brush(p.Group), Units.Bytes(p.Bytes))).ToArray();
         Status.Text = last.Length > 0 ? last : rows.Any(r => r.Running) ? "Open browsers are left out until they're closed." : "";
         CleanButton.IsEnabled = !busy && total > 0;
         MeasureButton.IsEnabled = !busy;
@@ -178,7 +176,7 @@ public partial class CleanPage : UserControl
     async Task Clean(Row[] picked)
     {
         if (busy || picked.Length == 0) return;
-        if (!Dialog.Confirm("Clean", $"Delete {Compare.Size(picked.Sum(r => r.Found?.Bytes ?? 0))} for good?",
+        if (!Dialog.Confirm("Clean", $"Delete {Units.Bytes(picked.Sum(r => r.Found?.Bytes ?? 0))} for good?",
                 string.Join(", ", picked.Select(r => r.Name)) + ". This does not go to the Recycle Bin.", "Clean")) return;
         busy = true;
         before = rows.Sum(r => r.Bytes);
@@ -217,7 +215,7 @@ public partial class CleanPage : UserControl
             }
             catch (Win32Exception) { note = " · system files left: the administrator prompt was declined"; }
 
-        last = $"Freed {Compare.Size(freed)}{note}" + (skipped > 0 ? $" · {skipped:N0} files in use were left" : "");
+        last = $"Freed {Units.Bytes(freed)}{note}" + (skipped > 0 ? $" · {skipped:N0} files in use were left" : "");
         Ring.Burst(Green, 50);
         busy = false;
         await MeasureAll(quiet: true);

@@ -28,7 +28,7 @@ public partial class HistoryPage : UserControl
         for (var i = 0; i < Ranges.Length; i++)
         {
             var index = i;
-            var chip = new RadioButton { Content = Ranges[i].Label, Style = (Style)FindResource("Chip"), GroupName = "range", IsChecked = i == range };
+            var chip = new RadioButton { Content = Ranges[i].Label, Style = Skin.Style("Chip"), GroupName = "range", IsChecked = i == range };
             chip.Checked += (_, _) => { range = index; Load(); };
             RangeChips.Children.Add(chip);
         }
@@ -113,8 +113,8 @@ public partial class HistoryPage : UserControl
 
     static string Amount(string resource, double v) => resource switch
     {
-        "ram" => v >= 1024 ? $"{v / 1024:0.0} GB" : $"{v:0} MB",
-        "disk" => SystemPage.Rate(v),
+        "ram" => Units.Megabytes(v),
+        "disk" => Units.Rate(v),
         _ => $"{v:0.#}%",
     };
 
@@ -135,7 +135,7 @@ public partial class HistoryPage : UserControl
         spotlight = null;
         if (Charts.ItemContainerGenerator.ContainerFromItem(chart) is not ContentPresenter cp
             || VisualTreeHelper.GetChildrenCount(cp) == 0 || VisualTreeHelper.GetChild(cp, 0) is not Border card) return;
-        var ring = new SolidColorBrush(((SolidColorBrush)FindResource("Accent")).Color) { Opacity = 0 };
+        var ring = new SolidColorBrush(Skin.BrushColor("Accent")) { Opacity = 0 };
         card.BorderBrush = ring;
         var pulse = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromSeconds(1.9) };
         pulse.KeyFrames.Add(new EasingDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.25))));

@@ -185,7 +185,7 @@ public partial class MainWindow : Window
         ShowNav(!s.NavCollapsed);
         SetCompact(s.Compact);
         PinButton.Content = s.StayOpen ? "\uE842" : "\uE718"; // pinned (filled) : pin
-        PinButton.Foreground = s.StayOpen ? (Brush)FindResource("Accent") : (Brush)FindResource("Text");
+        PinButton.Foreground = s.StayOpen ? Skin.Brush("Accent") : Skin.Brush("Text");
         PinButton.ToolTip = s.StayOpen ? "Stays open when you click elsewhere" : "Hides when you click elsewhere (click to keep open)";
         Native.SetBlur(hwnd, s.Blur);
     }
@@ -325,13 +325,13 @@ public partial class MainWindow : Window
         {
             var eye = new TextBlock
             {
-                Text = "", FontFamily = (FontFamily)FindResource("Icons"), Foreground = (Brush)FindResource("Sub"),
+                Text = "", FontFamily = Skin.Icons, Foreground = Skin.Brush("Sub"),
                 Margin = new Thickness(20, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Show in sidebar", Background = Brushes.Transparent,
             };
             var row = new DockPanel();
             DockPanel.SetDock(eye, Dock.Right);
             row.Children.Add(eye);
-            row.Children.Add(new TextBlock { Text = t.Icon, FontFamily = (FontFamily)FindResource("Icons"), Width = 26, VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(new TextBlock { Text = t.Icon, FontFamily = Skin.Icons, Width = 26, VerticalAlignment = VerticalAlignment.Center });
             row.Children.Add(new TextBlock { Text = t.Name });
             var item = new MenuItem { Header = row };
             item.Click += (_, _) => Open(t);

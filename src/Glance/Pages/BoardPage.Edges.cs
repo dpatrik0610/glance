@@ -35,7 +35,7 @@ public partial class BoardPage
     {
         EdgeLayer.Children.Clear();
         var byId = board.Items.ToDictionary(i => i.Id);
-        var line = new SolidColorBrush(((SolidColorBrush)FindResource("Sub")).Color) { Opacity = 0.85 };
+        var line = new SolidColorBrush(Skin.BrushColor("Sub")) { Opacity = 0.85 };
         foreach (var edge in board.Edges)
         {
             if (!byId.TryGetValue(edge.From, out var from) || !byId.TryGetValue(edge.To, out var to)) continue;
@@ -79,7 +79,7 @@ public partial class BoardPage
             {
                 var label = new Border
                 {
-                    Background = (Brush)FindResource("Popup"), BorderBrush = (Brush)FindResource("Line"), BorderThickness = new(1),
+                    Background = Skin.Brush("Popup"), BorderBrush = Skin.Brush("Line"), BorderThickness = new(1),
                     CornerRadius = new(8), Padding = new(8, 2, 8, 3), IsHitTestVisible = false,
                     Child = new TextBlock { Text = edge.Label, FontSize = 12.5 },
                 };
@@ -133,7 +133,7 @@ public partial class BoardPage
         Ink.IsHitTestVisible = mode is not null; // otherwise clicks on a stroke reach the node under it
         Ink.DefaultDrawingAttributes = new DrawingAttributes
         {
-            Color = ((SolidColorBrush)FindResource("Accent")).Color, Width = 3, Height = 3, FitToCurve = true,
+            Color = Skin.BrushColor("Accent"), Width = 3, Height = 3, FitToCurve = true,
         };
         Surface.Cursor = mode is null ? null : Cursors.Pen;
     }

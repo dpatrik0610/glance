@@ -13,6 +13,18 @@ public static class Shell
     /// PowerShell 7 when installed, else the Windows PowerShell 5.1 every Windows has. Scripts run by it must suit both.
     public static string PowerShell => OnPath("pwsh.exe") ? "pwsh.exe" : "powershell.exe";
 
+    /// A file, folder or URL in its default app (folders in Explorer). Throws Win32Exception when nothing handles it.
+    public static void Open(string target) => Process.Start(new ProcessStartInfo(target) { UseShellExecute = true })?.Dispose();
+
+    /// A web or mail link from text Glance doesn't control (terminal output, notes). Other schemes (file:, ms-settings:…) are ignored.
+    public static void OpenLink(string? url)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme is "http" or "https" or "mailto") Open(u.AbsoluteUri);
+    }
+
+    /// Explorer, with the file or folder selected.
+    public static void Reveal(string path) => Process.Start("explorer.exe", $"/select,\"{path}\"")?.Dispose();
+
     /// Runs a console tool hidden and captures its output. Throws Win32Exception if the exe isn't installed.
     public static async Task<Result> Run(string exe, params string[] args)
     {

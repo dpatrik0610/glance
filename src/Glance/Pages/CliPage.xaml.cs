@@ -222,8 +222,7 @@ public partial class CliPage : UserControl
         }
         if (m.T == "link")
         {
-            if (Uri.TryCreate(m.Uri, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
-                Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            Shell.OpenLink(m.Uri);
             return;
         }
         if (m.T == "ratio") // a divider was dragged
@@ -380,7 +379,7 @@ public partial class CliPage : UserControl
 
     void TabSelected(object sender, SelectionChangedEventArgs e)
     {
-        Screen.BorderBrush = Current?.Brush ?? (Brush)FindResource("Line");
+        Screen.BorderBrush = Current?.Brush ?? Skin.Brush("Line");
         Empty.Visibility = tabs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Web.Visibility = tabs.Count == 0 ? Visibility.Hidden : Visibility.Visible;
         if (Current is { } t) Post(new { t = "show", tree = View(t.Root), focus = t.Focus.Id });
@@ -521,7 +520,7 @@ public partial class CliPage : UserControl
 
     void FolderClaude(object sender, RoutedEventArgs e) => Open(FolderOf(sender), Claude, "Claude", Palette[0]);
 
-    void FolderExplorer(object sender, RoutedEventArgs e) => Process.Start("explorer.exe", $"\"{FolderOf(sender)}\"");
+    void FolderExplorer(object sender, RoutedEventArgs e) => Shell.Open(FolderOf(sender));
 
     void FolderRemove(object sender, RoutedEventArgs e)
     {

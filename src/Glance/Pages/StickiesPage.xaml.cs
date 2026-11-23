@@ -42,7 +42,7 @@ public partial class StickiesPage : UserControl, IDisposable
         ColorDots.Children.Clear();
         foreach (var (name, _, dot) in Sticky.Colors)
         {
-            var b = new Button { Style = (Style)FindResource("Ghost"), Padding = new(5), ToolTip = name };
+            var b = new Button { Style = Skin.Style("Ghost"), Padding = new(5), ToolTip = name };
             b.Content = new Ellipse
             {
                 Width = 16, Height = 16, Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(dot)),

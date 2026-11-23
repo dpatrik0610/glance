@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -50,7 +49,7 @@ public partial class DockerPage : UserControl
 
     void StartDocker(object sender, RoutedEventArgs e)
     {
-        Process.Start(new ProcessStartInfo(Docker.Desktop) { UseShellExecute = true });
+        Services.Shell.Open(Docker.Desktop);
         EmptyText.Text = "Starting Docker…";
         StartDesktop.Visibility = Visibility.Collapsed;
     }

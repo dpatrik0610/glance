@@ -74,7 +74,7 @@ public partial class NowPlayingPage : UserControl, IDisposable
         {
             var chip = new RadioButton
             {
-                Style = (Style)FindResource("Chip"),
+                Style = Skin.Style("Chip"),
                 GroupName = "player",
                 Content = p.Playing ? $"{p.Source}  ▶" : p.Source,
                 ToolTip = p.Title.Length > 0 ? p.Title : null,

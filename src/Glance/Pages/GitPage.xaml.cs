@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using Glance.Services;
@@ -32,7 +31,7 @@ public partial class GitPage : UserControl
 
     void OpenCli(object sender, RoutedEventArgs e) => ((App)Application.Current).OpenCli(RepoOf(sender).Path);
 
-    void OpenFolder(object sender, RoutedEventArgs e) => Process.Start("explorer.exe", $"\"{RepoOf(sender).Path}\"");
+    void OpenFolder(object sender, RoutedEventArgs e) => Shell.Open(RepoOf(sender).Path);
 
-    void OpenWeb(object sender, RoutedEventArgs e) => Process.Start(new ProcessStartInfo(RepoOf(sender).Web!) { UseShellExecute = true });
+    void OpenWeb(object sender, RoutedEventArgs e) => Shell.Open(RepoOf(sender).Web!);
 }

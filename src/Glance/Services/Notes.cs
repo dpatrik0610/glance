@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
-using System.Windows.Threading;
 
 namespace Glance.Services;
 
@@ -134,29 +133,21 @@ public sealed class JsonStore<T> where T : Note
 {
     static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
     readonly string file;
-    readonly DispatcherTimer saveTimer = new() { Interval = TimeSpan.FromMilliseconds(800) };
+    readonly Debounce pendingSave;
 
     public ObservableCollection<T> Items { get; private set; } = [];
 
-    public JsonStore(string name) => file = Path.Combine(Settings.Dir, name);
+    public JsonStore(string name)
+    {
+        file = Path.Combine(Settings.Dir, name);
+        pendingSave = new(TimeSpan.FromMilliseconds(800), Flush);
+    }
 
     /// missing: what to start with when there's no file yet (null: empty). Returns whether that happened.
     public bool Load(Func<IEnumerable<T>?>? missing = null)
     {
-        var created = false;
-        try { Items = JsonSerializer.Deserialize<ObservableCollection<T>>(File.ReadAllText(file), Json) ?? []; }
-        catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException)
-        {
-            Items = new(missing?.Invoke() ?? []);
-            created = true;
-        }
-        catch (JsonException e)
-        {
-            var parked = $"{file}.unreadable-{DateTime.Now:yyyyMMdd-HHmmss}";
-            File.Move(file, parked);
-            Db.Error($"{Path.GetFileName(file)} unreadable, moved to {parked}", e);
-            Items = [];
-        }
+        var created = !File.Exists(file);
+        Items = Settings.ReadJson<ObservableCollection<T>>(file, Json) ?? new(created ? missing?.Invoke() ?? [] : []);
 
         foreach (var n in Items) Watch(n);
         Items.CollectionChanged += (_, e) =>
@@ -164,8 +155,6 @@ public sealed class JsonStore<T> where T : Note
             foreach (T n in e.NewItems ?? Array.Empty<T>()) Watch(n);
             SaveSoon();
         };
-        saveTimer.Tick += (_, _) => Flush();
-        Application.Current.Exit += (_, _) => { if (saveTimer.IsEnabled) Flush(); }; // only when a save is pending
         return created;
     }
 
@@ -182,20 +171,16 @@ public sealed class JsonStore<T> where T : Note
 
     static void WatchItem(T n, TodoItem i) => i.PropertyChanged += (_, _) => n.Touch();
 
-    public void SaveSoon()
-    {
-        saveTimer.Stop();
-        saveTimer.Start();
-    }
+    public void SaveSoon() => pendingSave.Poke();
 
     public void Flush()
     {
-        saveTimer.Stop();
+        pendingSave.Cancel();
         try { Settings.WriteAtomic(file, JsonSerializer.Serialize(Items, Json)); }
         catch (IOException e)
         {
             Db.Error(Path.GetFileName(file) + " save", e);
-            saveTimer.Start(); // retry; the data is still in memory
+            pendingSave.Poke(); // retry; the data is still in memory
         }
     }
 }

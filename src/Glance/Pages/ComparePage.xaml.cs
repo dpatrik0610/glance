@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -21,7 +20,7 @@ public partial class ComparePage : UserControl
     {
         public bool IsHeader => File is null;
         public bool IsFile => File is not null;
-        public string Title => $"{Group.Files.Count} copies · {Compare.Size(Group.Size)} each · {Compare.Size(Group.Wasted)} reclaimable";
+        public string Title => $"{Group.Files.Count} copies · {Units.Bytes(Group.Size)} each · {Units.Bytes(Group.Wasted)} reclaimable";
         public string When => $"{File?.Modified:yyyy-MM-dd HH:mm}{(File == Group.Files[0] ? " · oldest" : "")}";
     }
 
@@ -31,13 +30,12 @@ public partial class ComparePage : UserControl
         public object ConvertBack(object value, Type t, object p, CultureInfo c) => throw new NotSupportedException();
     }
 
-    static Brush Res(string key) => (Brush)Application.Current.FindResource(key);
     static Brush Tint(uint argb) { var b = new SolidColorBrush(Color.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb)); b.Freeze(); return b; }
     static readonly Brush RemovedRow = Tint(0x24FF5A5A), AddedRow = Tint(0x244CC37A), RemovedPart = Tint(0x66FF5A5A), AddedPart = Tint(0x664CC37A);
 
     public static readonly IValueConverter RowBrush = new Conv(v => ((DiffLine)v).Kind switch { '-' => RemovedRow, '+' => AddedRow, _ => Brushes.Transparent });
     public static readonly IValueConverter Marker = new Conv(v => (char)v switch { '-' => "−", '+' => "+", _ => "" });
-    public static readonly IValueConverter KindBrush = new Conv(v => Res((char)v switch { '<' => "Red", '>' => "Green", '≠' => "Amber", _ => "Sub" }));
+    public static readonly IValueConverter KindBrush = new Conv(v => Skin.Brush((char)v switch { '<' => "Red", '>' => "Green", '≠' => "Amber", _ => "Sub" }));
 
     string? fileA, fileB, folderA, folderB;
     int run; // newest diff or folder compare; an older one finishing late is dropped
@@ -78,12 +76,10 @@ public partial class ComparePage : UserControl
         return (e.Data.GetData(DataFormats.FileDrop) as string[] ?? []).Where(keep).ToArray();
     }
 
-    static void Show(string path) => Process.Start("explorer.exe", $"/select,\"{path}\"");
-
     static void Fail(TextBlock where, Exception e)
     {
         where.Text = e.Message;
-        where.Foreground = Res("Red");
+        where.Foreground = Skin.Brush("Red");
     }
 
     // ===== Files =====
@@ -120,7 +116,7 @@ public partial class ComparePage : UserControl
         FileBText.ToolTip = fileB;
         DiffList.ItemsSource = null;
         FileSummary.Inlines.Clear();
-        FileSummary.Foreground = Res("Text");
+        FileSummary.Foreground = Skin.Brush("Text");
         if (fileA is null || fileB is null) return;
         var (a, b, id) = (fileA, fileB, ++run);
         FileSummary.Text = "Comparing…";
@@ -128,11 +124,11 @@ public partial class ComparePage : UserControl
         {
             var first = await Task.Run(() => Compare.FirstDifference(a, b));
             if (id != run) return;
-            if (first < 0) { FileSummary.Text = "Identical"; FileSummary.Foreground = Res("Green"); return; }
+            if (first < 0) { FileSummary.Text = "Identical"; FileSummary.Foreground = Skin.Brush("Green"); return; }
             var text = await Task.Run(() => Compare.IsText(a) && Compare.IsText(b));
             if (!text || !Shell.OnPath("git.exe"))
             {
-                FileSummary.Text = $"Differ from byte {first:N0} on · {Compare.Size(new FileInfo(a).Length)} vs {Compare.Size(new FileInfo(b).Length)}"
+                FileSummary.Text = $"Differ from byte {first:N0} on · {Units.Bytes(new FileInfo(a).Length)} vs {Units.Bytes(new FileInfo(b).Length)}"
                     + (text ? " · install git to see the changed lines" : " · binary");
                 return;
             }
@@ -143,9 +139,9 @@ public partial class ComparePage : UserControl
             if (added + removed == 0) FileSummary.Text = "Only line endings differ";
             else
             {
-                FileSummary.Inlines.Add(new Run($"+{added}") { Foreground = Res("Green") });
-                FileSummary.Inlines.Add(new Run($"  −{removed}") { Foreground = Res("Red") });
-                FileSummary.Inlines.Add(new Run("  lines") { Foreground = Res("Sub") });
+                FileSummary.Inlines.Add(new Run($"+{added}") { Foreground = Skin.Brush("Green") });
+                FileSummary.Inlines.Add(new Run($"  −{removed}") { Foreground = Skin.Brush("Red") });
+                FileSummary.Inlines.Add(new Run("  lines") { Foreground = Skin.Brush("Sub") });
             }
             DiffList.ItemsSource = lines;
         }
@@ -158,7 +154,7 @@ public partial class ComparePage : UserControl
         var tb = (TextBlock)sender;
         tb.Inlines.Clear();
         if (e.NewValue is not DiffLine line) return;
-        if (line.Kind == '@') { tb.Inlines.Add(new Run("⋯") { Foreground = Res("Sub") }); return; }
+        if (line.Kind == '@') { tb.Inlines.Add(new Run("⋯") { Foreground = Skin.Brush("Sub") }); return; }
         var edited = line.Segs.Any(s => s.Kind == ' '); // part of the line kept: mark what changed
         foreach (var seg in line.Segs)
         {
@@ -193,7 +189,7 @@ public partial class ComparePage : UserControl
         FolderAText.Text = folderA ?? "Left: drop a folder, or two at once";
         FolderBText.Text = folderB ?? "Right: drop a folder";
         FolderList.ItemsSource = null;
-        FolderSummary.Foreground = Res("Text");
+        FolderSummary.Foreground = Skin.Brush("Text");
         FolderSummary.Text = "";
         if (folderA is null || folderB is null) return;
         var (a, b) = (folderA, folderB);
@@ -206,7 +202,7 @@ public partial class ComparePage : UserControl
             FolderSummary.Text = items.Count == 0 ? $"Same: all {same:N0} files match"
                 : $"{Count('<'):N0} only left · {Count('>'):N0} only right · {Count('≠'):N0} differ · {same:N0} same"
                   + (Count('!') > 0 ? $" · {Count('!')} unreadable" : "");
-            if (items.Count == 0) FolderSummary.Foreground = Res("Green");
+            if (items.Count == 0) FolderSummary.Foreground = Skin.Brush("Green");
             FolderList.ItemsSource = items;
         }
         catch (OperationCanceledException) { if (busy == cts) FolderSummary.Text = "Cancelled"; }
@@ -225,7 +221,7 @@ public partial class ComparePage : UserControl
     void ShowItem(object sender, RoutedEventArgs e)
     {
         var item = (FolderItem)((FrameworkElement)sender).DataContext;
-        Show((item.L ?? item.R)!.FullName);
+        Shell.Reveal((item.L ?? item.R)!.FullName);
     }
 
     // ===== Long runs: one at a time, cancellable =====
@@ -269,7 +265,7 @@ public partial class ComparePage : UserControl
         var cts = Start(DupeCancel);
         FindButton.IsEnabled = false;
         KeepAllButton.Visibility = Visibility.Collapsed;
-        DupeSummary.Foreground = Res("Text");
+        DupeSummary.Foreground = Skin.Brush("Text");
         DupeSummary.Text = "Scanning…";
         groups = [];
         rows.Clear();
@@ -305,13 +301,13 @@ public partial class ComparePage : UserControl
             foreach (var f in g.Files) rows.Add(new(g, f));
         }
         DupeSummary.Text = (groups.Count == 0 ? "No duplicates"
-            : $"{groups.Count:N0} sets of identical files · {Compare.Size(groups.Sum(g => g.Wasted))} reclaimable") + note;
+            : $"{groups.Count:N0} sets of identical files · {Units.Bytes(groups.Sum(g => g.Wasted))} reclaimable") + note;
         KeepAllButton.Visibility = groups.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     static DupRow RowOf(object sender) => (DupRow)((FrameworkElement)sender).DataContext;
 
-    void ShowDupe(object sender, RoutedEventArgs e) => Show(RowOf(sender).File!.Path);
+    void ShowDupe(object sender, RoutedEventArgs e) => Shell.Reveal(RowOf(sender).File!.Path);
 
     async void RecycleDupe(object sender, RoutedEventArgs e)
     {
@@ -329,7 +325,7 @@ public partial class ComparePage : UserControl
     {
         var n = groups.Sum(g => g.Files.Count - 1);
         if (!Dialog.Confirm("Duplicates", $"Move {n:N0} copies to the Recycle Bin?",
-                $"The oldest file of each set stays. That frees {Compare.Size(groups.Sum(g => g.Wasted))}.", "Recycle")) return;
+                $"The oldest file of each set stays. That frees {Units.Bytes(groups.Sum(g => g.Wasted))}.", "Recycle")) return;
         await RecycleAll(groups.Select(g => (g, g.Files.Skip(1).ToList())).ToList());
     }
 

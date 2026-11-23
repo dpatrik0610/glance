@@ -34,7 +34,7 @@ public partial class BoardPage
     void NodeMenuOn(Border card, BoardItem it, Action<bool>? edit)
     {
         if (edit is not null) edits[it] = edit;
-        if (it == selected) card.BorderBrush = (Brush)FindResource("Accent");
+        if (it == selected) card.BorderBrush = Skin.Brush("Accent");
         void Pick(MouseButtonEventArgs e)
         {
             Select(it);
@@ -77,7 +77,7 @@ public partial class BoardPage
 
         var color = Sub(m, "Color");
         Item(color, "None", () => SetColor(it, ""), check: it.Color == "").Icon =
-            new Ellipse { Width = 10, Height = 10, Stroke = (Brush)FindResource("Sub"), StrokeThickness = 1.2 };
+            new Ellipse { Width = 10, Height = 10, Stroke = Skin.Brush("Sub"), StrokeThickness = 1.2 };
         foreach (var (id, name, c) in NodeColors)
         {
             var i = Item(color, name, () => SetColor(it, id), check: it.Color == id);

@@ -17,8 +17,8 @@ public class VolumeBar : DockPanel
     {
         icon = new Button
         {
-            Style = (Style)Application.Current.FindResource("Ghost"),
-            FontFamily = (FontFamily)Application.Current.FindResource("Icons"),
+            Style = Skin.Style("Ghost"),
+            FontFamily = Skin.Icons,
             FontSize = 14, Padding = new Thickness(7, 5, 7, 5), Focusable = false, ToolTip = "Mute",
         };
         icon.Click += (_, _) =>
@@ -29,7 +29,7 @@ public class VolumeBar : DockPanel
         };
         slider = new Slider
         {
-            Style = (Style)Application.Current.FindResource("VSlider"), Minimum = 0, Maximum = 1, IsMoveToPointEnabled = true, Focusable = false,
+            Style = Skin.Style("VSlider"), Minimum = 0, Maximum = 1, IsMoveToPointEnabled = true, Focusable = false,
             Margin = new Thickness(0, 2, 0, 4), SmallChange = 0.05, LargeChange = 0.1,
         };
         slider.MouseWheel += (_, e) => slider.Value += e.Delta > 0 ? 0.05 : -0.05; // the wheel nudges it

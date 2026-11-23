@@ -29,7 +29,7 @@ public partial class SettingsPage : UserControl
         Bind(SoundVolumeRow, s.AlertSoundVolume, v => s.AlertSoundVolume = Math.Round(v, 2), v => $"{v:P0}");
         foreach (var name in Chime.Names)
         {
-            var chip = new RadioButton { Style = (Style)FindResource("Chip"), GroupName = "sound", Content = name, Margin = new(0, 0, 6, 6), IsChecked = name == s.AlertSoundName };
+            var chip = new RadioButton { Style = Skin.Style("Chip"), GroupName = "sound", Content = name, Margin = new(0, 0, 6, 6), IsChecked = name == s.AlertSoundName };
             chip.Checked += (_, _) =>
             {
                 if (!IsLoaded) return; // the initial check
@@ -42,7 +42,7 @@ public partial class SettingsPage : UserControl
 
         foreach (var name in Skin.Names)
         {
-            var chip = new RadioButton { Style = (Style)FindResource("Chip"), GroupName = "theme", Content = name, Margin = new(0, 0, 6, 0), IsChecked = name == s.Theme };
+            var chip = new RadioButton { Style = Skin.Style("Chip"), GroupName = "theme", Content = name, Margin = new(0, 0, 6, 0), IsChecked = name == s.Theme };
             chip.Checked += (_, _) =>
             {
                 if (!IsLoaded || name == s.Theme) return;
@@ -186,7 +186,7 @@ public partial class SettingsPage : UserControl
     void CheckUpdates(object sender, RoutedEventArgs e) => App.CheckForUpdates();
 
     void OpenLink(object sender, System.Windows.Navigation.RequestNavigateEventArgs e) =>
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        Shell.Open(e.Uri.AbsoluteUri);
 }
 
 /// One settings line: icon, title and a short description on the left, its control on the right.

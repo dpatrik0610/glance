@@ -96,7 +96,7 @@ public partial class BoardPage
         if (it == selected) return;
         if (selected is not null && cards.TryGetValue(selected, out var was)) was.BorderBrush = Edge(selected);
         selected = it;
-        if (it is not null && cards.TryGetValue(it, out var card)) card.BorderBrush = (Brush)FindResource("Accent");
+        if (it is not null && cards.TryGetValue(it, out var card)) card.BorderBrush = Skin.Brush("Accent");
     }
 
     // ---- copying nodes: Ctrl+C then Ctrl+V pastes the node itself while the clipboard still holds what was copied ----

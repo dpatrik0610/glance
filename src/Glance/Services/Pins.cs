@@ -39,7 +39,7 @@ public class Pin : Bindable
     [JsonIgnore] public bool IsOpen => OpeningHours.Status(Hours, DateTime.Now, out var open) is not null && open;
     [JsonIgnore] public bool HasHours => OpenText is not null;
     [JsonIgnore] public string OpenShort => !HasHours ? "" : IsOpen ? "Open" : "Closed";
-    [JsonIgnore] public Brush OpenBrush => (Brush)Application.Current.Resources[IsOpen ? "Green" : "Red"];
+    [JsonIgnore] public Brush OpenBrush => Skin.Brush(IsOpen ? "Green" : "Red");
     [JsonIgnore] public bool HasPhone => !string.IsNullOrEmpty(Phone);
     [JsonIgnore] public bool HasWebsite => WebsiteUri is not null;
     // Only http(s) ever opens: the value comes from OpenStreetMap. "example.com" (no scheme, common in OSM) gets https.
@@ -60,19 +60,7 @@ public static class PinStore
 
     public static ObservableCollection<Pin> Pins => pins ??= Load();
 
-    static ObservableCollection<Pin> Load()
-    {
-        try { return JsonSerializer.Deserialize<ObservableCollection<Pin>>(File.ReadAllText(File_), Json) ?? []; }
-        catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) { return []; }
-        catch (JsonException e)
-        {
-            // Never overwrite a file we couldn't read: park it.
-            var parked = $"{File_}.unreadable-{DateTime.Now:yyyyMMdd-HHmmss}";
-            File.Move(File_, parked);
-            Db.Error($"pins.json unreadable, moved to {parked}", e);
-            return [];
-        }
-    }
+    static ObservableCollection<Pin> Load() => Settings.ReadJson<ObservableCollection<Pin>>(File_, Json) ?? [];
 
     public static void Save()
     {

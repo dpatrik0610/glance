@@ -261,16 +261,13 @@ public partial class App : Application
         }
     }
 
-    static DispatcherTimer? saveTimer;
+    static readonly Debounce pendingSettingsSave = new(TimeSpan.FromMilliseconds(500), () => Settings.Save());
 
     /// Applies immediately; the disk write is debounced so slider drags don't hammer the file.
     public static void ApplySettings()
     {
         SettingsChanged?.Invoke();
-        saveTimer ??= new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Background,
-            (_, _) => { saveTimer!.Stop(); Settings.Save(); }, Current.Dispatcher);
-        saveTimer.Stop();
-        saveTimer.Start();
+        pendingSettingsSave.Poke();
     }
 
     static void Wake()
@@ -444,7 +441,6 @@ public partial class App : Application
     {
         if (ask && !ConfirmQuit()) return;
         Db.Info("exit");
-        if (saveTimer?.IsEnabled == true) Settings.Save();
         tray!.Hide();
         mutex?.ReleaseMutex();
         Shutdown(); // pages flush their own unsaved state on Application.Exit

@@ -88,7 +88,7 @@ public partial class CalendarPage : UserControl
             label.Children.Add(new Ellipse { Width = 9, Height = 9, Fill = new SolidColorBrush(c.Color), Margin = new(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
             label.Children.Add(new TextBlock { Text = c.Name, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center,
                 ToolTip = c.Writable ? c.Name : c.Name + " (read-only)" });
-            var toggle = new CheckBox { Style = (Style)FindResource("Switch"), Content = label, IsChecked = c.Shown, Margin = new(0, 0, 0, 6) };
+            var toggle = new CheckBox { Style = Skin.Style("Switch"), Content = label, IsChecked = c.Shown, Margin = new(0, 0, 0, 6) };
             toggle.Click += (_, _) =>
             {
                 App.Settings.CalendarsShown[c.Id] = toggle.IsChecked == true;
@@ -141,7 +141,7 @@ public partial class CalendarPage : UserControl
         ShowDay();
     }
 
-    Style Label => (Style)FindResource("Label");
+    Style Label => Skin.Style("Label");
 
     FrameworkElement Cell(DateTime d)
     {
@@ -152,7 +152,7 @@ public partial class CalendarPage : UserControl
         stack.Children.Add(new Border
         {
             Width = 22, Height = 22, CornerRadius = new(11), Margin = new(0, 0, 0, 3), HorizontalAlignment = HorizontalAlignment.Left,
-            Background = d == DateTime.Today ? (Brush)FindResource("Accent") : Brushes.Transparent, Child = number,
+            Background = d == DateTime.Today ? Skin.Brush("Accent") : Brushes.Transparent, Child = number,
         });
 
         var chips = events.Where(e => e.On(d)).Select(e => (e.AllDay ? "" : e.Start.Date == d ? e.Start.ToString("HH:mm") + " " : "", e.Title, e.Calendar.Color))
@@ -166,8 +166,8 @@ public partial class CalendarPage : UserControl
         var cell = new Border
         {
             Child = stack, CornerRadius = new(10), Padding = new(5), Margin = new(2), Cursor = Cursors.Hand, ClipToBounds = true,
-            Background = inMonth ? (Brush)FindResource("CardBg") : Brushes.Transparent, Opacity = inMonth ? 1 : 0.45,
-            BorderThickness = new(1.5), BorderBrush = selected ? (Brush)FindResource("Accent") : Brushes.Transparent,
+            Background = inMonth ? Skin.Brush("CardBg") : Brushes.Transparent, Opacity = inMonth ? 1 : 0.45,
+            BorderThickness = new(1.5), BorderBrush = selected ? Skin.Brush("Accent") : Brushes.Transparent,
             ToolTip = chips.Count > 3 ? string.Join("\n", chips.Select(c => c.Item1 + c.Item2)) : null,
         };
         cell.MouseLeftButtonDown += (_, e) =>
@@ -231,7 +231,7 @@ public partial class CalendarPage : UserControl
 
     FrameworkElement DueRow(Note note, TodoItem item)
     {
-        var check = new CheckBox { Style = (Style)FindResource("Check"), DataContext = item, VerticalAlignment = VerticalAlignment.Top, Margin = new(0, 2, 8, 0) };
+        var check = new CheckBox { Style = Skin.Style("Check"), DataContext = item, VerticalAlignment = VerticalAlignment.Top, Margin = new(0, 2, 8, 0) };
         check.SetBinding(ToggleButton_IsChecked, new Binding(nameof(TodoItem.Done)));
         check.Click += (_, _) => Render();
         var text = new StackPanel();
@@ -255,7 +255,7 @@ public partial class CalendarPage : UserControl
         DockPanel.SetDock(bar, Dock.Left);
         dock.Children.Add(bar);
         dock.Children.Add(content);
-        return new Border { Child = dock, CornerRadius = new(10), Padding = new(10, 8, 10, 8), Margin = new(0, 0, 0, 6), Background = (Brush)FindResource("CardBg") };
+        return new Border { Child = dock, CornerRadius = new(10), Padding = new(10, 8, 10, 8), Margin = new(0, 0, 0, 6), Background = Skin.Brush("CardBg") };
     }
 
     // ---- Buttons ----

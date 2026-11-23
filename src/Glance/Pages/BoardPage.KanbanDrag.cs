@@ -53,7 +53,7 @@ public partial class BoardPage
         var glyph = new TextBlock
         {
             Text = it.Kind switch { "image" => "", "link" => "", "stat" => "", _ => "" },
-            FontFamily = (FontFamily)FindResource("Icons"), Foreground = (Brush)FindResource("Accent"), VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 9, 0),
+            FontFamily = Skin.Icons, Foreground = Skin.Brush("Accent"), VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 9, 0),
         };
         var label = new DockPanel
         {
@@ -64,8 +64,8 @@ public partial class BoardPage
         var tilt = new RotateTransform();
         var ghost = new Border
         {
-            Width = size.Width, Height = size.Height, CornerRadius = new(12), Background = (Brush)FindResource("Popup"),
-            BorderBrush = (Brush)FindResource("Accent"), BorderThickness = new(1.5),
+            Width = size.Width, Height = size.Height, CornerRadius = new(12), Background = Skin.Brush("Popup"),
+            BorderBrush = Skin.Brush("Accent"), BorderThickness = new(1.5),
             Child = new Grid { ClipToBounds = true, Children = { snap, label } },
             RenderTransform = new TransformGroup { Children = { tilt, shift } },
             Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 4, Opacity = 0.45, Color = Colors.Black },
@@ -122,7 +122,7 @@ public partial class BoardPage
 
         // The old gap closes as the new one opens.
         if (d.Gap is { } old) CloseGap(old);
-        var accent = ((SolidColorBrush)FindResource("Accent")).Color;
+        var accent = Skin.BrushColor("Accent");
         var gap = new Border
         {
             Height = 0, ClipToBounds = true,

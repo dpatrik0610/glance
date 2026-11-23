@@ -18,7 +18,7 @@ public record Proc(string Name, double Cpu, double MemMb, int Count, double Disk
     public bool CanKill => HardwareMonitor.CanKill(Name);
     public string CpuText => $"{Cpu:0.0}%";
     public string GpuText => $"{Gpu:0.0}%";
-    public string MemText => MemMb >= 1024 ? $"{MemMb / 1024:0.0} GB" : $"{MemMb:0} MB";
+    public string MemText => Units.Megabytes(MemMb);
 }
 
 public record Snapshot(

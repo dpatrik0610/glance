@@ -1,4 +1,5 @@
 using System.Globalization;
+using Glance.Services;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -59,7 +60,7 @@ public sealed class Spark : FrameworkElement
     public string Format { get => (string)GetValue(FormatProperty); set => SetValue(FormatProperty, value); }
     public TimeSpan Step { get => (TimeSpan)GetValue(StepProperty); set => SetValue(StepProperty, value); }
 
-    public static string Text(string format, float v) => format == "rate" ? SystemPage.Rate(v) : string.Format(CultureInfo.CurrentCulture, format, v);
+    public static string Text(string format, float v) => format == "rate" ? Units.Rate(v) : string.Format(CultureInfo.CurrentCulture, format, v);
 
     void SetBrushes(Color c)
     {

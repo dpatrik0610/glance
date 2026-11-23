@@ -34,7 +34,7 @@ public partial class DevPage : UserControl
     void FilterChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
 
     void OpenPort(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo($"http://localhost:{((PortInfo)((FrameworkElement)sender).DataContext).Port}") { UseShellExecute = true });
+        Shell.Open($"http://localhost:{((PortInfo)((FrameworkElement)sender).DataContext).Port}");
 
     void Kill(object sender, RoutedEventArgs e)
     {

@@ -34,9 +34,9 @@ public partial class BudgetPage : UserControl, IDisposable
         IncomeText.Text = Money.Format(income, plus: false);
         ExpenseText.Text = Money.Format(-spent, plus: false);
         BalanceText.Text = Money.Format(income + spent);
-        BalanceText.Foreground = Res(income + spent < 0 ? "Red" : "Text");
+        BalanceText.Foreground = Skin.Brush(income + spent < 0 ? "Red" : "Text");
         List.ItemsSource = these.Select(e => new Row(e, e.Date.ToString("MMM d"), e.Note.Length > 0 ? e.Note : e.Amount > 0 ? "Income" : "Expense",
-            Money.Format(e.Amount), Res(e.Amount > 0 ? "Green" : "Red"))).ToArray();
+            Money.Format(e.Amount), Skin.Brush(e.Amount > 0 ? "Green" : "Red"))).ToArray();
         Empty.Visibility = these.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -71,6 +71,4 @@ public partial class BudgetPage : UserControl, IDisposable
         Hint.Text = text ?? "";
         Hint.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
     }
-
-    static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 }

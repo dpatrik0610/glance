@@ -22,11 +22,11 @@ public partial class BoardPage
         if (board.Columns.Count == 0) board.Columns.Add("To do");
         foreach (var name in board.Columns) Columns.Children.Add(Column(name, focus));
 
-        var add = new Button { Style = (Style)FindResource("Ghost"), VerticalAlignment = VerticalAlignment.Top, Margin = new(6, 0, 0, 0), ToolTip = "Add a column" };
+        var add = new Button { Style = Skin.Style("Ghost"), VerticalAlignment = VerticalAlignment.Top, Margin = new(6, 0, 0, 0), ToolTip = "Add a column" };
         add.Content = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Children = { new TextBlock { Text = "", FontFamily = (FontFamily)FindResource("Icons"), Margin = new(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Column" } },
+            Children = { new TextBlock { Text = "", FontFamily = Skin.Icons, Margin = new(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Column" } },
         };
         add.Click += (_, _) =>
         {
@@ -47,25 +47,25 @@ public partial class BoardPage
         foreach (var it in items) list.Children.Add(KanbanCard(it, it == focus));
 
         var title = new TextBlock { Text = name, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.IBeam, ToolTip = "Double-click to rename" };
-        var count = new TextBlock { Text = items.Count.ToString(), Style = (Style)FindResource("Label"), Margin = new(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var count = new TextBlock { Text = items.Count.ToString(), Style = Skin.Style("Label"), Margin = new(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         var more = IconButton("", "Column options", () => { });
         more.Click += (_, _) => Open(ColumnMenu(name, title), more);
         DockPanel.SetDock(more, Dock.Right);
         var head = new DockPanel { Margin = new(4, 0, 0, 8), Children = { more, new StackPanel { Orientation = Orientation.Horizontal, Children = { title, count } } } };
         title.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2) { RenameColumn(name, title); e.Handled = true; } };
 
-        var addCard = new Button { Style = (Style)FindResource("Ghost"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new(0, 4, 0, 0) };
+        var addCard = new Button { Style = Skin.Style("Ghost"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new(0, 4, 0, 0) };
         addCard.Content = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Children = { new TextBlock { Text = "", FontFamily = (FontFamily)FindResource("Icons"), Margin = new(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Card" } },
+            Children = { new TextBlock { Text = "", FontFamily = Skin.Icons, Margin = new(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Card" } },
         };
         addCard.Click += (_, _) => Add(new() { Column = name, W = ColumnWidth - 30 }, new Point(), focus: true);
 
         var column = new Border
         {
             Width = ColumnWidth, Margin = new(0, 0, 10, 0), Padding = new(10), CornerRadius = new(14), VerticalAlignment = VerticalAlignment.Top,
-            Background = (Brush)FindResource("CardBg"), BorderBrush = (Brush)FindResource("Line"), BorderThickness = new(1), AllowDrop = true,
+            Background = Skin.Brush("CardBg"), BorderBrush = Skin.Brush("Line"), BorderThickness = new(1), AllowDrop = true,
             Child = new DockPanel
             {
                 Children = { Docked(head, Dock.Top), Docked(addCard, Dock.Bottom), new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = list } },
@@ -87,13 +87,13 @@ public partial class BoardPage
         if (cleanup is not null) cleanups[it] = cleanup;
         var remove = new Button
         {
-            Style = (Style)FindResource("Ghost"), Content = "", FontFamily = (FontFamily)FindResource("Icons"), FontSize = 10,
+            Style = Skin.Style("Ghost"), Content = "", FontFamily = Skin.Icons, FontSize = 10,
             Padding = new(5), HorizontalAlignment = HorizontalAlignment.Right, ToolTip = "Remove", Opacity = 0,
         };
         remove.Click += (_, _) => Remove(it);
         var card = new Border
         {
-            Background = (Brush)FindResource("Popup"), BorderBrush = Edge(it), BorderThickness = new(1), CornerRadius = new(10),
+            Background = Skin.Brush("Popup"), BorderBrush = Edge(it), BorderThickness = new(1), CornerRadius = new(10),
             Padding = new(10, 0, 10, 10), Margin = new(0, 0, 0, 8), Tag = it, Cursor = Cursors.Hand,
             Child = new DockPanel { Children = { Docked(new Grid { Height = 20, Children = { remove } }, Dock.Top), body } },
         };

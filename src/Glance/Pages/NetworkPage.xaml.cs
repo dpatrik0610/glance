@@ -86,17 +86,15 @@ public partial class NetworkPage : UserControl, IDisposable
         {
             var dt = Stopwatch.GetElapsedTime(lastAt, now).TotalSeconds;
             var (down, up) = (Math.Max(0, (rx - lastRx) / dt), Math.Max(0, (tx - lastTx) / dt));
-            DownRate.Text = SystemPage.Rate(down);
-            UpRate.Text = SystemPage.Rate(up);
+            DownRate.Text = Units.Rate(down);
+            UpRate.Text = Units.Rate(up);
             DownSpark.Push((float)down);
             UpSpark.Push((float)up);
         }
-        DownTotal.Text = Size(rx) + " since link up";
-        UpTotal.Text = Size(tx) + " since link up";
+        DownTotal.Text = Units.Bytes(rx) + " since link up";
+        UpTotal.Text = Units.Bytes(tx) + " since link up";
         (lastRx, lastTx, lastAt) = (rx, tx, now);
     }
-
-    static string Size(long bytes) => bytes >= 1e9 ? $"{bytes / 1e9:0.0} GB" : $"{bytes / 1e6:0} MB";
 
     void Latency(long? net, long? gw)
     {

@@ -101,11 +101,4 @@ public static class ImageOps
         enc.Save(ms);
         return ms.ToArray();
     }
-
-    public static string Size(long bytes) => bytes switch
-    {
-        < 1024 => $"{bytes} B",
-        < 1024 * 1024 => $"{bytes / 1024.0:0} KB",
-        _ => $"{bytes / 1048576.0:0.0} MB",
-    };
 }

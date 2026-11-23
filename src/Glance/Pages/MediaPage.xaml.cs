@@ -45,7 +45,7 @@ public partial class MediaPage : UserControl
     }
 
     RadioButton Chip(string text, string group, bool on) =>
-        new() { Content = text, GroupName = group, IsChecked = on, Style = (Style)FindResource("Chip"), Margin = new(0, 0, 6, 6) };
+        new() { Content = text, GroupName = group, IsChecked = on, Style = Skin.Style("Chip"), Margin = new(0, 0, 6, 6) };
 
     // ---- Opening ----
 
@@ -101,7 +101,7 @@ public partial class MediaPage : UserControl
 
         var v = found.Video;
         FileText.Text = $"{Path.GetFileName(file)} · {MediaOps.Time(found.Duration)}" + (v is null ? "" : $" · {v.Width} × {v.Height}")
-                        + $" · {ImageOps.Size(new FileInfo(file).Length)}";
+                        + $" · {Units.Bytes(new FileInfo(file).Length)}";
         DropHint.Text = v is null ? "" : "";
         Status.Text = "";
         Player.IsEnabled = false;
@@ -222,7 +222,7 @@ public partial class MediaPage : UserControl
         FormatText.Visibility = FormatText.Text == "" ? Visibility.Collapsed : Visibility.Visible;
 
         var size = MediaOps.Estimate(format, MediaOps.Profile(format, quality, info, height), length);
-        SizeText.Text = (size is { } b ? $"≈ {ImageOps.Size(b)} · " : "") + $"{MediaOps.Time(length)} {format.Name}";
+        SizeText.Text = (size is { } b ? $"≈ {Units.Bytes(b)} · " : "") + $"{MediaOps.Time(length)} {format.Name}";
     }
 
     async void Save(object sender, RoutedEventArgs e)
@@ -248,7 +248,7 @@ public partial class MediaPage : UserControl
         {
             await MediaOps.Convert(path, d.FileName, MediaOps.Profile(format, quality, info, height), start, end, Duration,
                 new Progress<double>(p => Bar.Value = p), working.Token);
-            Status.Text = $"Saved {Path.GetFileName(d.FileName)} · {ImageOps.Size(new FileInfo(d.FileName).Length)}";
+            Status.Text = $"Saved {Path.GetFileName(d.FileName)} · {Units.Bytes(new FileInfo(d.FileName).Length)}";
         }
         catch (OperationCanceledException) { Status.Text = "Cancelled."; }
         catch (Exception ex) { Status.Text = "Couldn't convert: " + ex.Message; } // IO, access, and the transcoder's COM errors

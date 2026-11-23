@@ -60,7 +60,7 @@ public partial class StocksPage : UserControl
             var q = quotes[s];
             var traded = q.Closes.Where(v => !float.IsNaN(v)).DefaultIfEmpty().ToArray();
             return new Card(q.Symbol, q.Name, $"{q.Price:N2} {q.Currency}", $"{(q.Change >= 0 ? "▲" : "▼")} {Math.Abs(q.Change):0.00}% today",
-                Res(q.Change >= 0 ? "Green" : "Red"), $"3 months · low {traded.Min():N2} · high {traded.Max():N2}", q.Closes, $"{{0:N2}} {q.Currency}");
+                Skin.Brush(q.Change >= 0 ? "Green" : "Red"), $"3 months · low {traded.Min():N2} · high {traded.Max():N2}", q.Closes, $"{{0:N2}} {q.Currency}");
         }).ToArray();
         Status.Text = Symbols.Count == 0 ? "Add a symbol to follow its price."
             : quotes.Count > 0 ? "" : failed ? "Can't reach Yahoo Finance." : Status.Text; // still loading
@@ -101,6 +101,4 @@ public partial class StocksPage : UserControl
         Hint.Text = text ?? "";
         Hint.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
     }
-
-    static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 }

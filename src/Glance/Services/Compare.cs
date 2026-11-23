@@ -15,8 +15,8 @@ public record DiffLine(char Kind, int? Left, int? Right, IReadOnlyList<Seg> Segs
 public record FolderItem(string Path, char Kind, FileInfo? L, FileInfo? R)
 {
     public string KindText => Kind switch { '<' => "only left", '>' => "only right", '≠' => "differs", _ => "unreadable" };
-    public string LeftText => L is null ? "" : $"{Compare.Size(L.Length)} · {L.LastWriteTime:yyyy-MM-dd HH:mm}";
-    public string RightText => R is null ? "" : $"{Compare.Size(R.Length)} · {R.LastWriteTime:yyyy-MM-dd HH:mm}";
+    public string LeftText => L is null ? "" : $"{Units.Bytes(L.Length)} · {L.LastWriteTime:yyyy-MM-dd HH:mm}";
+    public string RightText => R is null ? "" : $"{Units.Bytes(R.Length)} · {R.LastWriteTime:yyyy-MM-dd HH:mm}";
     public bool CanDiff => Kind == '≠';
 }
 
@@ -36,15 +36,6 @@ public static class Compare
         RecurseSubdirectories = true,
         IgnoreInaccessible = true,
         AttributesToSkip = FileAttributes.Hidden | FileAttributes.System | FileAttributes.ReparsePoint,
-    };
-
-    public static string Size(long b) => b switch
-    {
-        >= 1L << 40 => $"{b / (double)(1L << 40):0.0} TB",
-        >= 1L << 30 => $"{b / (double)(1L << 30):0.0} GB",
-        >= 1 << 20 => $"{b / (double)(1 << 20):0.0} MB",
-        >= 1 << 10 => $"{b / 1024.0:0} KB",
-        _ => $"{b} B",
     };
 
     /// Offset of the first byte that differs (a shorter file differs where it ends), or -1 when identical.

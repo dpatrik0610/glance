@@ -23,7 +23,7 @@ public partial class JsonPage : UserControl
         result = JsonText.Check(Box.Text);
         var empty = result.Message == "";
         StatusIcon.Text = empty ? "" : result.Ok ? "" : "";
-        StatusIcon.Foreground = (Brush)FindResource(result.Ok ? "Green" : "Red");
+        StatusIcon.Foreground = Skin.Brush(result.Ok ? "Green" : "Red");
         StatusText.Text = empty ? "Checked as you type" : result.Ok ? $"Valid JSON · {result.Message}" : result.Message;
         Status.Cursor = result.ErrorAt >= 0 ? Cursors.Hand : null;
         Status.ToolTip = result.ErrorAt >= 0 ? "Show where" : null;
@@ -50,7 +50,7 @@ public partial class JsonPage : UserControl
         for (var i = first; i <= last; i++)
         {
             var n = new Run((i + 1).ToString());
-            if (i == errLine) { n.Foreground = (Brush)FindResource("Red"); n.FontWeight = FontWeights.SemiBold; }
+            if (i == errLine) { n.Foreground = Skin.Brush("Red"); n.FontWeight = FontWeights.SemiBold; }
             if (i > first) Gutter.Inlines.Add(new LineBreak());
             Gutter.Inlines.Add(n);
         }

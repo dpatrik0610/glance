@@ -46,8 +46,8 @@ public partial class SystemPage : UserControl, IDisposable
         RamPct.Text = Pct(ramPct);
         RamSpark.Push(ramPct);
 
-        NetDown.Text = "↓ " + Rate(s.NetDown);
-        NetUp.Text = "↑ " + Rate(s.NetUp);
+        NetDown.Text = "↓ " + Units.Rate(s.NetDown);
+        NetUp.Text = "↑ " + Units.Rate(s.NetUp);
         DownSpark.Push((float)s.NetDown);
         UpSpark.Push((float)s.NetUp);
 
@@ -86,7 +86,7 @@ public partial class SystemPage : UserControl, IDisposable
         {
             var on = (string)h.Tag == sortBy;
             h.Text = on ? h.Tag + " ↓" : (string)h.Tag;
-            h.Foreground = (Brush)FindResource(on ? "Text" : "Sub");
+            h.Foreground = Skin.Brush(on ? "Text" : "Sub");
         }
         ShowProcs();
     }
@@ -114,13 +114,6 @@ public partial class SystemPage : UserControl, IDisposable
 
     static string Join(params string?[] parts) => string.Join(" · ", parts.Where(p => p is not null));
 
-    internal static string Rate(double bytesPerSec) => bytesPerSec switch
-    {
-        >= 1e6 => $"{bytesPerSec / 1e6:0.0} MB/s",
-        >= 1e3 => $"{bytesPerSec / 1e3:0} KB/s",
-        _ => $"{bytesPerSec:0} B/s",
-    };
-
     void Temp(Border pill, TextBlock text, float? t, float warn, float hot)
     {
         if (t is not { } v)
@@ -130,9 +123,9 @@ public partial class SystemPage : UserControl, IDisposable
         }
         pill.Visibility = Visibility.Visible;
         text.Text = $"{v:0}°C";
-        (pill.Background, text.Foreground) = v >= hot ? (RedBg, (Brush)FindResource("Red"))
-            : v >= warn ? (AmberBg, (Brush)FindResource("Amber"))
-            : (GreenBg, (Brush)FindResource("Green"));
+        (pill.Background, text.Foreground) = v >= hot ? (RedBg, Skin.Brush("Red"))
+            : v >= warn ? (AmberBg, Skin.Brush("Amber"))
+            : (GreenBg, Skin.Brush("Green"));
     }
 
     static Brush Frozen(byte a, byte r, byte g, byte b)

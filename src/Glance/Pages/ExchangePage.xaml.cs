@@ -21,7 +21,7 @@ public partial class ExchangePage : UserControl
         InitializeComponent();
         foreach (var (code, _) in Rates.Currencies)
         {
-            var chip = new RadioButton { Content = code, Style = (Style)FindResource("Chip"), GroupName = "cur", IsChecked = code == currency };
+            var chip = new RadioButton { Content = code, Style = Skin.Style("Chip"), GroupName = "cur", IsChecked = code == currency };
             chip.Checked += (_, _) => { currency = code; Recalc(); };
             CurrencyChips.Children.Add(chip);
         }

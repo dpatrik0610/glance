@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -46,8 +45,6 @@ static partial class MarkdownView
         public readonly Action<string>? Tag = tag;
         public int Tasks; // numbers task boxes in document order, as Toggle counts them
     }
-
-    static Brush R(string key) => (Brush)Application.Current.Resources[key];
 
     /// toggle gets the clicked task box's number (0 = first in the text); Toggle(text, n) flips it.
     public static FrameworkElement Render(string text, Action<int> toggle, Action<string>? go = null, Action<string>? tag = null)
@@ -108,15 +105,15 @@ static partial class MarkdownView
         ListBlock l => DrawList(l, ctx),
         QuoteBlock q => Callout(q, ctx) ?? new Border
         {
-            BorderBrush = R("Accent"), BorderThickness = new(2, 0, 0, 0), Padding = new(10, 0, 0, 0),
+            BorderBrush = Skin.Brush("Accent"), BorderThickness = new(2, 0, 0, 0), Padding = new(10, 0, 0, 0),
             Child = Blocks(q, ctx), Opacity = 0.8,
         },
         CodeBlock k => new Border
         {
-            Background = R("Track"), CornerRadius = new(6), Padding = new(8, 6, 8, 6),
-            Child = new TextBlock { Text = k.Lines.ToString(), FontFamily = (FontFamily)Application.Current.Resources["Mono"], FontSize = 12.5, TextWrapping = TextWrapping.Wrap },
+            Background = Skin.Brush("Track"), CornerRadius = new(6), Padding = new(8, 6, 8, 6),
+            Child = new TextBlock { Text = k.Lines.ToString(), FontFamily = Skin.Font("Mono"), FontSize = 12.5, TextWrapping = TextWrapping.Wrap },
         },
-        ThematicBreakBlock => new Border { Height = 1, Background = R("Line") },
+        ThematicBreakBlock => new Border { Height = 1, Background = Skin.Brush("Line") },
         Table t => DrawTable(t, ctx),
         LeafBlock l => new TextBlock { Text = l.Lines.ToString(), TextWrapping = TextWrapping.Wrap }, // raw HTML and the like
         ContainerBlock c => Blocks(c, ctx),
@@ -151,12 +148,12 @@ static partial class MarkdownView
             switch (i)
             {
                 case TaskList: break; // drawn as the list item's box
-                case CodeInline k: to.Add(new Run(k.Content) { FontFamily = (FontFamily)Application.Current.Resources["Mono"], Background = R("Track") }); break;
+                case CodeInline k: to.Add(new Run(k.Content) { FontFamily = Skin.Font("Mono"), Background = Skin.Brush("Track") }); break;
                 case LineBreakInline: to.Add(new LineBreak()); break; // soft breaks too: a note keeps the lines as typed
                 case AutolinkInline a: to.Add(Link(a.IsEmail ? "mailto:" + a.Url : a.Url, a.Url)); break;
                 case LinkInline { IsImage: false } k when k.Url?.StartsWith("glance:") == true:
                     var target = Uri.UnescapeDataString(k.Url["glance:".Length..]);
-                    var w = new Hyperlink { Foreground = R("Accent"), Cursor = Cursors.Hand, ToolTip = $"Go to {target}", TextDecorations = null, FontWeight = FontWeights.SemiBold };
+                    var w = new Hyperlink { Foreground = Skin.Brush("Accent"), Cursor = Cursors.Hand, ToolTip = $"Go to {target}", TextDecorations = null, FontWeight = FontWeights.SemiBold };
                     w.MouseLeftButtonDown += (_, e) => { e.Handled = true; ctx.Go?.Invoke(target); };
                     Add(w.Inlines, k, ctx);
                     to.Add(w);
@@ -193,7 +190,7 @@ static partial class MarkdownView
             if (m.Groups[1].Success)
             {
                 var name = m.Groups[1].Value;
-                var pill = Pill("#" + name, R("Accent"), $"Show only #{name}");
+                var pill = Pill("#" + name, Skin.Brush("Accent"), $"Show only #{name}");
                 pill.MouseLeftButtonDown += (_, e) => { e.Handled = true; ctx.Tag?.Invoke(name.ToLowerInvariant()); };
                 to.Add(new InlineUIContainer(pill) { BaselineAlignment = BaselineAlignment.Center });
             }
@@ -201,7 +198,7 @@ static partial class MarkdownView
             {
                 var due = DateTime.ParseExact(m.Groups[2].Value, "yyyy-MM-dd HH:mm", null);
                 var late = due < DateTime.Now;
-                to.Add(new InlineUIContainer(Pill("⏰ " + Due.Format(due, DateTime.Now), R(late ? "Red" : "Sub"), late ? "Overdue" : "Due"))
+                to.Add(new InlineUIContainer(Pill("⏰ " + Due.Format(due, DateTime.Now), Skin.Brush(late ? "Red" : "Sub"), late ? "Overdue" : "Due"))
                     { BaselineAlignment = BaselineAlignment.Center });
             }
         }
@@ -210,20 +207,19 @@ static partial class MarkdownView
 
     static Border Pill(string text, Brush fg, string tip) => new()
     {
-        CornerRadius = new(8), Background = R("PillBg"), Padding = new(6, 0, 6, 1), Margin = new(1, 0, 1, 0), Cursor = Cursors.Hand, ToolTip = tip,
+        CornerRadius = new(8), Background = Skin.Brush("PillBg"), Padding = new(6, 0, 6, 1), Margin = new(1, 0, 1, 0), Cursor = Cursors.Hand, ToolTip = tip,
         Child = new TextBlock { Text = text, Foreground = fg, FontSize = 12 },
     };
 
     /// Opens on press: the card under it would otherwise take the click for dragging. Only web and mail links open.
     static Hyperlink Link(string? url, string? text)
     {
-        var h = new Hyperlink { Foreground = R("Accent"), Cursor = Cursors.Hand, ToolTip = url };
+        var h = new Hyperlink { Foreground = Skin.Brush("Accent"), Cursor = Cursors.Hand, ToolTip = url };
         if (text is not null) h.Inlines.Add(new Run(text));
         h.MouseLeftButtonDown += (_, e) =>
         {
             e.Handled = true;
-            if (Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme is "http" or "https" or "mailto")
-                Process.Start(new ProcessStartInfo(u.AbsoluteUri) { UseShellExecute = true });
+            Shell.OpenLink(url);
         };
         return h;
     }
@@ -265,7 +261,7 @@ static partial class MarkdownView
         if (fold == "-") body.Visibility = Visibility.Collapsed;
         var chevron = new TextBlock
         {
-            Text = fold == "-" ? "" : "", FontFamily = (FontFamily)Application.Current.Resources["Icons"], FontSize = 10,
+            Text = fold == "-" ? "" : "", FontFamily = Skin.Icons, FontSize = 10,
             Foreground = brush, VerticalAlignment = VerticalAlignment.Center, Margin = new(8, 0, 0, 0),
             Visibility = fold == "" ? Visibility.Collapsed : Visibility.Visible,
         };
@@ -274,7 +270,7 @@ static partial class MarkdownView
             Orientation = Orientation.Horizontal, Background = Brushes.Transparent,
             Children =
             {
-                new TextBlock { Text = glyph, FontFamily = (FontFamily)Application.Current.Resources["Icons"], Foreground = brush, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 8, 0) },
+                new TextBlock { Text = glyph, FontFamily = Skin.Icons, Foreground = brush, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 8, 0) },
                 new TextBlock { Text = title, Foreground = brush, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap },
                 chevron,
             },
@@ -312,14 +308,14 @@ static partial class MarkdownView
             {
                 var box = new CheckBox
                 {
-                    Style = (Style)Application.Current.Resources["Check"], IsChecked = task.Checked, VerticalAlignment = VerticalAlignment.Top,
+                    Style = Skin.Style("Check"), IsChecked = task.Checked, VerticalAlignment = VerticalAlignment.Top,
                     LayoutTransform = new ScaleTransform(0.8, 0.8), Margin = new(0, 1, 8, 0),
                 };
                 content.Opacity = task.Checked ? 0.55 : 1;
                 box.Click += (_, _) => { content.Opacity = box.IsChecked == true ? 0.55 : 1; ctx.Toggle(ordinal); };
                 mark = box;
             }
-            else mark = new TextBlock { Text = l.IsOrdered ? $"{n}." : "•", Foreground = R("Sub"), Margin = new(0, 0, 8, 0) };
+            else mark = new TextBlock { Text = l.IsOrdered ? $"{n}." : "•", Foreground = Skin.Brush("Sub"), Margin = new(0, 0, 8, 0) };
             n++;
             DockPanel.SetDock(mark, Dock.Left);
             panel.Children.Add(new DockPanel { Margin = new(0, 0, 0, 3), Children = { mark, content } });
