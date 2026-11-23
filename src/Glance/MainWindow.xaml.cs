@@ -315,17 +315,17 @@ public partial class MainWindow : Window
         menu.IsOpen = true;
     }
 
-    // Ctrl+K searches, Ctrl+1..9 jumps to a tab, Ctrl+Tab / Ctrl+Shift+Tab cycles, Ctrl+, opens Settings, Esc closes the palette or hides (not from a terminal).
+    // Ctrl+K searches, Ctrl+1..9 jumps to a tab, Ctrl+Tab / Ctrl+Shift+Tab cycles, Esc closes the palette or hides (not from a terminal).
     void Shortcut(object sender, KeyEventArgs e)
     {
-        var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        // AltGr arrives as Ctrl+Alt: on e.g. Hungarian keyboards AltGr+, is ";" and AltGr+K is "ł", which are typing, not shortcuts.
+        var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
         if (e.Key == Key.Escape && PaletteLayer.IsVisible) ClosePalette();
         // In a terminal Esc belongs to the shell: PSReadLine clears the typed line, Claude stops its reply.
         else if (e.Key == Key.Escape && !(Page.Content is CliPage && e.OriginalSource is Microsoft.Web.WebView2.Wpf.WebView2)) Away();
         else if (ctrl && e.Key == Key.K) OpenPalette();
         // Numbers and cycling follow the sidebar as shown (hidden pages left out).
         else if (ctrl && e.Key is >= Key.D1 and <= Key.D9 && e.Key - Key.D1 < Nav.Items.Count) Nav.SelectedIndex = e.Key - Key.D1;
-        else if (ctrl && e.Key == Key.OemComma) Bottom.SelectedIndex = 0;
         else if (ctrl && e.Key == Key.Tab && Nav.Items.Count > 0)
         {
             var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -1 : 1;
