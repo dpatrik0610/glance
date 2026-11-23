@@ -128,9 +128,10 @@ static class SelfTest
                 && Math.Abs(self.WorkingSet - me.WorkingSet64) < 64 << 20, $"process list: {self} vs {me.ProcessName} {me.TotalProcessorTime} {me.WorkingSet64}");
             Check(procs.Any(p => p.Pid == 4 && p.Name == "System") && procs.Any(p => p.Name == "svchost"), "process list: names without .exe");
             Check(procs.Sum(p => p.Io) > 0, "process list: I/O counters");
-            Native.GpuByPid(); // the first sample only sets the baseline
+            var gpuUse = new Native.GpuUse();
+            gpuUse.Read(); // the first sample only sets the baseline
             Thread.Sleep(300);
-            var gpu = Native.GpuByPid();
+            var gpu = gpuUse.Read();
             Check(gpu.Count > 0 && gpu.Values.All(v => v is >= 0 and <= 100), $"gpu per process: {gpu.Count} pids"); // dwm always has engines
             Check(Native.Connections().All(c => c.Port is > 0 and < 65536 && !c.Remote.StartsWith("127.")), "tcp table: connections");
 

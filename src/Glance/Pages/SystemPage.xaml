@@ -125,15 +125,18 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition />
                             <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="70" />
                             <ColumnDefinition Width="90" />
                             <ColumnDefinition Width="34" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Top processes" Style="{StaticResource H}" />
                         <!-- Click a column to sort by it -->
-                        <TextBlock x:Name="ByCpu" Grid.Column="1" Text="CPU ↓" Style="{StaticResource Label}" HorizontalAlignment="Right"
-                                   Cursor="Hand" Background="Transparent" Foreground="{StaticResource Text}" MouseLeftButtonUp="SortCpu" />
-                        <TextBlock x:Name="ByMem" Grid.Column="2" Text="Memory" Style="{StaticResource Label}" HorizontalAlignment="Right"
-                                   Cursor="Hand" Background="Transparent" MouseLeftButtonUp="SortMemory" />
+                        <TextBlock x:Name="ByCpu" Grid.Column="1" Tag="CPU" Text="CPU ↓" Style="{StaticResource Label}" HorizontalAlignment="Right"
+                                   Cursor="Hand" Background="Transparent" Foreground="{StaticResource Text}" MouseLeftButtonUp="SortBy" />
+                        <TextBlock x:Name="ByGpu" Grid.Column="2" Tag="GPU" Text="GPU" Style="{StaticResource Label}" HorizontalAlignment="Right"
+                                   Cursor="Hand" Background="Transparent" MouseLeftButtonUp="SortBy" />
+                        <TextBlock x:Name="ByMem" Grid.Column="3" Tag="Memory" Text="Memory" Style="{StaticResource Label}" HorizontalAlignment="Right"
+                                   Cursor="Hand" Background="Transparent" MouseLeftButtonUp="SortBy" />
                     </Grid>
                     <!-- Holds still while the mouse is over it, so the end button stays put -->
                     <ItemsControl x:Name="Procs">
@@ -143,6 +146,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition />
                                         <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="70" />
                                         <ColumnDefinition Width="90" />
                                         <ColumnDefinition Width="34" />
                                     </Grid.ColumnDefinitions>
@@ -151,8 +155,9 @@
                                         <TextBlock x:Name="Count" Text="{Binding Count, StringFormat='  ×{0}'}" Style="{StaticResource Label}" />
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding CpuText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="2" Text="{Binding MemText}" Style="{StaticResource Label}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                    <Button x:Name="End" Grid.Column="3" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="{StaticResource Icons}"
+                                    <TextBlock Grid.Column="2" Text="{Binding GpuText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Text="{Binding MemText}" Style="{StaticResource Label}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    <Button x:Name="End" Grid.Column="4" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="{StaticResource Icons}"
                                             FontSize="10" Padding="6,3" HorizontalAlignment="Right" Foreground="{StaticResource Red}" Opacity="0"
                                             ToolTip="End process" Click="EndProcess"
                                             Visibility="{Binding CanKill, Converter={StaticResource Vis}}" />
@@ -179,6 +184,18 @@
                     <TextBlock x:Name="GpuName" TextTrimming="CharacterEllipsis" Margin="0,0,0,8" />
                     <TextBlock Text="Uptime" Style="{StaticResource Label}" />
                     <TextBlock x:Name="Uptime" />
+                    <TextBlock Text="Busiest now" Style="{StaticResource H}" Margin="0,14,0,8" />
+                    <ItemsControl x:Name="Busiest">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,0,0,4">
+                                    <TextBlock Text="{Binding What}" Style="{StaticResource Label}" Width="60" />
+                                    <TextBlock Text="{Binding Value}" Style="{StaticResource Label}" DockPanel.Dock="Right" />
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </Border>
         </Grid>

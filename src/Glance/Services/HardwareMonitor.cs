@@ -12,11 +12,12 @@ public record Drive(string Name, double UsedGb, double TotalGb)
     public string Text => $"{UsedGb:0} / {TotalGb:0} GB";
 }
 
-/// All processes sharing a name (chrome × 34), summed. Disk: bytes/s read + written.
-public record Proc(string Name, double Cpu, double MemMb, int Count, double Disk)
+/// All processes sharing a name (chrome × 34), summed. Disk: bytes/s read + written. Gpu: % of the busiest engine.
+public record Proc(string Name, double Cpu, double MemMb, int Count, double Disk, double Gpu)
 {
     public bool CanKill => HardwareMonitor.CanKill(Name);
     public string CpuText => $"{Cpu:0.0}%";
+    public string GpuText => $"{Gpu:0.0}%";
     public string MemText => MemMb >= 1024 ? $"{MemMb / 1024:0.0} GB" : $"{MemMb:0} MB";
 }
 
@@ -39,6 +40,7 @@ public sealed class HardwareMonitor
     TimeSpan lastNetAt, lastProcAt;
     Dictionary<int, Native.ProcInfo> lastProcs = [], minuteProcs = [];
     TimeSpan minuteAt;
+    readonly Native.GpuUse liveGpu = new(), minuteGpu = new();
 
     public HardwareMonitor()
     {
@@ -138,7 +140,7 @@ public sealed class HardwareMonitor
     {
         var now = clock.Elapsed;
         var cur = new Dictionary<int, Native.ProcInfo>(lastProcs.Count);
-        var procs = Group(lastProcs, cur, (now - lastProcAt).TotalMilliseconds);
+        var procs = Group(lastProcs, cur, (now - lastProcAt).TotalMilliseconds, liveGpu.Read());
         (lastProcs, lastProcAt) = (cur, now);
         return procs;
     }
@@ -152,27 +154,25 @@ public sealed class HardwareMonitor
         var now = clock.Elapsed;
         var first = minuteProcs.Count == 0; // nothing to measure rates against yet
         var cur = new Dictionary<int, Native.ProcInfo>(minuteProcs.Count);
-        var procs = Group(minuteProcs, cur, (now - minuteAt).TotalMilliseconds);
+        var procs = Group(minuteProcs, cur, (now - minuteAt).TotalMilliseconds, minuteGpu.Read());
         (minuteProcs, minuteAt) = (cur, now);
-        var gpu = new Dictionary<string, double>();
-        foreach (var (pid, pct) in Native.GpuByPid())
-            if (cur.TryGetValue(pid, out var p)) gpu[p.Name] = gpu.GetValueOrDefault(p.Name) + pct;
 
         static Use[] Top(IEnumerable<Use> all) => all.Where(u => u.Value > 0).OrderByDescending(u => u.Value).Take(5).ToArray();
         return (first ? null : procs.Sum(p => p.Disk), new()
         {
             ["cpu"] = Top(procs.Select(p => new Use(p.Name, p.Cpu))),
             ["ram"] = Top(procs.Select(p => new Use(p.Name, p.MemMb))),
-            ["gpu"] = Top(gpu.Select(kv => new Use(kv.Key, kv.Value))),
+            ["gpu"] = Top(procs.Select(p => new Use(p.Name, p.Gpu))),
             ["disk"] = Top(procs.Select(p => new Use(p.Name, p.Disk))),
         });
     }
 
-    /// CPU % and disk rate of each name since `prev` was filled (0 for processes it hasn't seen) and working set; records this pass in `cur`.
-    static Proc[] Group(Dictionary<int, Native.ProcInfo> prev, Dictionary<int, Native.ProcInfo> cur, double elapsedMs)
+    /// CPU % and disk rate of each name since `prev` was filled (0 for processes it hasn't seen), working set and GPU % (from `gpu`, by pid);
+    /// records this pass in `cur`.
+    static Proc[] Group(Dictionary<int, Native.ProcInfo> prev, Dictionary<int, Native.ProcInfo> cur, double elapsedMs, Dictionary<int, double>? gpu = null)
     {
         var budgetMs = elapsedMs * Environment.ProcessorCount;
-        var byName = new Dictionary<string, (double cpu, long mem, int count, double io)>();
+        var byName = new Dictionary<string, (double cpu, long mem, int count, double io, double gpu)>();
         foreach (var p in Native.Processes())
         {
             if (p.Pid == 0) continue; // "Idle" is the CPU time nobody used
@@ -181,9 +181,9 @@ public sealed class HardwareMonitor
             var (c, io) = prev.TryGetValue(p.Pid, out var b) && p.Cpu >= b.Cpu && p.Io >= b.Io
                 ? ((p.Cpu - b.Cpu).TotalMilliseconds / budgetMs * 100, (p.Io - b.Io) * 1000 / elapsedMs) : (0, 0);
             byName.TryGetValue(p.Name, out var a);
-            byName[p.Name] = (a.cpu + c, a.mem + p.WorkingSet, a.count + 1, a.io + io);
+            byName[p.Name] = (a.cpu + c, a.mem + p.WorkingSet, a.count + 1, a.io + io, a.gpu + (gpu?.GetValueOrDefault(p.Pid) ?? 0));
         }
-        return byName.Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0, kv.Value.count, kv.Value.io)).ToArray();
+        return byName.Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0, kv.Value.count, kv.Value.io, kv.Value.gpu)).ToArray();
     }
 
     /// The heaviest process right now, for naming the culprit in an alert. CPU needs a second look a second later.

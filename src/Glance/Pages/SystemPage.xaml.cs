@@ -50,30 +50,40 @@ public partial class SystemPage : UserControl
         Drives.ItemsSource = s.Drives;
         last = s.Procs;
         ShowProcs();
+        ShowBusiest();
         CpuName.Text = s.CpuName;
         GpuName.Text = s.GpuName;
         Uptime.Text = TimeSpan.FromMilliseconds(Environment.TickCount64).ToString(@"d\d\ hh\h\ mm\m");
     }
 
+    public record Busy(string What, string Name, string Value);
+
     Proc[] last = [];
-    bool byMemory;
+    string sortBy = "CPU"; // a column header's Tag
+
+    static double Key(Proc p, string by) => by switch { "GPU" => p.Gpu, "Memory" => p.MemMb, _ => p.Cpu };
 
     void ShowProcs()
     {
         if (Procs.IsMouseOver) return; // hold still under the cursor
-        Procs.ItemsSource = (byMemory ? last.OrderByDescending(p => p.MemMb) : last.OrderByDescending(p => p.Cpu).ThenByDescending(p => p.MemMb)).Take(7).ToArray();
+        Procs.ItemsSource = last.OrderByDescending(p => Key(p, sortBy)).ThenByDescending(p => p.MemMb).Take(7).ToArray();
     }
 
-    void SortCpu(object sender, MouseButtonEventArgs e) => Sort(false);
+    // The heaviest process per column, whatever the table is sorted by.
+    void ShowBusiest() => Busiest.ItemsSource = new[] { "CPU", "GPU", "Memory" }.Select(by =>
+        last.MaxBy(p => Key(p, by)) is { } p && Key(p, by) > 0
+            ? new Busy(by, p.Name, by switch { "GPU" => p.GpuText, "Memory" => p.MemText, _ => p.CpuText })
+            : new Busy(by, "—", "")).ToArray();
 
-    void SortMemory(object sender, MouseButtonEventArgs e) => Sort(true);
-
-    void Sort(bool memory)
+    void SortBy(object sender, MouseButtonEventArgs e)
     {
-        byMemory = memory;
-        ByCpu.Text = memory ? "CPU" : "CPU ↓";
-        ByMem.Text = memory ? "Memory ↓" : "Memory";
-        (ByCpu.Foreground, ByMem.Foreground) = memory ? ((Brush)FindResource("Sub"), (Brush)FindResource("Text")) : ((Brush)FindResource("Text"), (Brush)FindResource("Sub"));
+        sortBy = (string)((FrameworkElement)sender).Tag;
+        foreach (var h in new[] { ByCpu, ByGpu, ByMem })
+        {
+            var on = (string)h.Tag == sortBy;
+            h.Text = on ? h.Tag + " ↓" : (string)h.Tag;
+            h.Foreground = (Brush)FindResource(on ? "Text" : "Sub");
+        }
         ShowProcs();
     }
 

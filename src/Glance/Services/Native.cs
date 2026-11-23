@@ -203,35 +203,38 @@ public static class Native
     [DllImport("pdh.dll")] static extern int PdhCollectQueryData(IntPtr query);
     [DllImport("pdh.dll", CharSet = CharSet.Unicode)] static extern int PdhGetFormattedCounterArray(IntPtr counter, int format, ref int size, out int count, IntPtr items);
 
-    static IntPtr gpuQuery, gpuCounter; // opened once; the wildcard also picks up processes started later
-
-    /// GPU % per pid, averaged since the previous call: its busiest engine, as Task Manager counts it. Empty on the first call.
-    /// Not thread-safe: the sampler loop is its only caller.
-    public static Dictionary<int, double> GpuByPid()
+    /// GPU % per pid, averaged since this instance's previous Read: its busiest engine, as Task Manager counts it. Empty on the first call.
+    /// One instance per sampling cadence, so the live view and the minute history don't cut each other's windows short. Not thread-safe.
+    public sealed class GpuUse
     {
-        var use = new Dictionary<int, double>();
-        if (gpuQuery == 0 && PdhOpenQuery(null, 0, out gpuQuery) == 0)
-            PdhAddEnglishCounter(gpuQuery, @"\GPU Engine(*)\Utilization Percentage", 0, out gpuCounter);
-        if (gpuCounter == 0 || PdhCollectQueryData(gpuQuery) != 0) return use;
-        const int Double = 0x200; // PDH_FMT_DOUBLE
-        var size = 0;
-        if (PdhGetFormattedCounterArray(gpuCounter, Double, ref size, out _, 0) != unchecked((int)0x800007D2) /* PDH_MORE_DATA */) return use;
-        var buf = Marshal.AllocHGlobal(size);
-        try
+        IntPtr gpuQuery, gpuCounter; // opened once; the wildcard also picks up processes started later
+
+        public Dictionary<int, double> Read()
         {
-            if (PdhGetFormattedCounterArray(gpuCounter, Double, ref size, out var count, buf) != 0) return use;
-            for (var i = 0; i < count; i++)
+            var use = new Dictionary<int, double>();
+            if (gpuQuery == 0 && PdhOpenQuery(null, 0, out gpuQuery) == 0)
+                PdhAddEnglishCounter(gpuQuery, @"\GPU Engine(*)\Utilization Percentage", 0, out gpuCounter);
+            if (gpuCounter == 0 || PdhCollectQueryData(gpuQuery) != 0) return use;
+            const int Double = 0x200; // PDH_FMT_DOUBLE
+            var size = 0;
+            if (PdhGetFormattedCounterArray(gpuCounter, Double, ref size, out _, 0) != unchecked((int)0x800007D2) /* PDH_MORE_DATA */) return use;
+            var buf = Marshal.AllocHGlobal(size);
+            try
             {
-                var item = buf + i * 24; // PDH_FMT_COUNTERVALUE_ITEM_W: name, status, padding, double
-                if (Marshal.ReadInt32(item + 8) is not (0 or 1)) continue; // valid / new data only
-                var name = Marshal.PtrToStringUni(Marshal.ReadIntPtr(item)) ?? ""; // "pid_1234_luid_0x0_0xD1F5_phys_0_eng_0_engtype_3D"
-                var end = name.IndexOf('_', 4);
-                if (!name.StartsWith("pid_") || end < 0 || !int.TryParse(name.AsSpan(4, end - 4), out var pid)) continue;
-                use[pid] = Math.Max(use.GetValueOrDefault(pid), BitConverter.Int64BitsToDouble(Marshal.ReadInt64(item + 16)));
+                if (PdhGetFormattedCounterArray(gpuCounter, Double, ref size, out var count, buf) != 0) return use;
+                for (var i = 0; i < count; i++)
+                {
+                    var item = buf + i * 24; // PDH_FMT_COUNTERVALUE_ITEM_W: name, status, padding, double
+                    if (Marshal.ReadInt32(item + 8) is not (0 or 1)) continue; // valid / new data only
+                    var name = Marshal.PtrToStringUni(Marshal.ReadIntPtr(item)) ?? ""; // "pid_1234_luid_0x0_0xD1F5_phys_0_eng_0_engtype_3D"
+                    var end = name.IndexOf('_', 4);
+                    if (!name.StartsWith("pid_") || end < 0 || !int.TryParse(name.AsSpan(4, end - 4), out var pid)) continue;
+                    use[pid] = Math.Max(use.GetValueOrDefault(pid), BitConverter.Int64BitsToDouble(Marshal.ReadInt64(item + 16)));
+                }
             }
+            finally { Marshal.FreeHGlobal(buf); }
+            return use;
         }
-        finally { Marshal.FreeHGlobal(buf); }
-        return use;
     }
 
     static string Show(IPAddress ip) => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? $"[{ip}]" : ip.ToString();
