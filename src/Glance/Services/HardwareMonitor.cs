@@ -183,7 +183,9 @@ public sealed class HardwareMonitor
             byName.TryGetValue(p.Name, out var a);
             byName[p.Name] = (a.cpu + c, a.mem + p.WorkingSet, a.count + 1, a.io + io, a.gpu + (gpu?.GetValueOrDefault(p.Pid) ?? 0));
         }
-        return byName.Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0, kv.Value.count, kv.Value.io, kv.Value.gpu)).ToArray();
+        // GPU: each process's busiest engine, summed over the name, can pass 100% (two Discord processes at 100% each);
+        // capped, since a share of the GPU can't.
+        return byName.Select(kv => new Proc(kv.Key, kv.Value.cpu, kv.Value.mem / 1048576.0, kv.Value.count, kv.Value.io, Math.Min(100, kv.Value.gpu))).ToArray();
     }
 
     /// The heaviest process right now, for naming the culprit in an alert. CPU needs a second look a second later.

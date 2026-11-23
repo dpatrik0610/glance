@@ -2,6 +2,7 @@ using System.Globalization;
 using Glance.Services;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Media;
@@ -16,9 +17,12 @@ public sealed class Spark : FrameworkElement
 {
     static readonly Pen Guide = Frozen(new Pen(new SolidColorBrush(Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF)), 1));
     static readonly Pen DotRing = Frozen(new Pen(new SolidColorBrush(Skin.Get("SurfaceColor")), 2));
-    static readonly Brush LabelBg = Frozen(new SolidColorBrush(Skin.Get("SurfaceColor", 0xEE)));
+    static readonly Brush LabelBg = Frozen(new SolidColorBrush(Skin.Get("SurfaceColor")));
+    static readonly Pen LabelEdge = Frozen(new Pen(new SolidColorBrush(Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF)), 1));
     static readonly Brush LabelText = Frozen(new SolidColorBrush(Color.FromRgb(0xF4, 0xF4, 0xF5)));
+    static readonly Brush LabelSub = Frozen(new SolidColorBrush(Color.FromRgb(0xB8, 0xBC, 0xC0)));
     static readonly Typeface Face = new("Segoe UI Variable Text, Segoe UI");
+    static readonly Typeface Bold = new(new FontFamily("Segoe UI Variable Text, Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
 
     float[] data = new float[60];
     int count, head;
@@ -121,25 +125,46 @@ public sealed class Spark : FrameworkElement
         foreach (var s in Layered) { s.hoverX = null; s.InvalidateVisual(); }
     }
 
+    double Pitch => ActualWidth / (data.Length - (live ? 2 : 1));
+
+    float ValueAt(int i) => data[(head - count + i + data.Length) % data.Length];
+
+    // The vertical scale: 0..Max, or the data's own range (padded) when Max is 0. False when there's nothing to draw.
+    bool Scale(out float lo, out float hi)
+    {
+        (lo, hi) = (0, Max);
+        if (count < 2) return false;
+        if (hi > 0) return true;
+        (lo, hi) = (float.MaxValue, float.MinValue);
+        foreach (var v in data)
+            if (!float.IsNaN(v)) (lo, hi) = (Math.Min(lo, v), Math.Max(hi, v));
+        if (lo > hi) return false; // all gaps
+        var pad = Math.Max((hi - lo) * 0.1f, Math.Abs(hi) * 0.001f + 1e-6f);
+        (lo, hi) = (lo - pad, hi + pad);
+        return true;
+    }
+
+    Point At(int i, float v, float lo, float hi) =>
+        new(ActualWidth - (count - 1 - i) * Pitch, ActualHeight - Math.Clamp((v - lo) / (hi - lo), 0, 1) * (ActualHeight - 2) - 1);
+
+    /// The point under x (where it's drawn right now, glide included), or null over a gap or outside the data.
+    (int I, float V, Point P)? Hit(double x)
+    {
+        if (!Scale(out var lo, out var hi)) return null;
+        var shift = glide.X;
+        var i = (int)Math.Round((x - shift - (ActualWidth - (count - 1) * Pitch)) / Pitch);
+        if (i < 0 || i >= count || ValueAt(i) is var v && float.IsNaN(v)) return null;
+        var p = At(i, v, lo, hi);
+        p.X += shift;
+        return (i, v, p);
+    }
+
     protected override void OnRender(DrawingContext dc)
     {
         // Live: one extra slot hangs off the left edge, so the gliding line never shows a gap there.
-        double w = ActualWidth, h = ActualHeight, step = w / (data.Length - (live ? 2 : 1));
+        double w = ActualWidth, h = ActualHeight;
         dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, w, h)); // hover anywhere, not just on the line
-        if (count < 2) return;
-        float lo = 0, hi = Max;
-        if (hi <= 0)
-        {
-            (lo, hi) = (float.MaxValue, float.MinValue);
-            foreach (var v in data)
-                if (!float.IsNaN(v)) (lo, hi) = (Math.Min(lo, v), Math.Max(hi, v));
-            if (lo > hi) return; // all gaps
-            var pad = Math.Max((hi - lo) * 0.1f, Math.Abs(hi) * 0.001f + 1e-6f);
-            (lo, hi) = (lo - pad, hi + pad);
-        }
-
-        float ValueAt(int i) => data[(head - count + i + data.Length) % data.Length];
-        Point At(int i, float v) => new(w - (count - 1 - i) * step, h - Math.Clamp((v - lo) / (hi - lo), 0, 1) * (h - 2) - 1);
+        if (!Scale(out var lo, out var hi)) return;
 
         var line = new StreamGeometry();
         var area = new StreamGeometry();
@@ -156,7 +181,7 @@ public sealed class Spark : FrameworkElement
                     last = null;
                     continue;
                 }
-                var p = At(i, v);
+                var p = At(i, v, lo, hi);
                 if (last is null)
                 {
                     l.BeginFigure(p, false, false);
@@ -177,34 +202,82 @@ public sealed class Spark : FrameworkElement
         dc.Pop();
         dc.Pop();
 
-        if (hoverX is { } hx) DrawHover(dc, hx, w, h, step, ValueAt, At);
+        if (hoverX is { } hx) DrawHover(dc, hx);
+        label?.InvalidateVisual(); // shows, moves or clears the label with the chart
     }
 
-    void DrawHover(DrawingContext dc, double hx, double w, double h, double step, Func<int, float> valueAt, Func<int, float, Point> at)
+    // Each layer marks its own point and the bottom layer draws the guide line. The top layer shows a single label for
+    // all layers: the time, then each series' value with what was behind it.
+    void DrawHover(DrawingContext dc, double hx)
     {
-        var shift = glide.X; // where the glide is right now
-        var i = (int)Math.Round((hx - shift - (w - (count - 1) * step)) / step);
-        if (i < 0 || i >= count || valueAt(i) is var v && float.IsNaN(v)) return;
-        var p = at(i, v);
-        p.X += shift;
-        var layer = Layered.ToList().IndexOf(this);
-        if (layer == 0) dc.DrawLine(Guide, new Point(p.X, 0), new Point(p.X, h));
-        dc.DrawEllipse(solid, DotRing, p, 4, 4);
+        var layers = Layered.ToList();
+        if (Hit(hx) is { } m)
+        {
+            if (layers[0] == this) dc.DrawLine(Guide, new Point(m.P.X, 0), new Point(m.P.X, ActualHeight));
+            dc.DrawEllipse(solid, DotRing, m.P, 4, 4);
+        }
+        if (layers[^1] != this) return;
+        if (label is null && AdornerLayer.GetAdornerLayer(this) is { } adorners) adorners.Add(label = new HoverLabel(this));
+        label?.InvalidateVisual();
+    }
 
-        var text = Text(Format, v);
-        if (Step > TimeSpan.Zero)
-            text += "  ·  " + (DateTime.Now - Step * (count - 1 - i)).ToString(Step >= TimeSpan.FromHours(1) ? "ddd HH:mm" : "HH:mm");
-        if (!live && Detail?.Invoke(i) is { } more) text += "\n" + more;
-        var ft = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Face, 11.5, LabelText,
-            VisualTreeHelper.GetDpi(this).PixelsPerDip);
-        var bw = ft.Width + 24;
-        var bh = ft.Height + 6;
-        var lineH = ft.Height / (text.Count(c => c == '\n') + 1);
-        var x = p.X + 10 + bw > w ? p.X - 10 - bw : p.X + 10; // flip left near the right edge
-        var box = new Rect(Math.Max(0, x), 2 + layer * (bh + 4), bw, bh);
-        dc.DrawRoundedRectangle(LabelBg, null, box, lineH / 2 + 3, lineH / 2 + 3); // one line: a pill
-        dc.DrawEllipse(solid, null, new Point(box.X + 8, box.Y + 3 + lineH / 2), 2.5, 2.5);
-        dc.DrawText(ft, new Point(box.X + 14, box.Y + 3));
+    HoverLabel? label;
+
+    // The label lives on the adorner layer, above everything in the window: a tall label (several apps per series)
+    // would otherwise be painted over by whatever comes after the chart.
+    sealed class HoverLabel : Adorner
+    {
+        readonly Spark chart;
+
+        public HoverLabel(Spark chart) : base(chart) => (this.chart, IsHitTestVisible) = (chart, false);
+
+        protected override void OnRender(DrawingContext dc)
+        {
+            if (chart.hoverX is { } hx) chart.DrawLabel(dc, hx);
+        }
+    }
+
+    void DrawLabel(DrawingContext dc, double hx)
+    {
+        var parts = Layered.Select(s => (s, hit: s.Hit(hx))).Where(x => x.hit is not null).Select(x => (x.s, hit: x.hit!.Value)).ToList();
+        if (parts.Count == 0) return;
+
+        var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        FormattedText Ft(string t, Typeface f, double size, Brush b) => new(t, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, f, size, b, dpi);
+        var (first, at) = (parts[0].s, parts[0].hit);
+        var header = first.Step > TimeSpan.Zero
+            ? Ft((DateTime.Now - first.Step * (first.count - 1 - at.I)).ToString(first.Step >= TimeSpan.FromHours(1) ? "ddd HH:mm" : "HH:mm"), Face, 11, LabelSub)
+            : null;
+        var sections = parts.Select(x => (x.s.solid,
+            value: Ft(Text(x.s.Format, x.hit.V), Bold, 12, LabelText),
+            more: !x.s.live && x.s.Detail?.Invoke(x.hit.I) is { } d ? Ft(d, Face, 11, LabelSub) : null)).ToList();
+
+        const double Pad = 10, Indent = 14, Gap = 6;
+        var width = Math.Max(header?.Width ?? 0, sections.Max(x => Indent + Math.Max(x.value.Width, x.more?.Width ?? 0)));
+        var height = (header is null ? 0 : header.Height + Gap) + sections.Sum(x => x.value.Height + (x.more is null ? 0 : x.more.Height + 2)) + Gap * (sections.Count - 1);
+        var box = new Rect(0, 4, width + Pad * 2, height + Pad * 1.6);
+        var ax = at.P.X;
+        box.X = ax + 14 + box.Width > ActualWidth ? Math.Max(0, ax - 14 - box.Width) : ax + 14; // flip left near the right edge
+        dc.DrawRoundedRectangle(LabelBg, LabelEdge, box, 9, 9);
+
+        var y = box.Y + Pad * 0.8;
+        if (header is not null)
+        {
+            dc.DrawText(header, new Point(box.X + Pad, y));
+            y += header.Height + Gap;
+        }
+        foreach (var (color, value, more) in sections)
+        {
+            dc.DrawEllipse(color, null, new Point(box.X + Pad + 4, y + value.Height / 2), 3.5, 3.5);
+            dc.DrawText(value, new Point(box.X + Pad + Indent, y));
+            y += value.Height;
+            if (more is not null)
+            {
+                dc.DrawText(more, new Point(box.X + Pad + Indent, y + 2));
+                y += more.Height + 2;
+            }
+            y += Gap;
+        }
     }
 
     static void CloseArea(StreamGeometryContext a, Point? last, double h)

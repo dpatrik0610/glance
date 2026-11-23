@@ -55,8 +55,15 @@ public partial class AnalysisPage : UserControl
             KindChips.Children.Add(chip);
         }
         CpuChart.Detail = i => points.GetValueOrDefault((i, "cpu"));
+        GpuChart.Detail = i => points.GetValueOrDefault((i, "gpu"));
         MemChart.Detail = i => points.GetValueOrDefault((i, "ram"));
         Events.SizeChanged += (_, _) => PlaceEvents();
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key != System.Windows.Input.Key.Escape || ReportDetail.Visibility != Visibility.Visible) return;
+            CloseReport(this, e);
+            e.Handled = true;
+        };
         // Samples arrive once a minute, so refetching more often than that is pointless.
         IsVisibleChanged += (_, e) => { if ((bool)e.NewValue && DateTime.Now - loadedAt > TimeSpan.FromMinutes(1)) Load(); };
     }
@@ -96,16 +103,19 @@ public partial class AnalysisPage : UserControl
         var culprits = Facet(doc, "culprits").Select(c => $"{c["_id"]["n"].AsString} ({(c["_id"]["r"] == "ram" ? "memory" : "CPU")})  {Duration(c["m"].ToInt32())}").ToList();
         culprit = Facet(doc, "culprits").FirstOrDefault()?["_id"]["n"].AsString;
 
-        // Chart: CPU and memory on one 0–100% scale.
+        // Chart: CPU, GPU and memory on one 0–100% scale.
         var cpu = HistoryPage.Grid(history, "cpu", span, bucket, from);
+        var gpu = HistoryPage.Grid(history, "gpu", span, bucket, from);
         var ramGb = HistoryPage.Grid(history, "ramGb", span, bucket, from);
-        CpuChart.Step = MemChart.Step = TimeSpan.FromMinutes(bucket);
+        CpuChart.Step = GpuChart.Step = MemChart.Step = TimeSpan.FromMinutes(bucket);
         CpuChart.Series = cpu;
+        GpuChart.Series = gpu;
         MemChart.Series = ramGb.Select(v => (float)(v / RamTotalGb * 100)).ToArray();
         ChartFrom.Text = "−" + label;
         ChartNone.Visibility = minutes == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         (CpuAvg.Text, CpuSub.Text) = HistoryPage.Summary(cpu) is { } c ? ($"{c.Avg:0}%", $"peak {c.Peak:0}%") : ("—", "");
+        (GpuAvg.Text, GpuSub.Text) = HistoryPage.Summary(gpu) is { } gs ? ($"{gs.Avg:0}%", $"peak {gs.Peak:0}%") : ("—", "");
         (MemAvg.Text, MemSub.Text) = HistoryPage.Summary(ramGb) is { } m ? ($"{m.Avg:0.0} GB", $"peak {m.Peak:0.0} of {RamTotalGb:0} GB") : ("—", "");
         StrainValue.Text = minutes == 0 ? "—" : Duration(strained);
         StrainSub.Text = minutes == 0 ? "" : strained == 0 ? "never near the limit" : $"{strained * 100.0 / minutes:0.#}% of the time · mostly {culprit}";
@@ -149,11 +159,54 @@ public partial class AnalysisPage : UserControl
         ReportsNone.Text = error ?? "Nothing reported: no crashes, freezes, or disk or driver trouble.";
         ReportsNone.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        var serious = list.Count(r => r.Serious);
-        IssuesValue.Text = list.Sum(r => r.Count).ToString();
-        IssuesSub.Text = list.Count == 0 ? "nothing logged" : $"{serious} serious kind{(serious == 1 ? "" : "s")} · last {list.MaxBy(r => r.Last)!.LastText}";
+        // The KPI counts what matters; harmless noise stays in the list only.
+        var real = list.Where(r => r.Tier != Tier.Minor).ToList();
+        var serious = real.Count(r => r.Serious);
+        IssuesValue.Text = real.Sum(r => r.Count).ToString();
+        IssuesSub.Text = real.Count == 0 ? "nothing that matters" : $"{serious} serious · last {real.MaxBy(r => r.Last)!.LastText}";
         PlaceEvents();
         ShowVerdict();
+        // A report left open follows the new range, or closes if it isn't in it.
+        if (ReportDetail.DataContext is Report open)
+        {
+            if (list.Find(r => r.Title == open.Title) is { } again) ShowReport(again);
+            else CloseReport(this, new RoutedEventArgs());
+        }
+    }
+
+    void OpenReport(object sender, System.Windows.Input.MouseButtonEventArgs e) => ShowReport((Report)((FrameworkElement)sender).DataContext);
+
+    void ShowReport(Report r)
+    {
+        ReportDetail.DataContext = r;
+        var color = r.Tier switch { Tier.Serious => "Red", Tier.Problem => "Amber", _ => "Sub" };
+        var c = Skin.BrushColor(color);
+        TierPill.Background = new SolidColorBrush(Color.FromArgb(0x26, c.R, c.G, c.B));
+        TierLabel.Foreground = Skin.Brush(color);
+        ReportList.Visibility = Visibility.Collapsed;
+        ReportDetail.Visibility = Visibility.Visible;
+    }
+
+    void CloseReport(object sender, RoutedEventArgs e)
+    {
+        ReportDetail.DataContext = null;
+        ReportDetail.Visibility = Visibility.Collapsed;
+        ReportList.Visibility = Visibility.Visible;
+    }
+
+    Report? Shown => ReportDetail.DataContext as Report;
+
+    void SearchReport(object sender, RoutedEventArgs e) => Shell.OpenLink(Shown?.SearchUrl);
+
+    void OpenEventViewer(object sender, RoutedEventArgs e)
+    {
+        try { Shell.Open("eventvwr.msc"); }
+        catch (System.ComponentModel.Win32Exception) { } // cancelled
+    }
+
+    void CopyReport(object sender, RoutedEventArgs e)
+    {
+        if (Shown is { } r) ClipboardHistory.Copy(r.ToString());
     }
 
     // One headline for the range: serious Windows reports beat strain, which beats app crashes.
@@ -165,7 +218,7 @@ public partial class AnalysisPage : UserControl
         var (color, glyph, title, sub) =
             serious.Count > 0 ? ("Red", "", "Needs attention", Names(serious))
             : pct >= 5 ? ("Amber", "", "Running hot", $"Under strain {pct:0}% of the time, mostly {culprit}")
-            : reports.Count > 0 ? ("Amber", "", "Mostly fine", Names(reports))
+            : reports.Where(r => r.Tier == Tier.Problem).ToList() is { Count: > 0 } problems ? ("Amber", "", "Mostly fine", Names(problems))
             : ("Green", "", "Looking good", "No strain, and nothing reported by Windows");
         var c = Skin.BrushColor(color);
         VerdictIcon.Text = glyph;
@@ -186,19 +239,25 @@ public partial class AnalysisPage : UserControl
         const double Cell = 10;
         var span = Ranges[range].Span;
         var from = DateTime.Now - span;
-        foreach (var dot in reports.SelectMany(r => r.Times.Select(t => (r, t))).Where(e => e.t >= from)
+        foreach (var dot in reports.Where(r => r.Tier != Tier.Minor).SelectMany(r => r.Times.Select(t => (r, t))).Where(e => e.t >= from)
                      .GroupBy(e => (int)((e.t - from) / span * w / Cell)))
         {
             var lines = dot.GroupBy(e => e.r).Select(g => g.Key.Title + (g.Count() > 1 ? $"  ×{g.Count()}" : ""));
-            var mark = new Ellipse
+            var top = dot.OrderByDescending(e => e.r.Tier).ThenByDescending(e => e.t).First().r; // what a click opens
+            var mark = new Ellipse { Width = 9, Height = 9, Fill = Skin.Brush(top.Serious ? "Red" : "Amber"), IsHitTestVisible = false };
+            // A bigger, invisible target than the dot itself, so it's easy to hover and click.
+            var hit = new Border
             {
-                Width = 9, Height = 9, Cursor = System.Windows.Input.Cursors.Help,
-                Fill = Skin.Brush(dot.Any(e => e.r.Serious) ? "Red" : "Amber"),
-                ToolTip = dot.Min(e => e.t).ToString("MMM d HH:mm") + "\n" + string.Join("\n", lines),
+                Width = 16, Height = 16, Background = Brushes.Transparent, Cursor = System.Windows.Input.Cursors.Hand, Child = mark,
+                ToolTip = Report.When(dot.Min(e => e.t)) + "\n" + string.Join("\n", lines) + "\nClick for details",
+                RenderTransformOrigin = new Point(0.5, 0.5), RenderTransform = new ScaleTransform(),
             };
-            Canvas.SetLeft(mark, Math.Min(dot.Key * Cell, w - 9));
-            Canvas.SetTop(mark, 2.5);
-            Events.Children.Add(mark);
+            hit.MouseEnter += (_, _) => ((ScaleTransform)hit.RenderTransform).ScaleX = ((ScaleTransform)hit.RenderTransform).ScaleY = 1.35;
+            hit.MouseLeave += (_, _) => ((ScaleTransform)hit.RenderTransform).ScaleX = ((ScaleTransform)hit.RenderTransform).ScaleY = 1;
+            hit.MouseLeftButtonUp += (_, _) => ShowReport(top);
+            Canvas.SetLeft(hit, Math.Min(dot.Key * Cell, w - 16));
+            Canvas.SetTop(hit, 1);
+            Events.Children.Add(hit);
         }
     }
 

@@ -123,7 +123,7 @@ public partial class HistoryPage : UserControl
     {
         "ram" => Units.Megabytes(v),
         "disk" => Units.Rate(v),
-        _ => $"{v:0.#}%",
+        _ => $"{Math.Min(v, 100):0.#}%", // GPU minutes logged before the cap in HardwareMonitor.Group read up to 200%
     };
 
     Chart[] charts = [];
