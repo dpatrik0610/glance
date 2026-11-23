@@ -101,6 +101,52 @@ public static class Db
         return await db.GetCollection<BsonDocument>("metrics").Aggregate<BsonDocument>(pipeline).ToListAsync();
     }
 
+    /// For the Analysis page, over the range: minutes logged; each app's summed use per resource
+    /// ({ _id: { n, r }, v }, divide by minutes for its average); and the strained minutes (CPU ≥ cpuLimit %, or
+    /// RAM ≥ ramLimitGb), with how often each app was the top user of the strained resource ({ _id: { n, r }, m }).
+    public static async Task<BsonDocument?> Analysis(TimeSpan range, double cpuLimit, double ramLimitGb)
+    {
+        if (db is null) return null;
+        // Each resource's apps are stored heaviest first, so the first one of a resource is its top app.
+        static BsonDocument Top(string r) => new("$arrayElemAt", new BsonArray
+        {
+            new BsonDocument("$filter", new BsonDocument { { "input", "$top" }, { "cond", new BsonDocument("$eq", new BsonArray { "$$this.r", r }) } }), 0,
+        });
+        static BsonDocument If(string field, double limit, string r) => new("$cond", new BsonArray
+        {
+            new BsonDocument("$gte", new BsonArray { "$" + field, limit }), new BsonArray { Top(r) }, new BsonArray(),
+        });
+        var strained = new BsonDocument("$match", new BsonDocument("$or", new BsonArray
+        {
+            new BsonDocument("cpu", new BsonDocument("$gte", cpuLimit)), new BsonDocument("ramGb", new BsonDocument("$gte", ramLimitGb)),
+        }));
+        BsonDocument[] pipeline =
+        [
+            new("$match", new BsonDocument { { "ts", new BsonDocument("$gte", DateTime.UtcNow - range) }, { "top", new BsonDocument("$exists", true) } }),
+            new("$facet", new BsonDocument
+            {
+                { "minutes", new BsonArray { new BsonDocument("$count", "n") } },
+                { "strained", new BsonArray { strained, new BsonDocument("$count", "n") } },
+                { "apps", new BsonArray
+                {
+                    new BsonDocument("$unwind", "$top"),
+                    new BsonDocument("$group", new BsonDocument { { "_id", new BsonDocument { { "n", "$top.n" }, { "r", "$top.r" } } }, { "v", new BsonDocument("$sum", "$top.v") } }),
+                } },
+                { "culprits", new BsonArray
+                {
+                    strained,
+                    new BsonDocument("$project", new BsonDocument("c", new BsonDocument("$concatArrays", new BsonArray { If("cpu", cpuLimit, "cpu"), If("ramGb", ramLimitGb, "ram") }))),
+                    new BsonDocument("$unwind", "$c"),
+                    new BsonDocument("$match", new BsonDocument("c.n", new BsonDocument("$type", "string"))), // a resource with no top app that minute
+                    new BsonDocument("$group", new BsonDocument { { "_id", new BsonDocument { { "n", "$c.n" }, { "r", "$c.r" } } }, { "m", new BsonDocument("$sum", 1) } }),
+                    new BsonDocument("$sort", new BsonDocument("m", -1)),
+                    new BsonDocument("$limit", 6),
+                } },
+            }),
+        ];
+        return (await db.GetCollection<BsonDocument>("metrics").Aggregate<BsonDocument>(pipeline).ToListAsync()).FirstOrDefault();
+    }
+
     static void Insert(string col, BsonDocument doc)
     {
         if (db is not null) Fire(db.GetCollection<BsonDocument>(col).InsertOneAsync(doc));

@@ -1,0 +1,104 @@
+<UserControl x:Class="Glance.Pages.AnalysisPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <!-- App · value rows, as on the System page's Top processes -->
+        <DataTemplate x:Key="AppRow">
+            <DockPanel Margin="0,0,0,8">
+                <TextBlock Text="{Binding What}" Style="{StaticResource Label}" Width="64" VerticalAlignment="Center" x:Name="What" />
+                <TextBlock Text="{Binding Value}" DockPanel.Dock="Right" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" VerticalAlignment="Center" ToolTip="{Binding Name}" />
+            </DockPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding What}" Value="">
+                    <Setter TargetName="What" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+    <DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="6,0,6,6">
+            <StackPanel x:Name="RangeChips" Orientation="Horizontal" DockPanel.Dock="Right" />
+            <TextBlock x:Name="Status" Style="{StaticResource Label}" VerticalAlignment="Center" />
+        </DockPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Heaviest apps per resource, averaged over the range -->
+                <ItemsControl x:Name="Heaviest">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="4" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,12">
+                                        <TextBlock DockPanel.Dock="Right" Text="avg" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Title}" Style="{StaticResource H}" />
+                                    </DockPanel>
+                                    <ItemsControl ItemsSource="{Binding Apps}" ItemTemplate="{StaticResource AppRow}" />
+                                    <TextBlock x:Name="None" Text="Nothing logged" Style="{StaticResource Label}" Visibility="Collapsed" />
+                                </StackPanel>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Apps.Length}" Value="0">
+                                    <Setter TargetName="None" Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1.6*" />
+                    </Grid.ColumnDefinitions>
+                    <!-- Minutes the PC was strained, and who was on top then -->
+                    <Border Style="{StaticResource Card}" VerticalAlignment="Top">
+                        <StackPanel>
+                            <TextBlock Text="Under strain" Style="{StaticResource H}" />
+                            <TextBlock x:Name="StrainTime" Style="{StaticResource Big}" Margin="0,6,0,0" />
+                            <TextBlock x:Name="StrainSub" Style="{StaticResource Label}" TextWrapping="Wrap" Margin="0,0,0,14" />
+                            <ItemsControl x:Name="Culprits" ItemTemplate="{StaticResource AppRow}" />
+                        </StackPanel>
+                    </Border>
+                    <!-- What Windows logged: crashes, freezes, disk and driver trouble -->
+                    <Border Grid.Column="1" Style="{StaticResource Card}" VerticalAlignment="Top">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,12">
+                                <TextBlock DockPanel.Dock="Right" Text="hover for Windows' text" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                                <TextBlock Text="Windows reports" Style="{StaticResource H}" />
+                            </DockPanel>
+                            <TextBlock x:Name="ReportsNone" Style="{StaticResource Label}" TextWrapping="Wrap" Visibility="Collapsed" />
+                            <ItemsControl x:Name="Reports">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel Margin="0,0,0,10" Background="Transparent" ToolTip="{Binding Message}" ToolTipService.ShowDuration="60000">
+                                            <Ellipse x:Name="Dot" Width="8" Height="8" Fill="{StaticResource Amber}" Margin="0,6,10,0" VerticalAlignment="Top" />
+                                            <StackPanel DockPanel.Dock="Right" Margin="12,0,0,0">
+                                                <TextBlock Text="{Binding CountText}" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                                <TextBlock Text="{Binding LastText}" Style="{StaticResource Label}" HorizontalAlignment="Right" />
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Detail}" Style="{StaticResource Label}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding Serious}" Value="True">
+                                                <Setter TargetName="Dot" Property="Fill" Value="{StaticResource Red}" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

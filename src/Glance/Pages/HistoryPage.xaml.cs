@@ -111,7 +111,7 @@ public partial class HistoryPage : UserControl
         apps = map;
     }
 
-    static string Amount(string resource, double v) => resource switch
+    internal static string Amount(string resource, double v) => resource switch
     {
         "ram" => Units.Megabytes(v),
         "disk" => Units.Rate(v),
