@@ -60,6 +60,7 @@
                         <ColumnDefinition />
                         <ColumnDefinition />
                         <ColumnDefinition />
+                        <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <Border Style="{StaticResource KpiCell}" BorderThickness="0">
                         <StackPanel>
@@ -105,6 +106,18 @@
                             <TextBlock x:Name="IssuesSub" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Border>
+                    <!-- Windows' own 1–10 reliability score; opens Reliability Monitor -->
+                    <Border x:Name="StabilityCell" Grid.Column="5" Style="{StaticResource KpiCell}" Cursor="Hand" MouseLeftButtonUp="OpenReliability"
+                            ToolTip="Windows' Reliability Monitor scores the PC from 1 to 10 every hour, from crashes, failures and warnings.&#10;Click to open Reliability Monitor.">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Rectangle Width="10" Height="2" Fill="#5AA9FF" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Stability" Style="{StaticResource Caption}" />
+                            </StackPanel>
+                            <TextBlock x:Name="StabilityValue" Text="—" Style="{StaticResource KpiValue}" />
+                            <TextBlock x:Name="StabilitySub" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -135,6 +148,8 @@
                                 <TextBlock Text="GPU" Style="{StaticResource Caption}" />
                                 <Ellipse Style="{StaticResource LegendDot}" Fill="#B07CFF" />
                                 <TextBlock Text="Memory" Style="{StaticResource Caption}" />
+                                <Rectangle Width="12" Height="2" Margin="14,0,6,0" Fill="#5AA9FF" VerticalAlignment="Center" />
+                                <TextBlock Text="Stability" Style="{StaticResource Caption}" />
                                 <Line X2="16" Margin="14,0,6,0" Stroke="{StaticResource Red}" StrokeThickness="1" StrokeDashArray="3 2" VerticalAlignment="Center" />
                                 <TextBlock Text="Strain limit" Style="{StaticResource Caption}" />
                             </StackPanel>
@@ -155,6 +170,7 @@
                             <g:Spark x:Name="CpuChart" Grid.RowSpan="3" Color="#E6A65D" Max="100" Format="CPU {0:0}%" />
                             <g:Spark x:Name="GpuChart" Grid.RowSpan="3" Color="#4CC37A" Max="100" Format="GPU {0:0}%" />
                             <g:Spark x:Name="MemChart" Grid.RowSpan="3" Color="#B07CFF" Max="100" Format="Memory {0:0}%" />
+                            <g:Spark x:Name="StabilityChart" Grid.RowSpan="3" Color="#5AA9FF" Max="10" Area="False" Format="Stability {0:0.0}/10" />
                             <TextBlock x:Name="ChartNone" Grid.RowSpan="3" Style="{StaticResource Label}" HorizontalAlignment="Center"
                                        VerticalAlignment="Center" Visibility="Collapsed" Text="No history yet: one sample is logged per minute." />
                         </Grid>

@@ -74,6 +74,7 @@ public partial class AnalysisPage : UserControl
         var id = ++loadId; // a later pick wins over a slower earlier load
         LoadHistory(id);
         LoadReports(id);
+        LoadStability(id);
     }
 
     async void LoadHistory(int id)
@@ -144,6 +145,50 @@ public partial class AnalysisPage : UserControl
         ConsumersNone.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    // Reliability Monitor's score as a KPI and a line over the load chart (its own 0–10 scale).
+    async void LoadStability(int id)
+    {
+        var (_, span, bucket) = Ranges[range];
+        List<(DateTime At, float Index)> scores;
+        try { scores = await Task.Run(() => WinReports.Stability(span)); }
+        catch (Exception e) when (e is System.Management.ManagementException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
+        {
+            scores = []; // provider turned off by policy, or WMI broken
+        }
+        if (id != loadId) return;
+
+        // Hourly scores onto the chart's grid: each point holds the latest score at its time.
+        var from = DateTime.Now - span;
+        var grid = new float[(int)(span.TotalMinutes / bucket)];
+        var j = -1;
+        for (var i = 0; i < grid.Length; i++)
+        {
+            var end = from + TimeSpan.FromMinutes(bucket * (i + 1));
+            while (j + 1 < scores.Count && scores[j + 1].At <= end) j++;
+            grid[i] = j >= 0 ? scores[j].Index : float.NaN;
+        }
+        StabilityChart.Step = TimeSpan.FromMinutes(bucket);
+        StabilityChart.Series = grid;
+
+        if (scores.Count == 0)
+        {
+            (StabilityValue.Text, StabilitySub.Text) = ("—", "turned off in Windows");
+            StabilityValue.ClearValue(TextBlock.ForegroundProperty);
+            return;
+        }
+        var now = scores[^1].Index;
+        var start = scores.FindLast(s => s.At <= from) is { At.Ticks: > 0 } before ? before.Index : scores[0].Index;
+        StabilityValue.Text = $"{now:0.0} / 10";
+        StabilityValue.Foreground = Skin.Brush(now < 5 ? "Red" : now < 7 ? "Amber" : "Green");
+        StabilitySub.Text = Math.Abs(now - start) < 0.1 ? "steady over this range" : $"{(now < start ? "down" : "up")} from {start:0.0}";
+    }
+
+    void OpenReliability(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        try { System.Diagnostics.Process.Start("perfmon.exe", "/rel")?.Dispose(); }
+        catch (System.ComponentModel.Win32Exception) { } // cancelled or missing
+    }
+
     async void LoadReports(int id)
     {
         List<Report> list;
@@ -163,7 +208,7 @@ public partial class AnalysisPage : UserControl
         var real = list.Where(r => r.Tier != Tier.Minor).ToList();
         var serious = real.Count(r => r.Serious);
         IssuesValue.Text = real.Sum(r => r.Count).ToString();
-        IssuesSub.Text = real.Count == 0 ? "nothing that matters" : $"{serious} serious · last {real.MaxBy(r => r.Last)!.LastText}";
+        IssuesSub.Text = real.Count == 0 ? "nothing that matters" : $"{serious} serious · {real.MaxBy(r => r.Last)!.LastText}";
         PlaceEvents();
         ShowVerdict();
         // A report left open follows the new range, or closes if it isn't in it.

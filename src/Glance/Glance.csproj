@@ -52,6 +52,8 @@
     <PackageReference Include="Markdig" Version="1.6.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
     <PackageReference Include="MongoDB.Driver" Version="3.13.0" />
+    <!-- WMI, for Reliability Monitor's stability index (Analysis). Already brought in by LibreHardwareMonitorLib; named so it stays. -->
+    <PackageReference Include="System.Management" Version="10.0.2" />
   </ItemGroup>
 
 </Project>

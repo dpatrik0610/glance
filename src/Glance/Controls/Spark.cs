@@ -39,6 +39,12 @@ public sealed class Spark : FrameworkElement
         new FrameworkPropertyMetadata(Colors.White, FrameworkPropertyMetadataOptions.AffectsRender, (d, e) => ((Spark)d).SetBrushes((Color)e.NewValue)));
 
     /// Fixed top of the scale from 0; 0 = fit the data's own min..max.
+    /// Shade under the line. Off for a line drawn over other charts (a score, not an amount).
+    public static readonly DependencyProperty AreaProperty = DependencyProperty.Register(nameof(Area), typeof(bool), typeof(Spark),
+        new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public bool Area { get => (bool)GetValue(AreaProperty); set => SetValue(AreaProperty, value); }
+
     public static readonly DependencyProperty MaxProperty = DependencyProperty.Register(nameof(Max), typeof(float), typeof(Spark),
         new FrameworkPropertyMetadata(100f, FrameworkPropertyMetadataOptions.AffectsRender));
 
@@ -197,7 +203,7 @@ public sealed class Spark : FrameworkElement
         area.Freeze();
         dc.PushClip(new RectangleGeometry(new Rect(-1, -2, w + 2, h + 4))); // the incoming point waits off the right edge
         dc.PushTransform(glide);
-        dc.DrawGeometry(fill, null, area);
+        if (Area) dc.DrawGeometry(fill, null, area);
         dc.DrawGeometry(null, pen, line);
         dc.Pop();
         dc.Pop();
