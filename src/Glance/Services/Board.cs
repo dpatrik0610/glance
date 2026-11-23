@@ -80,18 +80,34 @@ public static partial class BoardStore
     static readonly string Single = Path.Combine(Settings.Dir, "board.json"); // before tabs: one board
     static Boards? data;
     static DispatcherTimer? saveTimer;
+    static bool readOnly; // the file exists but couldn't be read: never save over it
 
-    public static Boards Data => data ??= Load();
+    public static Boards Data => data ??= Open();
 
     /// A node changed outside the Board page (a task ticked on the Tasks page): the page redraws it.
     public static event Action<BoardItem>? Edited;
 
-    public static Boards Load()
+    static Boards Open()
+    {
+        var b = Load(out var unreadable);
+        if (unreadable is null) return b;
+        // The file is there but can't be read (locked by a sync tool or antivirus, no access). The empty stand-in
+        // is never saved this session: that save would replace the real boards with it.
+        readOnly = true;
+        Db.Error("board load", unreadable);
+        Application.Current?.Dispatcher.BeginInvoke(() => Dialog.Info("Board", "Couldn't read your boards",
+            $"{unreadable.Message}\n\nThe file was left untouched. Changes on the Board won't be saved until Glance restarts."));
+        return b;
+    }
+
+    /// unreadable: boards.json exists but couldn't be read; what's returned is then an empty stand-in.
+    internal static Boards Load(out Exception? unreadable)
     {
         Boards b;
+        unreadable = null;
         var read = false; // only a cleanly read file says which pictures are unused
         try { b = JsonSerializer.Deserialize<Boards>(File.ReadAllText(File_)) ?? new(); read = true; }
-        catch (FileNotFoundException)
+        catch (Exception none) when (none is FileNotFoundException or DirectoryNotFoundException) // first run, or from before tabs
         {
             b = new();
             try { if (JsonSerializer.Deserialize<Board>(File.ReadAllText(Single)) is { } old) b.All.Add(old); }
@@ -102,7 +118,11 @@ public static partial class BoardStore
             try { File.Copy(File_, File_ + ".bad", true); } catch (IOException) { } // kept, since the next save writes over it
             b = new();
         }
-        catch (IOException) { b = new(); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            b = new();
+            unreadable = e;
+        }
         if (b.All.Count == 0) b.All.Add(new());
         foreach (var board in b.All) board.Items.RemoveAll(i => i.Kind == "timer"); // timers moved to their own page
         if (read && b.All.Count > 0) Sweep(b);
@@ -124,7 +144,7 @@ public static partial class BoardStore
     public static void Save()
     {
         saveTimer?.Stop();
-        if (data is not null) Settings.WriteAtomic(File_, JsonSerializer.Serialize(data));
+        if (data is not null && !readOnly) Settings.WriteAtomic(File_, JsonSerializer.Serialize(data));
     }
 
     public static void SaveSoon()

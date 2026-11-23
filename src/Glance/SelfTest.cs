@@ -13,6 +13,7 @@ static class SelfTest
     {
         try
         {
+            Check(Settings.Dir.StartsWith(Path.GetTempPath()), $"selftest data stays out of AppData: {Settings.Dir}");
             // First, before anything reads a resource: styles built after the swap take the Flamingo colors.
             Skin.Load("Flamingo");
             var sub = ((Style)Application.Current.FindResource("Label")).Setters.OfType<Setter>().First(x => x.Property == System.Windows.Controls.TextBlock.ForegroundProperty);
@@ -89,6 +90,18 @@ static class SelfTest
                 var grew = Handlers("Sampled") > sampled && Handlers("SettingsChanged") > settings;
                 merged.Dispose();
                 Check(grew && Handlers("Sampled") == sampled && Handlers("SettingsChanged") == settings, "dropped pages unsubscribe");
+            }
+            {
+                // A boards file that exists but is locked is "unreadable", never "missing" (a missing one starts fresh and gets saved).
+                var file = Path.Combine(Settings.Dir, "boards.json");
+                Directory.CreateDirectory(Settings.Dir);
+                File.WriteAllText(file, """{"All":[{"Name":"Real"}]}""");
+                Exception? locked;
+                using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.None)) BoardStore.Load(out locked);
+                var ok = BoardStore.Load(out var none).All is [{ Name: "Real" }];
+                File.Delete(file);
+                var fresh = BoardStore.Load(out var missing).All.Count == 1;
+                Check(locked is IOException && ok && none is null && fresh && missing is null, "board: locked file is unreadable, not empty");
             }
             const string md = "# Plan\r\n- [ ] buy **milk**\r\n- [x] call [mom](https://example.com)\r\n\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |";
             var tasks = MarkdownView.TaskLines(md).ToList();
@@ -386,6 +399,11 @@ static class SelfTest
         {
             Console.Error.WriteLine(e.Message);
             return 1;
+        }
+        finally
+        {
+            BoardStore.Save(); // stops its save timer, which would otherwise fire during shutdown and recreate the folder
+            try { Directory.Delete(Settings.Dir, true); } catch (IOException) { }
         }
     }
 

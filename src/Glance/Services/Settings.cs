@@ -84,7 +84,11 @@ public class Settings
         @"F:\Coding",
     ];
 
-    public static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Glance");
+    // Every store lives under here. The selftest gets a throwaway folder, so it never reads or saves over the real data
+    // (it runs next to the live Glance on every "Rebuild and restart").
+    public static readonly string Dir = Environment.GetCommandLineArgs().Contains("--selftest")
+        ? Path.Combine(Path.GetTempPath(), $"glance-selftest-data-{Environment.ProcessId}")
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Glance");
     static readonly string File_ = Path.Combine(Dir, "settings.json");
 
     public static Settings Load()
