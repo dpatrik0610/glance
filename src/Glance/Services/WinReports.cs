@@ -4,8 +4,10 @@ using System.Text.RegularExpressions;
 namespace Glance.Services;
 
 /// One kind of trouble Windows logged, grouped: how often, when last, and the latest event's own text.
-public record Report(string Title, string Detail, int Count, DateTime Last, bool Serious, string Message)
+public record Report(string Title, string Detail, List<DateTime> Times, bool Serious, string Message)
 {
+    public int Count => Times.Count;
+    public DateTime Last => Times.Max();
     public string CountText => Count > 1 ? $"×{Count}" : "";
     public string LastText => Last.ToString(Last.Date == DateTime.Today ? "'today' HH:mm" : "MMM d HH:mm");
 }
@@ -41,14 +43,14 @@ public static partial class WinReports
                 var (title, detail, serious) = Describe(e);
                 if (groups.TryGetValue(title, out var g))
                 {
-                    groups[title] = g with { Count = g.Count + 1, Last = at > g.Last ? at : g.Last };
+                    g.Times.Add(at);
                     continue;
                 }
                 string message;
                 try { message = e.FormatDescription() ?? ""; }
                 catch (EventLogException) { message = ""; } // the provider's message file is gone
                 if (message.Length > 600) message = message[..600] + "…";
-                groups[title] = new(title, detail ?? FirstSentence(message), 1, at, serious, message);
+                groups[title] = new(title, detail ?? FirstSentence(message), [at], serious, message);
             }
         return groups.Values.OrderByDescending(r => r.Serious).ThenByDescending(r => r.Last).ToList();
     }

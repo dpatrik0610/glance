@@ -53,19 +53,8 @@ public partial class HistoryPage : UserControl
         Status.Text = docs.Count == 0 ? "No data yet: one sample is logged per minute." : "";
 
         // Fixed time grid; buckets with no data stay NaN and draw as gaps (app wasn't running).
-        var n = (int)(span.TotalMinutes / bucket);
         var from = DateTime.UtcNow - span;
-        float[] Col(string field)
-        {
-            var a = new float[n];
-            Array.Fill(a, float.NaN);
-            foreach (var d in docs)
-            {
-                var i = (int)((d["_id"].ToUniversalTime() - from).TotalMinutes / bucket);
-                if (i >= 0 && i < n && d.TryGetValue(field, out var v) && v.IsNumeric) a[i] = (float)v.ToDouble();
-            }
-            return a;
-        }
+        float[] Col(string field) => Grid(docs, field, span, bucket, from);
 
         // resource: which apps' use explains this chart, shown on hover (null: Windows doesn't count it per app).
         Chart Make(string title, string field, string format, int rgb, float max, string? resource = null)
@@ -97,18 +86,37 @@ public partial class HistoryPage : UserControl
     async void LoadApps(TimeSpan span, int bucket, DateTime from)
     {
         apps = [];
-        List<BsonDocument> rows;
-        try { rows = await Db.TopApps(span, bucket); }
+        Dictionary<(int, string), string> map;
+        try { map = await AppsByPoint(span, bucket, from); }
         catch (Exception e) when (e is MongoException or TimeoutException) { return; } // the charts still work without it
         if (Ranges[range].Span != span) return; // another range was picked meanwhile
+        apps = map;
+    }
+
+    /// (chart point, resource) → the apps behind it, one per line.
+    internal static async Task<Dictionary<(int, string), string>> AppsByPoint(TimeSpan span, int bucket, DateTime from)
+    {
         var map = new Dictionary<(int, string), string>();
-        foreach (var row in rows)
+        foreach (var row in await Db.TopApps(span, bucket))
         {
             var (b, r) = (row["_id"]["b"].ToUniversalTime(), row["_id"]["r"].AsString);
             map[((int)((b - from).TotalMinutes / bucket), r)] = string.Join("\n", row["apps"].AsBsonArray.Select(a =>
                 a["n"].AsString + "  " + Amount(r, a["v"].ToDouble())));
         }
-        apps = map;
+        return map;
+    }
+
+    /// One field of Db.History's buckets on a fixed time grid from `from`; buckets with no data stay NaN (drawn as gaps).
+    internal static float[] Grid(List<BsonDocument> docs, string field, TimeSpan span, int bucket, DateTime from)
+    {
+        var a = new float[(int)(span.TotalMinutes / bucket)];
+        Array.Fill(a, float.NaN);
+        foreach (var d in docs)
+        {
+            var i = (int)((d["_id"].ToUniversalTime() - from).TotalMinutes / bucket);
+            if (i >= 0 && i < a.Length && d.TryGetValue(field, out var v) && v.IsNumeric) a[i] = (float)v.ToDouble();
+        }
+        return a;
     }
 
     internal static string Amount(string resource, double v) => resource switch
@@ -145,7 +153,7 @@ public partial class HistoryPage : UserControl
         ring.BeginAnimation(Brush.OpacityProperty, pulse);
     }, System.Windows.Threading.DispatcherPriority.Loaded);
 
-    static (float Avg, float Peak)? Summary(float[] a)
+    internal static (float Avg, float Peak)? Summary(float[] a)
     {
         double sum = 0;
         int count = 0;

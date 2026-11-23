@@ -101,8 +101,8 @@ public static class Db
         return await db.GetCollection<BsonDocument>("metrics").Aggregate<BsonDocument>(pipeline).ToListAsync();
     }
 
-    /// For the Analysis page, over the range: minutes logged; each app's summed use per resource
-    /// ({ _id: { n, r }, v }, divide by minutes for its average); and the strained minutes (CPU ≥ cpuLimit %, or
+    /// For the Analysis page, over the range: minutes logged; each app's summed use per resource, its peak minute and
+    /// the minutes it was among the 5 heaviest ({ _id: { n, r }, v, p, m }; divide v by minutes for its average); and the strained minutes (CPU ≥ cpuLimit %, or
     /// RAM ≥ ramLimitGb), with how often each app was the top user of the strained resource ({ _id: { n, r }, m }).
     public static async Task<BsonDocument?> Analysis(TimeSpan range, double cpuLimit, double ramLimitGb)
     {
@@ -130,7 +130,8 @@ public static class Db
                 { "apps", new BsonArray
                 {
                     new BsonDocument("$unwind", "$top"),
-                    new BsonDocument("$group", new BsonDocument { { "_id", new BsonDocument { { "n", "$top.n" }, { "r", "$top.r" } } }, { "v", new BsonDocument("$sum", "$top.v") } }),
+                    new BsonDocument("$group", new BsonDocument { { "_id", new BsonDocument { { "n", "$top.n" }, { "r", "$top.r" } } }, { "v", new BsonDocument("$sum", "$top.v") },
+                        { "p", new BsonDocument("$max", "$top.v") }, { "m", new BsonDocument("$sum", 1) } }),
                 } },
                 { "culprits", new BsonArray
                 {
