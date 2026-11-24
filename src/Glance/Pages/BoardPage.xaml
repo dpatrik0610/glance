@@ -21,7 +21,7 @@
             <Canvas x:Name="World">
                 <Canvas x:Name="EdgeLayer" Panel.ZIndex="-1" />
                 <InkCanvas x:Name="Ink" Panel.ZIndex="10" Canvas.Left="-50000" Canvas.Top="-50000" Width="100000" Height="100000"
-                           Background="{x:Null}" EditingMode="None" />
+                           Background="{x:Null}" EditingMode="None" IsHitTestVisible="False" />
             </Canvas>
 
             <!-- Kanban layout: columns of cards, instead of the canvas -->
