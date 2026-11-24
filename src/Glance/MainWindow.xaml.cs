@@ -16,7 +16,9 @@ public partial class MainWindow : Window
     /// Needs: an exe that must be on PATH, or the tab is left out (checked at startup).
     /// Parts: a merged page, its related pages switched by chips at the top (Tabbed).
     /// Keep: never dropped when idle; it holds work or input that isn't saved anywhere (shells, jobs, scans, typed text).
-    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null, Tabbed.Part[]? Parts = null, bool Keep = false);
+    /// On: a setting that turns the page off entirely (not in the sidebar, "…" or Ctrl+K); null = always on.
+    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null, Tabbed.Part[]? Parts = null, bool Keep = false,
+        Func<bool>? On = null);
 
     static Tab Merged(string name, string group, string icon, params Tabbed.Part[] parts) =>
         new(name, group, icon, () => new Tabbed(parts), Parts: parts);
@@ -51,6 +53,7 @@ public partial class MainWindow : Window
         new("Ports", "Dev", "\uE943", () => new DevPage()),
         new("Git", "Dev", "\uF003", () => new GitPage(), "git.exe"),
         new("Docker", "Dev", "\uF158", () => new DockerPage(), "docker.exe"),
+        new("Cloudflare", "Dev", "\uE753", () => new CloudflarePage(), On: () => App.Settings.CloudflareShown),
         new("JSON", "Dev", "\uE8A5", () => new JsonPage(), Keep: true),
     }.Where(t => t.Needs is null || Shell.OnPath(t.Needs)).ToArray();
 
@@ -74,7 +77,11 @@ public partial class MainWindow : Window
     /// Group name → folded. Read when the group's container is built, so changes go through RefreshNav.
     public static readonly IValueConverter Folded = new Conv(v => v is string g && App.Settings.FoldedGroups.Contains(g));
 
-    static bool Shown(object o) => !App.Settings.HiddenTabs.Contains(((Tab)o).Name);
+    static bool Enabled(Tab t) => t.On?.Invoke() != false;
+    static bool Shown(object o) => Enabled((Tab)o) && !App.Settings.HiddenTabs.Contains(((Tab)o).Name);
+    /// Hidden from the sidebar by the user: still in the "…" menu.
+    static bool Tucked(Tab t) => Enabled(t) && !Shown(t);
+    string enabledTabs = ""; // which On tabs are on, to rebuild the views when a setting flips one
 
     public MainWindow()
     {
@@ -85,7 +92,8 @@ public partial class MainWindow : Window
         Bottom.ItemsSource = new[] { SettingsTab };
         stripView = new ListCollectionView(Tabs.Append(SettingsTab).ToList()) { Filter = o => (Tab)o == SettingsTab || Shown(o) };
         Strip.ItemsSource = stripView;
-        MoreButton.Visibility = Tabs.Any(t => !Shown(t)) ? Visibility.Visible : Visibility.Collapsed;
+        MoreButton.Visibility = Tabs.Any(Tucked) ? Visibility.Visible : Visibility.Collapsed;
+        enabledTabs = EnabledTabs();
         if (Nav.Items.Count > 0) Nav.SelectedIndex = 0; else Open(Tabs.Length > 0 ? Tabs[0] : SettingsTab);
         App.SettingsChanged += ApplySettings;
         PreviewKeyDown += Shortcut;
@@ -189,7 +197,10 @@ public partial class MainWindow : Window
         PinButton.Foreground = s.StayOpen ? Skin.Brush("Accent") : Skin.Brush("Text");
         PinButton.ToolTip = s.StayOpen ? "Stays open when you click elsewhere" : "Hides when you click elsewhere (click to keep open)";
         Native.SetBlur(hwnd, s.Blur);
+        if (EnabledTabs() is var on && on != enabledTabs) { enabledTabs = on; RefreshViews(); }
     }
+
+    static string EnabledTabs() => string.Join(",", Tabs.Where(Enabled).Select(t => t.Name));
 
     // ---- Compact mode: smaller window, no sidebar, the tabs as icons across the top. Same pages, other frame. ----
 
@@ -283,16 +294,21 @@ public partial class MainWindow : Window
 
     void RefreshNav()
     {
+        RefreshViews();
+        App.ApplySettings(); // saves
+    }
+
+    void RefreshViews()
+    {
         var current = pages.FirstOrDefault(p => p.Value == Page.Content).Key;
         navView.Refresh();
         stripView.Refresh();
-        MoreButton.Visibility = Tabs.Any(t => !Shown(t)) ? Visibility.Visible : Visibility.Collapsed;
+        MoreButton.Visibility = Tabs.Any(Tucked) ? Visibility.Visible : Visibility.Collapsed;
         if (current is not null && current != SettingsTab)
         {
             Nav.SelectedItem = Nav.Items.Contains(current) ? current : null;
             Strip.SelectedItem = Strip.Items.Contains(current) ? current : null;
         }
-        App.ApplySettings(); // saves
     }
 
     void GroupClick(object sender, MouseButtonEventArgs e)
@@ -322,7 +338,7 @@ public partial class MainWindow : Window
     void MoreClick(object sender, RoutedEventArgs e)
     {
         var menu = new ContextMenu { PlacementTarget = MoreButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Top };
-        foreach (var t in Tabs.Where(t => !Shown(t)))
+        foreach (var t in Tabs.Where(Tucked))
         {
             var eye = new TextBlock
             {

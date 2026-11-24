@@ -37,6 +37,17 @@ static class SelfTest
                 && quote.Closes.Length == 4 && float.IsNaN(quote.Closes[1]), $"stock quote: {quote}");
             Check(Stocks.Parse("x", """{"chart":{"result":null,"error":{"code":"Not Found"}}}""") is null, "stock quote: unknown symbol");
 
+            var watch = new Cloudflare.Watch();
+            Deploy Cf(string key, string id, string status) => new(key, key, id, status, "", "", "", "", DateTime.UtcNow);
+            Check(watch.Check([Cf("worker:a", "1", "success"), Cf("pages:p", "x", "success")]).Count == 0, "cloudflare: the first look only remembers");
+            Check(watch.Check([Cf("worker:a", "1", "success"), Cf("pages:p", "x", "success")]).Count == 0, "cloudflare: nothing new, no alert");
+            Check(watch.Check([Cf("worker:a", "2", "success")]) is [{ Id: "2" }], "cloudflare: a new Worker deployment alerts");
+            Check(watch.Check([Cf("pages:p", "y", "active")]).Count == 0, "cloudflare: a build still running doesn't alert");
+            Check(watch.Check([Cf("pages:p", "y", "failure")]) is [{ Failed: true }], "cloudflare: a failed build alerts once it ends");
+            Check(watch.Check([Cf("pages:p", "y", "failure"), Cf("worker:new", "9", "success")]) is [{ Key: "worker:new" }],
+                "cloudflare: the same build doesn't alert twice; a new Worker does");
+            Check(new Pages.CloudflarePage().Content is not null, "cloudflare page loads");
+
             Check(new Pages.BoardPage().Content is not null, "board page loads");
             Check(Timers.ParseDuration("25") == 1500 && Timers.ParseDuration("1:30") == 90 && Timers.ParseDuration("1:00:00") == 3600
                 && Timers.ParseDuration("0") is null && Timers.ParseDuration("abc") is null && Timers.ParseDuration("-5") is null, "timer lengths");

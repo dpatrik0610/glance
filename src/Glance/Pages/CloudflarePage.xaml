@@ -1,0 +1,164 @@
+<UserControl x:Class="Glance.Pages.CloudflarePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="Act" TargetType="Button" BasedOn="{StaticResource Ghost}">
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="Foreground" Value="{StaticResource Sub}" />
+        </Style>
+        <Style x:Key="Head" TargetType="TextBlock" BasedOn="{StaticResource H}">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Margin" Value="0,14,0,6" />
+        </Style>
+        <Style x:Key="Note" TargetType="TextBlock" BasedOn="{StaticResource Label}">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Green: live. Red: failed. Accent: building. -->
+        <Style x:Key="Dot" TargetType="Ellipse">
+            <Setter Property="Width" Value="7" />
+            <Setter Property="Height" Value="7" />
+            <Setter Property="Margin" Value="2,1,8,0" />
+            <Setter Property="Fill" Value="{StaticResource Green}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="failure">
+                    <Setter Property="Fill" Value="{StaticResource Red}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="active">
+                    <Setter Property="Fill" Value="{StaticResource Accent}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="idle">
+                    <Setter Property="Fill" Value="{StaticResource Accent}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="canceled">
+                    <Setter Property="Fill" Value="{StaticResource Track}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Border x:Name="Body" Style="{StaticResource Card}" Visibility="Collapsed">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Act}" Content="Disconnect" Margin="6,0,0,0" Click="DisconnectClick" />
+                    <Button DockPanel.Dock="Right" Content="↻ Refresh" Click="Refresh" />
+                    <TextBlock Text="Cloudflare" Style="{StaticResource H}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="Account" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,1,0,0" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="0,0,10,0">
+                        <TextBlock Text="Workers and Pages" Style="{StaticResource Head}" />
+                        <TextBlock x:Name="AppsNote" Style="{StaticResource Note}" Text="Loading…" />
+                        <ItemsControl x:Name="Apps">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="Transparent" Cursor="Hand" Padding="0,4" MouseLeftButtonUp="RowClick"
+                                            ToolTip="Click for the last 10 deployments">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="1.6*" />
+                                                    <ColumnDefinition Width="3*" />
+                                                    <ColumnDefinition Width="1.1*" />
+                                                    <ColumnDefinition Width="1.8*" />
+                                                    <ColumnDefinition Width="60" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Ellipse DataContext="{Binding Deploy}" Style="{StaticResource Dot}" ToolTip="{Binding Status}" />
+                                                    <TextBlock Text="{Binding Deploy.Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding Kind}" Style="{StaticResource Label}" FontSize="11" Margin="6,1,0,0" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding Deploy.Line}" Foreground="{StaticResource Sub}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Deploy.Line}" Margin="0,0,10,0" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Deploy.WhenText}" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="3" Text="{Binding Traffic}" FontFamily="{StaticResource Mono}" FontSize="12"
+                                                           Foreground="{StaticResource Sub}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                           ToolTip="Last 24 hours: requests · errors · median CPU time" />
+                                                <Button Grid.Column="4" Style="{StaticResource Act}" Content="Open" HorizontalAlignment="Right" Click="OpenUrl"
+                                                        ToolTip="{Binding Deploy.Url}" Visibility="{Binding HasUrl, Converter={StaticResource Vis}}" />
+                                            </Grid>
+                                            <ItemsControl ItemsSource="{Binding History}" Margin="17,2,0,2">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                                                            <Ellipse Style="{StaticResource Dot}" ToolTip="{Binding Status}" />
+                                                            <TextBlock Text="{Binding WhenText}" Style="{StaticResource Label}" Width="110" />
+                                                            <TextBlock Text="{Binding Line}" Foreground="{StaticResource Sub}" TextTrimming="CharacterEllipsis" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Domains" Style="{StaticResource Head}" />
+                        <TextBlock x:Name="ZonesNote" Style="{StaticResource Note}" />
+                        <ItemsControl x:Name="Zones">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="1.5*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Status}" Style="{StaticResource Label}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Plan}" Style="{StaticResource Label}" TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Storage" Style="{StaticResource Head}" />
+                        <TextBlock x:Name="StorageNote" Style="{StaticResource Note}" />
+                        <ItemsControl x:Name="Stores">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="40" />
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="1.5*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Kind}" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource Accent}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Size}" Style="{StaticResource Label}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- Not connected: how to make a read-only token -->
+        <Border x:Name="ConnectCard" Style="{StaticResource Card}" Background="{StaticResource Popup}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                Width="470" Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Text="Connect Cloudflare" Style="{StaticResource H}" FontSize="17" Margin="0,0,0,8" />
+                <TextBlock Style="{StaticResource Label}" TextWrapping="Wrap" LineHeight="19" Margin="0,0,0,12">
+                    Glance only reads, with an API token you make:<LineBreak />
+                    1. Open the token page below → Create Token → Create Custom Token.<LineBreak />
+                    2. Account permissions, all Read: Workers Scripts, Cloudflare Pages, Account Analytics, D1, Workers KV Storage, Workers R2 Storage.
+                    Zone permission: Zone, Read.<LineBreak />
+                    3. Paste the token here. It's kept encrypted for your Windows user.
+                </TextBlock>
+                <TextBox x:Name="TokenBox" Tag="API token" Margin="0,0,0,12" />
+                <DockPanel>
+                    <Button x:Name="ConnectButton" DockPanel.Dock="Right" Style="{StaticResource Primary}" Content="Connect" Click="ConnectClick" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Act}" Content="Token page" Margin="0,0,8,0" Click="TokenPage" />
+                    <TextBlock x:Name="ConnectStatus" Style="{StaticResource Label}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0" />
+                </DockPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Net.Http;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Threading;
@@ -112,6 +113,9 @@ public partial class App : Application
         // Google Calendar's next two days, for its reminder popups (nothing happens until it's connected).
         new DispatcherTimer(TimeSpan.FromMinutes(5), DispatcherPriority.Background, (_, _) => _ = GoogleCalendar.RefreshUpcoming(), Dispatcher);
         _ = GoogleCalendar.RefreshUpcoming();
+        // Cloudflare deploys going live or failing (nothing happens until it's switched on and connected).
+        new DispatcherTimer(TimeSpan.FromMinutes(2), DispatcherPriority.Background, (_, _) => CheckCloudflare(), Dispatcher);
+        CheckCloudflare(); // the first look only remembers what's there
         // Re-point the registry at this exe, in case the folder moved.
         if (Settings.ExplorerMenu) Settings.ExplorerMenu = true;
         if (Settings.AutoStart) Settings.AutoStart = true;
@@ -258,6 +262,27 @@ public partial class App : Application
                 ShowMain();
                 main!.ShowTab("Calendar");
             });
+        }
+    }
+
+    readonly Cloudflare.Watch cloudflare = new();
+
+    async void CheckCloudflare()
+    {
+        if (!Settings.CloudflareShown || !Cloudflare.Connected) return;
+        try
+        {
+            var all = await Task.WhenAll(Cloudflare.Workers(), Cloudflare.Pages());
+            foreach (var d in cloudflare.Check(all.SelectMany(l => l)))
+            {
+                Db.Info($"cloudflare {d.Key} {d.Status}: {d.Line}");
+                AlertWindow.Show(new Toast($"Cloudflare · {d.Name}", d.Failed ? "Build failed" : "Live", "", "Deployed", d.When.ToLocalTime().ToString("HH:mm"),
+                    d.Failed ? Color.FromRgb(0xFF, 0x4D, 0x5E) : Color.FromRgb(0x4C, 0xC3, 0x7A), d.Failed, Detail: d.Line), () => Go("Cloudflare"));
+            }
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            Db.Warn($"cloudflare check: {e.Message}"); // offline or token revoked: try again next time
         }
     }
 

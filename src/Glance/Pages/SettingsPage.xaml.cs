@@ -57,6 +57,7 @@ public partial class SettingsPage : UserControl
         CompactBox.IsChecked = s.Compact;
         FBox.IsChecked = s.Fahrenheit;
         StocksBox.IsChecked = s.StocksShown;
+        CloudflareBox.IsChecked = s.CloudflareShown;
         BarBox.IsChecked = s.TopBar;
         BarFullscreenBox.IsChecked = s.BarHideFullscreen;
         BarSlimBox.IsChecked = s.BarSlim;
@@ -102,6 +103,7 @@ public partial class SettingsPage : UserControl
         s.Compact = CompactBox.IsChecked == true;
         s.Fahrenheit = FBox.IsChecked == true;
         s.StocksShown = StocksBox.IsChecked == true;
+        s.CloudflareShown = CloudflareBox.IsChecked == true;
         s.TopBar = BarBox.IsChecked == true;
         s.BarHideFullscreen = BarFullscreenBox.IsChecked == true;
         s.BarSlim = BarSlimBox.IsChecked == true;
