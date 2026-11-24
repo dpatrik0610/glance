@@ -237,18 +237,9 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Text="Money" Style="{StaticResource Section}" />
+                <TextBlock Text="Pages" Style="{StaticResource Section}" />
                 <Border Style="{StaticResource Group}">
-                    <local:SettingRow Icon="&#xE9D2;" Title="Stocks" Description="A watchlist on the Money page, with delayed quotes from Yahoo Finance">
-                        <CheckBox x:Name="StocksBox" Style="{StaticResource Switch}" Click="Toggled" />
-                    </local:SettingRow>
-                </Border>
-
-                <TextBlock Text="Dev" Style="{StaticResource Section}" />
-                <Border Style="{StaticResource Group}">
-                    <local:SettingRow Icon="&#xE753;" Title="Cloudflare" Description="A page with your Workers, Pages, domains and storage, and an alert when a deploy goes live or a Pages build fails">
-                        <CheckBox x:Name="CloudflareBox" Style="{StaticResource Switch}" Click="Toggled" />
-                    </local:SettingRow>
+                    <StackPanel x:Name="PagesList" />
                 </Border>
 
                 <TextBlock Text="Media and clipboard" Style="{StaticResource Section}" />

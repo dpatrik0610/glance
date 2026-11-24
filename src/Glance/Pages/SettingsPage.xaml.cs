@@ -56,8 +56,11 @@ public partial class SettingsPage : UserControl
         TopBox.IsChecked = s.Topmost;
         CompactBox.IsChecked = s.Compact;
         FBox.IsChecked = s.Fahrenheit;
-        StocksBox.IsChecked = s.StocksShown;
-        CloudflareBox.IsChecked = s.CloudflareShown;
+        foreach (var tab in MainWindow.Tabs)
+        {
+            AddPageSwitch(tab.Name, tab.Icon, tab.Group);
+            foreach (var part in tab.Parts?.Skip(1) ?? []) AddPageSwitch(part.Name, part.Icon, $"Part of {tab.Name}", indent: true);
+        }
         BarBox.IsChecked = s.TopBar;
         BarFullscreenBox.IsChecked = s.BarHideFullscreen;
         BarSlimBox.IsChecked = s.BarSlim;
@@ -81,6 +84,20 @@ public partial class SettingsPage : UserControl
         };
     }
 
+    /// Settings → Pages: one switch per page and per part; off = not offered anywhere (Settings.OffPages).
+    void AddPageSwitch(string name, string icon, string description, bool indent = false)
+    {
+        var box = new CheckBox { Style = Skin.Style("Switch"), IsChecked = !s.OffPages.Contains(name) };
+        AutomationProperties.SetName(box, name);
+        box.Click += (_, _) =>
+        {
+            s.OffPages.Remove(name);
+            if (box.IsChecked != true) s.OffPages.Add(name);
+            App.ApplySettings();
+        };
+        PagesList.Children.Add(new SettingRow { Icon = icon, Title = name, Description = description, Content = box, Margin = indent ? new Thickness(28, 0, 0, 0) : default });
+    }
+
     /// Row layout: [slider][value]. Wires the slider to a setting with live apply.
     static void Bind(Panel row, double value, Action<double> set, Func<double, string> show)
     {
@@ -102,8 +119,6 @@ public partial class SettingsPage : UserControl
         s.Topmost = TopBox.IsChecked == true;
         s.Compact = CompactBox.IsChecked == true;
         s.Fahrenheit = FBox.IsChecked == true;
-        s.StocksShown = StocksBox.IsChecked == true;
-        s.CloudflareShown = CloudflareBox.IsChecked == true;
         s.TopBar = BarBox.IsChecked == true;
         s.BarHideFullscreen = BarFullscreenBox.IsChecked == true;
         s.BarSlim = BarSlimBox.IsChecked == true;

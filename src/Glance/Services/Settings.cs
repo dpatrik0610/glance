@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Win32;
 
 namespace Glance.Services;
@@ -17,6 +18,8 @@ public class Settings
     public List<string> FoldedGroups { get; set; } = [];
     /// Pages left out of the sidebar (and the compact strip); still in Ctrl+K and the "…" menu.
     public List<string> HiddenTabs { get; set; } = [];
+    /// Pages, and parts of merged pages, turned off entirely: not in the sidebar, "…" or Ctrl+K (Settings → Pages).
+    public List<string> OffPages { get; set; } = ["Cloudflare"];
     /// Smaller window with the tabs as icons across the top instead of the sidebar.
     public bool Compact { get; set; }
     /// Glance stays up when focus goes to another window (normally a window dropped from the bar slides back up).
@@ -54,11 +57,11 @@ public class Settings
     public string ScanPath { get; set; } = "";
 
     public bool Fahrenheit { get; set; }
-    /// The Stocks part of the Money page, and the symbols it follows.
-    public bool StocksShown { get; set; } = true;
+    /// The symbols the Stocks part of the Money page follows.
     public List<string> StockSymbols { get; set; } = [];
-    /// The Cloudflare page and its deploy alerts (off: the page isn't offered anywhere).
-    public bool CloudflareShown { get; set; }
+    /// Before OffPages (1.1.13 and earlier): read once by Load, then dropped from the file.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? StocksShown { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? CloudflareShown { get; set; }
     /// The always-on-top strip at the top of the screen, and which view it was left on.
     public bool TopBar { get; set; } = true;
     public double BarOpacity { get; set; } = 0.94;
@@ -95,8 +98,13 @@ public class Settings
 
     public static Settings Load()
     {
-        try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(File_)) ?? new(); }
+        Settings s;
+        try { s = JsonSerializer.Deserialize<Settings>(File.ReadAllText(File_)) ?? new(); }
         catch (Exception e) when (e is IOException or JsonException) { return new(); }
+        if (s.StocksShown == false && !s.OffPages.Contains("Stocks")) s.OffPages.Add("Stocks");
+        if (s.CloudflareShown == true) s.OffPages.Remove("Cloudflare");
+        s.StocksShown = s.CloudflareShown = null;
+        return s;
     }
 
     public void Save() => WriteAtomic(File_, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));

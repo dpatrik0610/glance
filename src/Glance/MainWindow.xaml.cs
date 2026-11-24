@@ -16,9 +16,8 @@ public partial class MainWindow : Window
     /// Needs: an exe that must be on PATH, or the tab is left out (checked at startup).
     /// Parts: a merged page, its related pages switched by chips at the top (Tabbed).
     /// Keep: never dropped when idle; it holds work or input that isn't saved anywhere (shells, jobs, scans, typed text).
-    /// On: a setting that turns the page off entirely (not in the sidebar, "…" or Ctrl+K); null = always on.
-    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null, Tabbed.Part[]? Parts = null, bool Keep = false,
-        Func<bool>? On = null);
+    /// Any page, and any part after a merged page's first, can be turned off in Settings → Pages (Settings.OffPages).
+    public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null, Tabbed.Part[]? Parts = null, bool Keep = false);
 
     static Tab Merged(string name, string group, string icon, params Tabbed.Part[] parts) =>
         new(name, group, icon, () => new Tabbed(parts), Parts: parts);
@@ -28,7 +27,7 @@ public partial class MainWindow : Window
 
     // Add a page here; sidebar, Ctrl+N shortcuts and lazy creation follow. Keep tabs of a group together:
     // groups appear in first-seen order. Icons: Segoe Fluent Icons code points.
-    static readonly Tab[] Tabs = new Tab[]
+    internal static readonly Tab[] Tabs = new Tab[]
     {
         Merged("System", "Monitor", "\uE7F4", new("Live", "\uE7F4", () => new SystemPage()), new("History", "\uE81C", () => new HistoryPage()),
             new("Analysis", "\uE9D9", () => new AnalysisPage())),
@@ -37,7 +36,7 @@ public partial class MainWindow : Window
         new("Weather", "Life", "\uE706", () => new WeatherPage()),
         new("Map", "Life", "\uE707", () => new MapPage()),
         Merged("Money", "Life", "\uE825", new("Budget", "\uE8C7", () => new BudgetPage()), new("Exchange", "\uE8AB", () => new ExchangePage()),
-            new("Stocks", "\uE9D2", () => new StocksPage(), () => App.Settings.StocksShown)),
+            new("Stocks", "\uE9D2", () => new StocksPage())),
         new("Now Playing", "Life", "\uEC4F", () => new NowPlayingPage()),
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
         Merged("Notes", "Tools", "\uE70B", new("Notes", "\uE70B", () => new NotesPage()), new("Stickies", "\uE840", () => new StickiesPage())),
@@ -53,7 +52,7 @@ public partial class MainWindow : Window
         new("Ports", "Dev", "\uE943", () => new DevPage()),
         new("Git", "Dev", "\uF003", () => new GitPage(), "git.exe"),
         new("Docker", "Dev", "\uF158", () => new DockerPage(), "docker.exe"),
-        new("Cloudflare", "Dev", "\uE753", () => new CloudflarePage(), On: () => App.Settings.CloudflareShown),
+        new("Cloudflare", "Dev", "\uE753", () => new CloudflarePage()),
         new("JSON", "Dev", "\uE8A5", () => new JsonPage(), Keep: true),
     }.Where(t => t.Needs is null || Shell.OnPath(t.Needs)).ToArray();
 
@@ -77,11 +76,11 @@ public partial class MainWindow : Window
     /// Group name → folded. Read when the group's container is built, so changes go through RefreshNav.
     public static readonly IValueConverter Folded = new Conv(v => v is string g && App.Settings.FoldedGroups.Contains(g));
 
-    static bool Enabled(Tab t) => t.On?.Invoke() != false;
+    static bool Enabled(Tab t) => !App.Settings.OffPages.Contains(t.Name);
     static bool Shown(object o) => Enabled((Tab)o) && !App.Settings.HiddenTabs.Contains(((Tab)o).Name);
     /// Hidden from the sidebar by the user: still in the "…" menu.
     static bool Tucked(Tab t) => Enabled(t) && !Shown(t);
-    string enabledTabs = ""; // which On tabs are on, to rebuild the views when a setting flips one
+    string enabledTabs = ""; // which tabs are on, to rebuild the views when a setting flips one
 
     public MainWindow()
     {
@@ -94,7 +93,7 @@ public partial class MainWindow : Window
         Strip.ItemsSource = stripView;
         MoreButton.Visibility = Tabs.Any(Tucked) ? Visibility.Visible : Visibility.Collapsed;
         enabledTabs = EnabledTabs();
-        if (Nav.Items.Count > 0) Nav.SelectedIndex = 0; else Open(Tabs.Length > 0 ? Tabs[0] : SettingsTab);
+        if (Nav.Items.Count > 0) Nav.SelectedIndex = 0; else Open(Tabs.FirstOrDefault(Enabled) ?? SettingsTab);
         App.SettingsChanged += ApplySettings;
         PreviewKeyDown += Shortcut;
         Deactivated += (_, _) => Dispatcher.BeginInvoke(LostToOutside, System.Windows.Threading.DispatcherPriority.Input);

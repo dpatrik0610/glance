@@ -7,10 +7,10 @@ namespace Glance;
 /// One sidebar page made of related pages, switched with chips along the top. Each part is built on first visit and kept.
 public sealed class Tabbed : UserControl, IDisposable
 {
-    /// Shown: whether the part is offered now (a setting can turn it off); null = always.
-    public record Part(string Name, string Icon, Func<UserControl> Create, Func<bool>? Shown = null);
+    public record Part(string Name, string Icon, Func<UserControl> Create);
 
-    public static bool Offered(Part p) => p.Shown?.Invoke() != false;
+    /// Off in Settings → Pages. The first part is never offered there, so it shares its name with the page safely.
+    public static bool Offered(Part p) => !App.Settings.OffPages.Contains(p.Name);
 
     readonly Part[] parts;
     readonly UserControl?[] built;

@@ -269,7 +269,7 @@ public partial class App : Application
 
     async void CheckCloudflare()
     {
-        if (!Settings.CloudflareShown || !Cloudflare.Connected) return;
+        if (Settings.OffPages.Contains("Cloudflare") || !Cloudflare.Connected) return;
         try
         {
             var all = await Task.WhenAll(Cloudflare.Workers(), Cloudflare.Pages());
