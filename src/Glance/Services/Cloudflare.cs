@@ -10,17 +10,30 @@ using System.Text.Json.Nodes;
 namespace Glance.Services;
 
 /// One deployment of a Worker or Pages project. Status: "success", "failure", "active" (building), "canceled"…
-public record Deploy(string Key, string Name, string Id, string Status, string Message, string Branch, string Author, string Url, DateTime When)
+/// Commit: the short git hash (Pages builds from a repo).
+public record Deploy(string Key, string Name, string Id, string Status, string Message, string Branch, string Author, string Url, DateTime When,
+    string Commit = "")
 {
     public bool Failed => Status == "failure";
+    public bool Building => Status is "active" or "idle";
     public bool Final => Status is "success" or "failure" or "canceled" or "skipped";
     public string WhenText => When == default ? "" : When.ToLocalTime().ToString("MMM d, HH:mm");
+    public string Ago => Cloudflare.Ago(When);
     public string Line => string.Join(" · ", new[] { Branch, Message, Author }.Where(s => s.Length > 0));
+    /// Branch, hash and who: the line under a deployment's message.
+    public string Meta => string.Join(" · ", new[] { Branch, Commit, Author }.Where(s => s.Length > 0));
+    public string Title => Message.Length > 0 ? Message : Id.Length == 0 ? "No deployments yet" : "No message";
+    public string StatusText => Id.Length == 0 ? "—" : Status switch
+    {
+        "success" => "Live", "failure" => "Failed", "active" or "idle" => "Building", "canceled" => "Canceled", "skipped" => "Skipped", _ => Status,
+    };
 }
 
-public record Zone(string Name, string Status, string Plan);
-public record Store(string Kind, string Name, string Size);
-public record Usage(long Requests, long Errors, double CpuMs);
+public record Zone(string Id, string Name, string Status, string Plan);
+/// Detail: a second fact (tables, location). Dash: its page on dash.cloudflare.com.
+public record Store(string Kind, string Name, string Size, string Detail, string Dash);
+/// Hourly: requests per hour over the last 24 hours, oldest first.
+public record Usage(long Requests, long Errors, double CpuMs, float[] Hourly);
 
 /// Read-only Cloudflare: Workers, Pages, zones, storage and Worker traffic, through the user's own API token.
 /// The token is kept encrypted for this Windows user (DPAPI) in %AppData%\Glance\cloudflare.dat.
@@ -34,6 +47,27 @@ public static class Cloudflare
 
     public static bool Connected => File.Exists(TokenFile);
     public static string AccountName => account?.Name ?? "";
+    public static string AccountId => account?.Id ?? "";
+
+    /// A page of this account on the Cloudflare dashboard.
+    public static string Dash(string path = "") => $"https://dash.cloudflare.com/{AccountId}/{path}".TrimEnd('/');
+
+    /// The token page with Glance's read permissions already picked (Cloudflare's token template link).
+    public static readonly string NewTokenPage = TokenPage + "?name=Glance&accountId=*&zoneId=all&permissionGroupKeys=" + Uri.EscapeDataString(
+        "[" + string.Join(",", new[] { "workers_scripts", "page", "account_analytics", "d1", "workers_kv_storage", "workers_r2", "zone" }
+            .Select(k => $$"""{"key":"{{k}}","type":"read"}""")) + "]");
+
+    /// "just now", "5 min ago", "3 h ago", "2 d ago", then the date.
+    public static string Ago(DateTime utc)
+    {
+        if (utc == default) return "";
+        var d = DateTime.UtcNow - utc.ToUniversalTime();
+        return d.TotalMinutes < 1 ? "just now" : d.TotalHours < 1 ? $"{d.TotalMinutes:0} min ago" : d.TotalDays < 1 ? $"{d.TotalHours:0} h ago"
+            : d.TotalDays < 7 ? $"{d.TotalDays:0} d ago" : utc.ToLocalTime().ToString("MMM d");
+    }
+
+    /// 1234 → "1.2K", 3400000 → "3.4M".
+    public static string Compact(double n) => n >= 1e9 ? $"{n / 1e9:0.#}B" : n >= 1e6 ? $"{n / 1e6:0.#}M" : n >= 1e4 ? $"{n / 1e3:0}K" : n >= 1e3 ? $"{n / 1e3:0.#}K" : $"{n:0}";
 
     static string? Token()
     {
@@ -55,6 +89,7 @@ public static class Cloudflare
     public static void Disconnect()
     {
         account = null;
+        workersDev = null;
         File.Delete(TokenFile);
     }
 
@@ -96,14 +131,30 @@ public static class Cloudflare
         (await Get<WorkerDeploys>($"accounts/{a}/workers/scripts/{Uri.EscapeDataString(name)}/deployments")).Deployments
             .OrderByDescending(d => d.CreatedOn).Select(d => Of(name, d)).ToList();
 
-    /// Each Worker with its newest deployment.
-    public static async Task<List<Deploy>> Workers()
+    sealed record SubdomainJson(string? Subdomain);
+    sealed record ScriptSubdomainJson(bool Enabled);
+    static string? workersDev; // the account's *.workers.dev name
+
+    /// Each Worker with its newest deployment. Urls: also its workers.dev address, where that's switched on (the page; the alerts skip it).
+    public static async Task<List<Deploy>> Workers(bool urls = false)
     {
         var a = await Account();
         var scripts = await Get<List<ScriptJson>>($"accounts/{a}/workers/scripts");
-        // ponytail: one request per Worker; fine for a personal account, a batched endpoint if it ever has hundreds.
+        if (urls && workersDev is null)
+            try { workersDev = (await Get<SubdomainJson>($"accounts/{a}/workers/subdomain")).Subdomain ?? ""; }
+            catch (HttpRequestException) { workersDev = ""; } // none registered
+        // ponytail: one or two requests per Worker; fine for a personal account, a batched endpoint if it ever has hundreds.
         var latest = await Task.WhenAll(scripts.Select(async s =>
-            (await WorkerHistory(a, s.Id)).FirstOrDefault() ?? new Deploy("worker:" + s.Id, s.Id, "", "success", "", "", "", "", s.ModifiedOn)));
+        {
+            var d = (await WorkerHistory(a, s.Id)).FirstOrDefault() ?? new Deploy("worker:" + s.Id, s.Id, "", "success", "", "", "", "", s.ModifiedOn);
+            if (!urls || workersDev is not { Length: > 0 } sub) return d;
+            try
+            {
+                var on = (await Get<ScriptSubdomainJson>($"accounts/{a}/workers/scripts/{Uri.EscapeDataString(s.Id)}/subdomain")).Enabled;
+                return on ? d with { Url = $"https://{s.Id}.{sub}.workers.dev" } : d;
+            }
+            catch (HttpRequestException) { return d; }
+        }));
         return latest.OrderByDescending(d => d.When).ToList();
     }
 
@@ -113,7 +164,7 @@ public static class Cloudflare
     sealed record PagesDeployJson(string Id, string? Url, string? Environment, DateTime CreatedOn, StageJson? LatestStage, TriggerJson? DeploymentTrigger);
     sealed record StageJson(string Name, string Status);
     sealed record TriggerJson(TriggerMeta? Metadata);
-    sealed record TriggerMeta(string? Branch, string? CommitMessage);
+    sealed record TriggerMeta(string? Branch, string? CommitMessage, string? CommitHash);
 
     static Deploy Of(ProjectJson p, PagesDeployJson? d)
     {
@@ -122,7 +173,9 @@ public static class Cloudflare
         // A finished build stage isn't live yet: only the deploy stage's success is.
         var status = d.LatestStage is { Status: "success", Name: not "deploy" } ? "active" : d.LatestStage?.Status ?? "";
         var message = (d.DeploymentTrigger?.Metadata?.CommitMessage ?? "").Split('\n')[0].Trim();
-        return new("pages:" + p.Name, p.Name, d.Id, status, message, d.DeploymentTrigger?.Metadata?.Branch ?? d.Environment ?? "", "", url, d.CreatedOn);
+        var hash = d.DeploymentTrigger?.Metadata?.CommitHash ?? "";
+        return new("pages:" + p.Name, p.Name, d.Id, status, message, d.DeploymentTrigger?.Metadata?.Branch ?? d.Environment ?? "", "", url, d.CreatedOn,
+            hash[..Math.Min(7, hash.Length)]);
     }
 
     /// Each Pages project with its newest deployment.
@@ -146,19 +199,19 @@ public static class Cloudflare
 
     // ---- Zones, storage, traffic ----
 
-    sealed record ZoneJson(string Name, string Status, PlanJson? Plan);
+    sealed record ZoneJson(string Id, string Name, string Status, PlanJson? Plan);
     sealed record PlanJson(string Name);
 
     public static async Task<List<Zone>> Zones()
     {
         var a = await Account();
-        return (await Get<List<ZoneJson>>($"zones?account.id={a}&per_page=50")).Select(z => new Zone(z.Name, z.Status, z.Plan?.Name ?? "")).ToList();
+        return (await Get<List<ZoneJson>>($"zones?account.id={a}&per_page=50")).Select(z => new Zone(z.Id, z.Name, z.Status, z.Plan?.Name ?? "")).ToList();
     }
 
-    sealed record D1Json(string Name, long? FileSize);
-    sealed record KvJson(string Title);
+    sealed record D1Json(string Uuid, string Name, long? FileSize, int? NumTables);
+    sealed record KvJson(string Id, string Title);
     sealed record R2List(List<R2Json> Buckets);
-    sealed record R2Json(string Name);
+    sealed record R2Json(string Name, string? Location);
 
     /// D1, KV and R2. A kind the token may not read is left out rather than failing the rest.
     public static async Task<List<Store>> Storage(IReadOnlyDictionary<string, long> r2Sizes)
@@ -170,10 +223,13 @@ public static class Cloudflare
             catch (HttpRequestException e) { Db.Warn($"cloudflare storage: {e.Message}"); return []; }
         }
         var parts = await Task.WhenAll(
-            Try(async () => (await Get<List<D1Json>>($"accounts/{a}/d1/database?per_page=100")).Select(d => new Store("D1", d.Name, Size(d.FileSize)))),
-            Try(async () => (await Get<List<KvJson>>($"accounts/{a}/storage/kv/namespaces?per_page=100")).Select(k => new Store("KV", k.Title, ""))),
-            Try(async () => (await Get<R2List>($"accounts/{a}/r2/buckets")).Buckets
-                .Select(b => new Store("R2", b.Name, Size(r2Sizes.TryGetValue(b.Name, out var s) ? s : null)))));
+            Try(async () => (await Get<List<D1Json>>($"accounts/{a}/d1/database?per_page=100")).Select(d => new Store("D1", d.Name, Size(d.FileSize),
+                d.NumTables is { } t ? $"{t} table{(t == 1 ? "" : "s")}" : "SQL database", Dash($"workers/d1/databases/{d.Uuid}")))),
+            Try(async () => (await Get<List<KvJson>>($"accounts/{a}/storage/kv/namespaces?per_page=100")).Select(k => new Store("KV", k.Title, "",
+                "Key-value namespace", Dash($"workers/kv/namespaces/{k.Id}")))),
+            Try(async () => (await Get<R2List>($"accounts/{a}/r2/buckets")).Buckets.Select(b => new Store("R2", b.Name,
+                Size(r2Sizes.TryGetValue(b.Name, out var s) ? s : null), b.Location is { Length: > 0 } l ? $"Bucket · {l.ToUpperInvariant()}" : "Bucket",
+                Dash($"r2/default/buckets/{b.Name}")))));
         return parts.SelectMany(p => p).ToList();
     }
 
@@ -182,7 +238,7 @@ public static class Cloudflare
     const string WorkersQuery = """
         query($a: string!, $from: Time!, $to: Time!) { viewer { accounts(filter: {accountTag: $a}) {
           workersInvocationsAdaptive(limit: 1000, filter: {datetime_geq: $from, datetime_leq: $to}) {
-            sum { requests errors } quantiles { cpuTimeP50 } dimensions { scriptName } } } } }
+            sum { requests errors } quantiles { cpuTimeP50 } dimensions { scriptName datetimeHour } } } } }
         """;
     const string R2Query = """
         query($a: string!, $from: Time!, $to: Time!) { viewer { accounts(filter: {accountTag: $a}) {
@@ -206,17 +262,24 @@ public static class Cloudflare
         return root?["data"]?["viewer"]?["accounts"]?[0];
     }
 
-    /// Requests, errors and median CPU per Worker over the last 24 hours.
+    /// Requests, errors and typical CPU time per Worker over the last 24 hours, with requests per hour.
     public static async Task<Dictionary<string, Usage>> Traffic()
     {
-        var workers = new Dictionary<string, Usage>();
+        var first = DateTime.UtcNow.AddHours(-23);
+        first = new DateTime(first.Year, first.Month, first.Day, first.Hour, 0, 0, DateTimeKind.Utc);
+        var sums = new Dictionary<string, (long Req, long Err, double CpuWeighted, float[] Hourly)>();
         foreach (var g in (await Graph(WorkersQuery, 1))?["workersInvocationsAdaptive"]?.AsArray() ?? [])
         {
             var name = g!["dimensions"]!["scriptName"]!.GetValue<string>();
-            var u = new Usage(g["sum"]!["requests"]!.GetValue<long>(), g["sum"]!["errors"]!.GetValue<long>(), g["quantiles"]!["cpuTimeP50"]!.GetValue<double>() / 1000);
-            workers[name] = workers.TryGetValue(name, out var o) ? new(o.Requests + u.Requests, o.Errors + u.Errors, Math.Max(o.CpuMs, u.CpuMs)) : u;
+            var req = g["sum"]!["requests"]!.GetValue<long>();
+            var cpu = g["quantiles"]!["cpuTimeP50"]!.GetValue<double>() / 1000; // µs → ms
+            var o = sums.TryGetValue(name, out var x) ? x : (0, 0, 0, new float[24]);
+            var hour = (int)Math.Floor((g["dimensions"]!["datetimeHour"]!.GetValue<DateTime>().ToUniversalTime() - first).TotalHours);
+            if (hour is >= 0 and < 24) o.Hourly[hour] += req;
+            sums[name] = (o.Req + req, o.Err + g["sum"]!["errors"]!.GetValue<long>(), o.CpuWeighted + cpu * req, o.Hourly);
         }
-        return workers;
+        // CPU: each hour's median, weighted by its requests.
+        return sums.ToDictionary(p => p.Key, p => new Usage(p.Value.Req, p.Value.Err, p.Value.Req > 0 ? p.Value.CpuWeighted / p.Value.Req : 0, p.Value.Hourly));
     }
 
     /// Each R2 bucket's current size in bytes (Cloudflare updates it a few times a day).
