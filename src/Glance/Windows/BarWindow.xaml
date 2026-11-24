@@ -127,7 +127,7 @@
                     <StackPanel x:Name="ViewButtons" Orientation="Horizontal" />
                     <Border Width="1" Height="11" Background="#24FFFFFF" Margin="3,0" />
                     <!-- Eyedropper: the picked color's hex goes straight to the clipboard -->
-                    <Button Style="{StaticResource Arrow}" FontSize="10" Foreground="{StaticResource Text}" Content="&#xE790;"
+                    <Button x:Name="PickButton" Style="{StaticResource Arrow}" FontSize="10" Foreground="{StaticResource Text}" Content="&#xE790;"
                             ToolTip="Pick a color from screen (copies its hex)" Click="PickColor" Margin="0,0,2,0" />
                 </StackPanel>
             </Grid>

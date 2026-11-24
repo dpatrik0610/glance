@@ -10,7 +10,7 @@ public sealed class Tabbed : UserControl, IDisposable
     public record Part(string Name, string Icon, Func<UserControl> Create);
 
     /// Off in Settings → Pages. The first part is never offered there, so it shares its name with the page safely.
-    public static bool Offered(Part p) => !App.Settings.OffPages.Contains(p.Name);
+    public static bool Offered(Part p) => Services.Features.On(p.Name);
 
     readonly Part[] parts;
     readonly UserControl?[] built;

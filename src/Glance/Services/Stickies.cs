@@ -35,7 +35,7 @@ public static class Stickies
     {
         foreach (var s in Items)
         {
-            var want = App.Settings.StickiesShown && s.Shown;
+            var want = App.Settings.StickiesShown && Features.On("Stickies") && s.Shown;
             if (want && !open.ContainsKey(s))
             {
                 var w = new StickyWindow(s);

@@ -30,7 +30,7 @@ public static class ClipboardHistory
     // Called on WM_CLIPBOARDUPDATE (UI thread).
     public static void Capture()
     {
-        if (!App.Settings.ClipboardHistory) return;
+        if (!App.Settings.ClipboardHistory || !Features.On("Clipboard")) return;
         try
         {
             var data = Clipboard.GetDataObject();

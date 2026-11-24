@@ -16,7 +16,7 @@ public partial class MainWindow : Window
     /// Needs: an exe that must be on PATH, or the tab is left out (checked at startup).
     /// Parts: a merged page, its related pages switched by chips at the top (Tabbed).
     /// Keep: never dropped when idle; it holds work or input that isn't saved anywhere (shells, jobs, scans, typed text).
-    /// Any page, and any part after a merged page's first, can be turned off in Settings → Pages (Settings.OffPages).
+    /// Any page, and any part after a merged page's first, can be turned off in Settings → Pages (Features).
     public record Tab(string Name, string Group, string Icon, Func<UserControl> Create, string? Needs = null, Tabbed.Part[]? Parts = null, bool Keep = false);
 
     static Tab Merged(string name, string group, string icon, params Tabbed.Part[] parts) =>
@@ -76,7 +76,7 @@ public partial class MainWindow : Window
     /// Group name → folded. Read when the group's container is built, so changes go through RefreshNav.
     public static readonly IValueConverter Folded = new Conv(v => v is string g && App.Settings.FoldedGroups.Contains(g));
 
-    static bool Enabled(Tab t) => !App.Settings.OffPages.Contains(t.Name);
+    static bool Enabled(Tab t) => Features.On(t.Name);
     static bool Shown(object o) => Enabled((Tab)o) && !App.Settings.HiddenTabs.Contains(((Tab)o).Name);
     /// Hidden from the sidebar by the user: still in the "…" menu.
     static bool Tucked(Tab t) => Enabled(t) && !Shown(t);

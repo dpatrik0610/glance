@@ -70,6 +70,7 @@ public static class Timers
 
     static void Check(DateTime now)
     {
+        if (!Features.On("Timer")) return; // paused alerts: ones that ended meanwhile fire when the page is back on
         foreach (var t in Data.Timers.Where(t => t.Ends <= now))
         {
             (t.Ends, t.Left) = (null, 0);

@@ -139,6 +139,7 @@ public partial class BarWindow : Window
         Pill.Background = PillBrush;
         SliverLine.Background = PillBrush;
         Pill.LayoutTransform = new ScaleTransform(Scale, Scale);
+        if (IsLoaded && !Features.On(Views[index].Tab)) Show(0); // its page was just turned off
     }
 
     /// Where the pill ends on screen, for things hung below it.
@@ -286,10 +287,16 @@ public partial class BarWindow : Window
         });
     }
 
-    // The shown view in the accent color.
+    // The shown view in the accent color; views (and the eyedropper) of pages turned off are left out.
     void MarkMenu()
     {
-        for (var i = 0; i < Views.Length; i++) ((Button)ViewButtons.Children[i]).Foreground = Skin.Brush(i == index ? "Accent" : "Text");
+        for (var i = 0; i < Views.Length; i++)
+        {
+            var b = (Button)ViewButtons.Children[i];
+            b.Foreground = Skin.Brush(i == index ? "Accent" : "Text");
+            b.Visibility = Features.On(Views[i].Tab) ? Visibility.Visible : Visibility.Collapsed;
+        }
+        PickButton.Visibility = Features.On("Color") ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // Pick → hex on the clipboard, an alert in that color; clicking the alert opens the Color page on it.
@@ -325,7 +332,7 @@ public partial class BarWindow : Window
     {
         var dir = step == 0 ? 1 : Math.Sign(step);
         var i = (index + step + Views.Length) % Views.Length;
-        for (var n = 0; skip && n < Views.Length && Empty(Views[i]); n++) i = (i + dir + Views.Length) % Views.Length;
+        for (var n = 0; n < Views.Length && (!Features.On(Views[i].Tab) || skip && Empty(Views[i])); n++) i = (i + dir + Views.Length) % Views.Length;
         if (step != 0 && i != index)
         {
             Motion.To(Body, OpacityProperty, 1, 220, from: 0);

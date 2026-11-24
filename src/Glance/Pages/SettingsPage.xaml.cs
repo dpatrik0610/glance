@@ -84,17 +84,12 @@ public partial class SettingsPage : UserControl
         };
     }
 
-    /// Settings → Pages: one switch per page and per part; off = not offered anywhere (Settings.OffPages).
+    /// Settings → Pages: one switch per page and per part; off = not offered anywhere and its background work stops (Features).
     void AddPageSwitch(string name, string icon, string description, bool indent = false)
     {
         var box = new CheckBox { Style = Skin.Style("Switch"), IsChecked = !s.OffPages.Contains(name) };
         AutomationProperties.SetName(box, name);
-        box.Click += (_, _) =>
-        {
-            s.OffPages.Remove(name);
-            if (box.IsChecked != true) s.OffPages.Add(name);
-            App.ApplySettings();
-        };
+        box.Click += (_, _) => Features.Set(name, box.IsChecked == true);
         PagesList.Children.Add(new SettingRow { Icon = icon, Title = name, Description = description, Content = box, Margin = indent ? new Thickness(28, 0, 0, 0) : default });
     }
 

@@ -75,7 +75,7 @@ public partial class App : Application
         menu.Items.Add("Open", null, (_, _) => ShowMain());
         var stickies = new Forms.ToolStripMenuItem("Show stickies") { CheckOnClick = true };
         stickies.Click += (_, _) => Stickies.SetShown(stickies.Checked);
-        menu.Opening += (_, _) => stickies.Checked = Settings.StickiesShown;
+        menu.Opening += (_, _) => (stickies.Checked, stickies.Visible) = (Settings.StickiesShown, Features.On("Stickies"));
         menu.Items.Add(stickies);
         if (!Native.IsAdmin) menu.Items.Add("Restart as admin (CPU temps)", null, (_, _) => RestartAsAdmin());
         if (DeployScript is not null) menu.Items.Add("Rebuild and restart", null, (_, _) => Rebuild());
@@ -111,8 +111,8 @@ public partial class App : Application
         new DispatcherTimer(TimeSpan.FromSeconds(15), DispatcherPriority.Background, (_, _) => CheckReminders(), Dispatcher);
         Dispatcher.BeginInvoke(CheckReminders, DispatcherPriority.ApplicationIdle); // catch up right after start
         // Google Calendar's next two days, for its reminder popups (nothing happens until it's connected).
-        new DispatcherTimer(TimeSpan.FromMinutes(5), DispatcherPriority.Background, (_, _) => _ = GoogleCalendar.RefreshUpcoming(), Dispatcher);
-        _ = GoogleCalendar.RefreshUpcoming();
+        new DispatcherTimer(TimeSpan.FromMinutes(5), DispatcherPriority.Background, (_, _) => RefreshCalendar(), Dispatcher);
+        RefreshCalendar();
         // Cloudflare deploys going live or failing (nothing happens until it's switched on and connected).
         new DispatcherTimer(TimeSpan.FromMinutes(2), DispatcherPriority.Background, (_, _) => CheckCloudflare(), Dispatcher);
         CheckCloudflare(); // the first look only remembers what's there
@@ -181,7 +181,7 @@ public partial class App : Application
     internal void OpenCli(string dir, string? command = null, string? name = null)
     {
         ShowMain();
-        ((CliPage)main!.ShowTab("CLI")).Open(dir, command, name);
+        if (Features.On("CLI")) ((CliPage)main!.ShowTab("CLI")).Open(dir, command, name);
     }
 
     IntPtr WndProc(IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled)
@@ -206,11 +206,13 @@ public partial class App : Application
         if (HotkeyStatus != "Active.") Db.Warn($"hotkey {Settings.Hotkey}: {HotkeyStatus}");
 
         // Quick capture: optional (empty = off).
-        if (Settings.CaptureHotkey == registeredCapture) return;
-        registeredCapture = Settings.CaptureHotkey;
+        // Quick capture writes into today's note: off with the Notes page.
+        var capture = Features.On("Notes") ? Settings.CaptureHotkey : "";
+        if (capture == registeredCapture) return;
+        registeredCapture = capture;
         Native.UnregisterHotKey(hwnd, CaptureHotkeyId);
-        if (Settings.CaptureHotkey.Trim() == "") CaptureStatus = "Off.";
-        else if (!Native.TryParseHotkey(Settings.CaptureHotkey, out mods, out vk)) CaptureStatus = "Not a valid shortcut.";
+        if (capture.Trim() == "") CaptureStatus = Features.On("Notes") ? "Off." : "Off with the Notes page.";
+        else if (!Native.TryParseHotkey(capture, out mods, out vk)) CaptureStatus = "Not a valid shortcut.";
         else CaptureStatus = Native.RegisterHotKey(hwnd, CaptureHotkeyId, mods | 0x4000, vk) ? "Active." : "Taken by another app.";
     }
 
@@ -225,7 +227,7 @@ public partial class App : Application
 
     void ShowTrack(Player p)
     {
-        if (!Settings.TrackAlerts) return;
+        if (!Settings.TrackAlerts || !Features.On("Now Playing")) return;
         AlertWindow.Show(new Toast($"Now playing · {p.Source}", p.Title, "", "", "", Color.FromRgb(0xE6, 0xA6, 0x5D), false, p.Cover, p.Artist, Quiet: true),
             () => Drop("Now Playing"));
     }
@@ -233,7 +235,7 @@ public partial class App : Application
     // Checklist reminders: polled, so ones that came due while Glance was off fire right after start.
     void CheckReminders()
     {
-        foreach (var (note, item) in NoteStore.DueReminders(DateTime.Now).ToList())
+        foreach (var (note, item) in NoteStore.DueReminders(DateTime.Now).Where(r => Features.On(r.Note is Sticky ? "Stickies" : "Notes")).ToList())
         {
             item.Reminded = true; // saved with its note
             Db.Info($"reminder {note.DisplayTitle}: {item.Text}");
@@ -246,13 +248,13 @@ public partial class App : Application
                 NoteStore.RequestFocus(note);
             });
         }
-        foreach (var t in BoardStore.DueReminders(DateTime.Now))
+        foreach (var t in Features.On("Board") ? BoardStore.DueReminders(DateTime.Now) : [])
         {
             Db.Info($"reminder {t.Board.Name}: {t.Text}");
             AlertWindow.Show(new Toast($"Reminder · {t.Board.Name}", t.Text.Length > 0 ? t.Text : "(no text)", "",
                 "Due", t.Due!.Value.ToString("HH:mm"), Color.FromRgb(0x5A, 0xA9, 0xFF), true), () => ((Pages.BoardPage)Go("Board")).Reveal(t.Board, t.Item));
         }
-        foreach (var (ev, minutes) in GoogleCalendar.DueAlerts(DateTime.Now))
+        foreach (var (ev, minutes) in Features.On("Calendar") ? GoogleCalendar.DueAlerts(DateTime.Now) : [])
         {
             Db.Info($"calendar reminder: {ev.Title}");
             var when = ev.AllDay ? ev.Start.ToString("ddd d MMM") : minutes == 0 ? "Now" : ev.Start.ToString("HH:mm");
@@ -265,11 +267,13 @@ public partial class App : Application
         }
     }
 
+    static void RefreshCalendar() { if (Features.On("Calendar")) _ = GoogleCalendar.RefreshUpcoming(); }
+
     readonly Cloudflare.Watch cloudflare = new();
 
     async void CheckCloudflare()
     {
-        if (Settings.OffPages.Contains("Cloudflare") || !Cloudflare.Connected) return;
+        if (!Features.On("Cloudflare") || !Cloudflare.Connected) return;
         try
         {
             var all = await Task.WhenAll(Cloudflare.Workers(), Cloudflare.Pages());

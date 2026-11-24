@@ -89,21 +89,24 @@ public partial class MainWindow
         // A merged page's other parts (History, Stickies) are still found by name; the first part is the page itself.
         list.AddRange(Tabs.Where(Enabled).SelectMany(t => t.Parts?.Skip(1) ?? []).Where(Tabbed.Offered).Select(p => new Cmd(p.Name, "Page", p.Icon, Do(() => Go(p.Name)))));
 
-        list.Add(new("New terminal", "CLI", "\uE756", Do(() => Cli(home))));
-        if (claude) list.Add(new("New Claude chat", "CLI", "\uE99A", Do(() => Cli(home, CliPage.Claude, "Claude"))));
-        list.Add(new("Copy public IP", "Network", "\uE774", async () =>
+        // A command that opens or works for a page goes with it when the page is off.
+        void Add(string page, Cmd c) { if (Features.On(page)) list.Add(c); }
+
+        Add("CLI", new("New terminal", "CLI", "\uE756", Do(() => Cli(home))));
+        if (claude) Add("CLI", new("New Claude chat", "CLI", "\uE99A", Do(() => Cli(home, CliPage.Claude, "Claude"))));
+        Add("Network", new("Copy public IP", "Network", "\uE774", async () =>
         {
             var ip = await Net.PublicIp();
             return ClipboardHistory.Copy(ip.Ip) ? $"Copied {ip.Ip}" : "Clipboard busy, try again.";
         }));
-        list.Add(new("Generate password", "Password", "\uE8D7", () =>
+        Add("Password", new("Generate password", "Password", "\uE8D7", () =>
             Task.FromResult<string?>(ClipboardHistory.CopySecret(Passwords.Generate(20, true, true, true, true, true).Password, TimeSpan.FromSeconds(30))
                 ? "Copied a 20-character password · clipboard clears in 30s" : "Clipboard busy, try again.")));
 
-        list.Add(new("New sticky", "Stickies", "\uE840", Do(() => { Go("Stickies"); Stickies.Add(NoteKind.Text); })));
-        list.Add(new(App.Settings.StickiesShown ? "Hide stickies" : "Show stickies", "Stickies", "\uE840",
+        Add("Stickies", new("New sticky", "Stickies", "\uE840", Do(() => { Go("Stickies"); Stickies.Add(NoteKind.Text); })));
+        Add("Stickies", new(App.Settings.StickiesShown ? "Hide stickies" : "Show stickies", "Stickies", "\uE840",
             Do(() => Stickies.SetShown(!App.Settings.StickiesShown))));
-        list.Add(new("Pick color from screen", "Color", "\uE790", async () =>
+        Add("Color", new("Pick color from screen", "Color", "\uE790", async () =>
         {
             if (await Eyedropper.Pick() is not { } c) return "Cancelled.";
             ((ColorPage)ShowTab("Color")).Use(c, remember: true);
@@ -118,31 +121,31 @@ public partial class MainWindow
         foreach (var dir in App.Settings.CliFolders)
         {
             var leaf = Path.GetFileName(dir.TrimEnd('\\')) is { Length: > 0 } l ? l : dir;
-            list.Add(new($"Terminal in {leaf}", "Folder", "\uED25", Do(() => Cli(dir)), dir));
-            if (claude) list.Add(new($"Claude in {leaf}", "Folder", "\uE99A", Do(() => Cli(dir, CliPage.Claude, "Claude")), dir, true));
+            Add("CLI", new($"Terminal in {leaf}", "Folder", "\uED25", Do(() => Cli(dir)), dir));
+            if (claude) Add("CLI", new($"Claude in {leaf}", "Folder", "\uE99A", Do(() => Cli(dir, CliPage.Claude, "Claude")), dir, true));
         }
 
         foreach (var n in NoteStore.Notes)
-            list.Add(new(n.DisplayTitle, "Note", n.Icon, Do(() => { Go("Notes"); NoteStore.RequestFocus(n); }),
+            Add("Notes", new(n.DisplayTitle, "Note", n.Icon, Do(() => { Go("Notes"); NoteStore.RequestFocus(n); }),
                 n.Text + " " + string.Join(" ", n.Items.Select(i => i.Text)), true));
 
-        list.Add(new("Today's note", "Note", "", Do(() => { Go("Notes"); NoteStore.RequestFocus(NoteStore.Today()); })));
-        list.Add(new("Quick capture", "Note", "", Do(CaptureWindow.Open)));
+        Add("Notes", new("Today's note", "Note", "", Do(() => { Go("Notes"); NoteStore.RequestFocus(NoteStore.Today()); })));
+        Add("Notes", new("Quick capture", "Note", "", Do(CaptureWindow.Open)));
         foreach (var b in BoardStore.Data.All)
         {
-            list.Add(new(b.Name, "Board", "", Do(() => ((BoardPage)ShowTab("Board")).Reveal(b)),
+            Add("Board", new(b.Name, "Board", "", Do(() => ((BoardPage)ShowTab("Board")).Reveal(b)),
                 string.Join(" ", b.Items.Select(i => i.Title)), true));
             foreach (var it in b.Items.Where(i => i.Kind == "note" && i.Title.Trim() != ""))
-                list.Add(new(it.Title, $"Board · {b.Name}", "", Do(() => ((BoardPage)ShowTab("Board")).Reveal(b, it)), it.Text, true));
+                Add("Board", new(it.Title, $"Board · {b.Name}", "", Do(() => ((BoardPage)ShowTab("Board")).Reveal(b, it)), it.Text, true));
         }
 
         foreach (var p in PinStore.Pins)
-            list.Add(new(p.Name, "Pin", "\uE707", Do(() => ((MapPage)ShowTab("Map")).ShowPin(p)), $"{p.Note} {p.Address} {p.Kind}", true));
+            Add("Map", new(p.Name, "Pin", "\uE707", Do(() => ((MapPage)ShowTab("Map")).ShowPin(p)), $"{p.Note} {p.Address} {p.Kind}", true));
 
         foreach (var c in ClipboardHistory.Items.Where(c => !c.IsImage))
         {
             var line = string.Join(" ", c.Text.Split((char[])['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries)).Trim();
-            list.Add(new(line.Length > 90 ? line[..90] + "…" : line, $"Clipboard · {c.When}", "\uE77F",
+            Add("Clipboard", new(line.Length > 90 ? line[..90] + "…" : line, $"Clipboard · {c.When}", "\uE77F",
                 () => Task.FromResult<string?>(ClipboardHistory.Copy(c.Text) ? "Copied" : "Clipboard busy, try again."), c.Text, true));
         }
         return list;
@@ -151,7 +154,7 @@ public partial class MainWindow
     // The slow sources: a folder scan and `docker ps`. Appended as they arrive.
     async void LoadMore(int id)
     {
-        var repos = await Task.Run(Git.Folders);
+        var repos = Features.On("CLI") ? await Task.Run(Git.Folders) : [];
         if (id != loadId) return;
         var claude = Shell.OnPath("claude.exe");
         foreach (var (dir, name) in repos)
@@ -161,7 +164,7 @@ public partial class MainWindow
         }
         Filter();
 
-        if (!Tabs.Any(t => t.Name == "Docker")) return;
+        if (!Tabs.Any(t => t.Name == "Docker") || !Features.On("Docker")) return;
         var (state, containers) = await Docker.Containers();
         if (id != loadId || state != Docker.State.Ok) return;
         foreach (var c in containers)
