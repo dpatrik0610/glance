@@ -14,7 +14,7 @@ public partial class SystemPage : UserControl, IDisposable, IHeader
     public FrameworkElement State { get; } = new TextBlock { Style = Skin.Style("Label") };
 
     /// A table row: the process plus how it looks.
-    public record Row(Proc P, string Initial, string Sub, string Status, Brush StatusBrush, Brush CpuBrush, string DiskText);
+    public record Row(Proc P, string Initial, string Sub, string? Status, Brush? StatusBrush, Brush CpuBrush, string DiskText);
 
     static readonly Brush GreenBg = Frozen(0x22, 0x4C, 0xC3, 0x7A), AmberBg = Frozen(0x22, 0xF5, 0xB8, 0x3D), RedBg = Frozen(0x22, 0xFF, 0x5A, 0x5A);
 
@@ -96,8 +96,9 @@ public partial class SystemPage : UserControl, IDisposable, IHeader
 
     Row ToRow(Proc p)
     {
-        var (status, brush) = p.Cpu >= 10 ? ("High CPU", "Amber") : p.MemMb >= 2048 ? ("High memory", "Amber") : ("Running", "Green");
-        return new Row(p, p.Name[..1].ToUpperInvariant(), p.Count == 1 ? "1 process" : $"{p.Count} processes", status, Skin.Brush(brush),
+        // Only what's off gets a status; a normal running process shows none
+        var status = p.Cpu >= 10 ? "High CPU" : p.MemMb >= 2048 ? "High memory" : null;
+        return new Row(p, p.Name[..1].ToUpperInvariant(), p.Count == 1 ? "1 process" : $"{p.Count} processes", status, status == null ? null : Skin.Brush("Amber"),
             Skin.Brush(p.Cpu >= 10 ? "Amber" : "Accent"), Units.Rate(p.Disk));
     }
 

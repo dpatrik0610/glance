@@ -132,20 +132,18 @@
         <Grid DockPanel.Dock="Top" Margin="12,0,24,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition MinWidth="200" />
-                <ColumnDefinition Width="120" />
                 <ColumnDefinition Width="150" />
                 <ColumnDefinition Width="90" />
                 <ColumnDefinition Width="70" />
                 <ColumnDefinition Width="90" />
                 <ColumnDefinition Width="100" />
             </Grid.ColumnDefinitions>
-            <Border Grid.ColumnSpan="7" Height="1" VerticalAlignment="Bottom" Margin="-12,0,-24,-8" Background="{StaticResource Line}" />
+            <Border Grid.ColumnSpan="6" Height="1" VerticalAlignment="Bottom" Margin="-12,0,-24,-8" Background="{StaticResource Line}" />
             <TextBlock Text="Name" Style="{StaticResource Col}" />
-            <TextBlock Grid.Column="1" Text="Status" Style="{StaticResource Col}" />
-            <TextBlock x:Name="ByCpu" Grid.Column="2" Tag="CPU" Text="CPU ↓" Style="{StaticResource SortCol}" HorizontalAlignment="Left" Foreground="{StaticResource Text}" />
-            <TextBlock x:Name="ByMem" Grid.Column="3" Tag="Memory" Text="Memory" Style="{StaticResource SortCol}" />
-            <TextBlock x:Name="ByGpu" Grid.Column="4" Tag="GPU" Text="GPU" Style="{StaticResource SortCol}" />
-            <TextBlock x:Name="ByDisk" Grid.Column="5" Tag="Disk" Text="Disk" Style="{StaticResource SortCol}" />
+            <TextBlock x:Name="ByCpu" Grid.Column="1" Tag="CPU" Text="CPU ↓" Style="{StaticResource SortCol}" HorizontalAlignment="Left" Foreground="{StaticResource Text}" />
+            <TextBlock x:Name="ByMem" Grid.Column="2" Tag="Memory" Text="Memory" Style="{StaticResource SortCol}" />
+            <TextBlock x:Name="ByGpu" Grid.Column="3" Tag="GPU" Text="GPU" Style="{StaticResource SortCol}" />
+            <TextBlock x:Name="ByDisk" Grid.Column="4" Tag="Disk" Text="Disk" Style="{StaticResource SortCol}" />
         </Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <!-- Holds still while the mouse is over it, so End task stays put -->
@@ -156,7 +154,6 @@
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition MinWidth="200" />
-                                    <ColumnDefinition Width="120" />
                                     <ColumnDefinition Width="150" />
                                     <ColumnDefinition Width="90" />
                                     <ColumnDefinition Width="70" />
@@ -164,28 +161,28 @@
                                     <ColumnDefinition Width="100" />
                                 </Grid.ColumnDefinitions>
                                 <DockPanel>
-                                    <Border Width="32" Height="32" CornerRadius="9" Margin="0,0,12,0" Background="{StaticResource CardBg}"
-                                            BorderBrush="{StaticResource Line}" BorderThickness="1">
-                                        <TextBlock Text="{Binding Initial}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Accent}"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
+                                    <!-- Status shows only when something's off: a dot on the avatar, the reason on hover -->
+                                    <Grid Margin="0,0,12,0" ToolTip="{Binding Status}">
+                                        <Border Width="32" Height="32" CornerRadius="9" Background="{StaticResource CardBg}"
+                                                BorderBrush="{StaticResource Line}" BorderThickness="1">
+                                            <TextBlock Text="{Binding Initial}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Accent}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <Ellipse Width="9" Height="9" Fill="{Binding StatusBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-3,0" />
+                                    </Grid>
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
                                         <TextBlock Text="{Binding P.Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding P.Name}" />
                                         <TextBlock Text="{Binding Sub}" Style="{StaticResource Label}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </DockPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Ellipse Width="6" Height="6" Fill="{Binding StatusBrush}" Margin="0,1,6,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding Status}" FontSize="12.5" Foreground="{Binding StatusBrush}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,24,0">
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,24,0">
                                     <TextBlock Text="{Binding P.CpuText}" FontSize="13" FontWeight="SemiBold" />
                                     <ProgressBar Height="4" Margin="0,5,0,0" Maximum="25" Value="{Binding P.Cpu, Mode=OneWay}" Foreground="{Binding CpuBrush}" />
                                 </StackPanel>
-                                <TextBlock Grid.Column="3" Text="{Binding P.MemText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="4" Text="{Binding P.GpuText}" Foreground="{StaticResource Sub}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="5" Text="{Binding DiskText}" Foreground="{StaticResource Sub}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                <Button x:Name="End" Grid.Column="6" Content="End task" Foreground="{StaticResource Red}" FontWeight="SemiBold" FontSize="12.5"
+                                <TextBlock Grid.Column="2" Text="{Binding P.MemText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding P.GpuText}" Foreground="{StaticResource Sub}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Text="{Binding DiskText}" Foreground="{StaticResource Sub}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <Button x:Name="End" Grid.Column="5" Content="End task" Foreground="{StaticResource Red}" FontWeight="SemiBold" FontSize="12.5"
                                         Padding="10,4" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0" Click="EndProcess"
                                         Visibility="{Binding P.CanKill, Converter={StaticResource Vis}}" />
                             </Grid>
