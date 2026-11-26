@@ -71,7 +71,7 @@
                     </Border>
                     <TextBlock Text="Glance" FontSize="16" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
                 </DockPanel>
-                <ListBox x:Name="Nav" Grid.Row="1" Margin="6,0" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged" ContextMenuOpening="NavMenuOpening">
+                <ListBox x:Name="Nav" Grid.Row="1" Margin="6,0" Style="{StaticResource Sidebar}" ScrollViewer.VerticalScrollBarVisibility="Hidden" SelectionChanged="NavChanged" ContextMenuOpening="NavMenuOpening">
                     <ListBox.ContextMenu>
                         <ContextMenu>
                             <MenuItem x:Name="HideItem" Click="HideTab" />
@@ -100,19 +100,24 @@
                                 </Style>
                             </GroupStyle.ContainerStyle>
                             <GroupStyle.HeaderTemplate>
-                                <!-- Group name and a fold chevron (click to fold) -->
+                                <!-- Group name and a fold chevron (click to fold); highlighted on hover -->
                                 <DataTemplate>
-                                    <Grid Margin="10,12,10,4" Background="Transparent" Cursor="Hand" MouseLeftButtonUp="GroupClick">
+                                    <Border x:Name="GroupHead" Margin="0,8,0,1" Padding="10,4" CornerRadius="8" Background="Transparent" Cursor="Hand" MouseLeftButtonUp="GroupClick">
                                         <DockPanel>
                                             <TextBlock x:Name="Chevron" DockPanel.Dock="Right" Text="&#xE70D;" FontFamily="{StaticResource Icons}" FontSize="9"
                                                        Foreground="{StaticResource Sub}" VerticalAlignment="Center" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Name, Converter={x:Static local:MainWindow.Upper}}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Sub}" />
+                                            <TextBlock x:Name="GroupName" Text="{Binding Name, Converter={x:Static local:MainWindow.Upper}}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Sub}" />
                                         </DockPanel>
-                                    </Grid>
+                                    </Border>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding Name, Converter={x:Static local:MainWindow.Folded}}" Value="True">
                                             <Setter TargetName="Chevron" Property="Text" Value="&#xE76C;" />
                                         </DataTrigger>
+                                        <Trigger SourceName="GroupHead" Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="GroupHead" Property="Background" Value="{StaticResource CardBg}" />
+                                            <Setter TargetName="GroupName" Property="Foreground" Value="{StaticResource Text}" />
+                                            <Setter TargetName="Chevron" Property="Opacity" Value="1" />
+                                        </Trigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>
                             </GroupStyle.HeaderTemplate>
@@ -126,9 +131,13 @@
                                            Text="{Binding Text}" Foreground="{Binding Brush}" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding Icon}" FontFamily="{StaticResource Icons}" FontSize="15" Width="20" VerticalAlignment="Center">
                                     <TextBlock.Style>
+                                        <!-- Muted icon by a full-strength label; the accent marks the open page -->
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                            <Setter Property="Foreground" Value="{StaticResource Sub}" />
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource Text}" />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                                                     <Setter Property="Foreground" Value="{StaticResource Accent}" />
                                                 </DataTrigger>
@@ -136,8 +145,17 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="{Binding Name}" Margin="10,0,0,0" FontSize="13.5" VerticalAlignment="Center"
-                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="{Binding Name}" Margin="10,0,0,0" FontSize="13.5" VerticalAlignment="Center" Foreground="{StaticResource Text}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </DockPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

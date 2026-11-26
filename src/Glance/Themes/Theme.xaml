@@ -139,7 +139,7 @@
                                     <!-- The main sidebar: denser rows, selection is the soft fill and an accent icon (no pill) -->
                                     <DataTrigger Binding="{Binding Name, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="Nav">
                                         <Setter Property="Margin" Value="0,0,0,1" />
-                                        <Setter TargetName="cp" Property="Margin" Value="10,7" />
+                                        <Setter TargetName="cp" Property="Margin" Value="10,6" />
                                         <Setter TargetName="hov" Property="CornerRadius" Value="8" />
                                         <Setter TargetName="sel" Property="CornerRadius" Value="8" />
                                         <Setter TargetName="pill" Property="Visibility" Value="Collapsed" />
