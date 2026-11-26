@@ -80,11 +80,23 @@ public static class Money
     public static bool Pay(Bill b)
     {
         if (InHome(b.Amount, b.Currency) is not { } amount) return false;
-        Entries.Add(new Entry(DateTime.Today, -amount, b.Currency == Home ? b.Name : $"{b.Name} · {b.AmountText}"));
+        Entries.Add(new Entry(DateTime.Today, -amount, PaidNote(b)));
         if (b.Repeat == Repeat.Once) Bills.Remove(b);
-        else Replace(b, b with { Due = b.NextDue(), Reminded = null });
+        else Replace(b, b with { Due = b.NextDue(), Reminded = null, Paid = b.Due });
         return true;
     }
+
+    /// Undoes Pay: back to the due date it was paid for, and its expense leaves Budget (the latest one with its note).
+    public static void Unpay(Bill b)
+    {
+        if (b.Paid is not { } was) return;
+        var note = PaidNote(b);
+        for (var i = Entries.Count - 1; i >= 0; i--)
+            if (Entries[i].Amount < 0 && Entries[i].Note == note) { Entries.RemoveAt(i); break; }
+        Replace(b, b with { Due = was, Paid = null });
+    }
+
+    static string PaidNote(Bill b) => b.Currency == Home ? b.Name : $"{b.Name} · {b.AmountText}";
 
     /// Bills whose reminder is due (from 9:00 the day before) and hasn't shown for this due date yet.
     public static List<Bill> DueReminders(DateTime now) =>
@@ -95,8 +107,13 @@ public enum Repeat { Monthly, Quarterly, Yearly, Weekly, Once }
 
 /// Something to pay, by a date, maybe again and again. Day: the day of the month it's due on, so a bill on the 31st
 /// goes Jan 31 → Feb 28 → Mar 31 instead of drifting to the 28th. Reminded: the due date its reminder last showed for.
-public sealed record Bill(string Name, double Amount, DateTime Due, Repeat Repeat, string Kind, bool Remind = true, DateTime? Reminded = null, int Day = 0, string Currency = "HUF")
+/// Paid: the due date it was last paid for (Due has moved on to the next one); null once edited to another date or unticked.
+public sealed record Bill(string Name, double Amount, DateTime Due, Repeat Repeat, string Kind, bool Remind = true, DateTime? Reminded = null, int Day = 0, string Currency = "HUF",
+    DateTime? Paid = null)
 {
+    /// Shows as paid until the next due date is close (three days, when Bills turns it amber).
+    public bool PaidUp(DateTime today) => Paid is not null && (Due.Date - today.Date).Days > 3;
+
     /// "12.99 €": the amount in its own currency (Currency: what it's charged in; bills from before there was a choice were forints).
     public string AmountText => Money.Format(Amount, plus: false, currency: Currency);
 

@@ -55,10 +55,12 @@ static class SelfTest
             Money.Pay(Money.Bills[^1]);
             Check(Money.Entries.Count == entries + 1 && Money.Entries[^1].Amount == -1000 && Money.Bills[^1] is { Reminded: null } paid && paid.Due == new DateTime(2027, 2, 28),
                 "bills: paid books an expense and moves on");
+            Check(Money.Bills[^1].PaidUp(new DateTime(2027, 2, 24)) && !Money.Bills[^1].PaidUp(new DateTime(2027, 2, 25)), "bills: ticked until 3 days before the next one");
             Check(new Pages.BillsPage().Content is not null, "bills page loads");
             Check(new Pages.TodayPage().Content is not null, "today page loads");
+            Money.Unpay(Money.Bills[^1]);
+            Check(Money.Entries.Count == entries && Money.Bills[^1] is { Paid: null } unpaid && unpaid.Due == rent.Due, "bills: unticking undoes paid");
             Money.Bills.Clear();
-            Money.Entries.RemoveAt(Money.Entries.Count - 1);
 
             // Currencies: formatting by the currency's own rules, and a bill in another one booked at the rate.
             Check(Money.Format(12.99, plus: false, currency: "EUR") == $"{12.99:N2} €" && Money.Format(15, plus: false, currency: "EUR") == "15 €"

@@ -9,7 +9,8 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-/// Bills: what comes back and when it's due. "Paid" books it in Budget and moves it to the next due date.
+/// Bills: what comes back and when it's due. The tick books it in Budget and moves it to the next due date; it stays ticked
+/// until that one is close, and unticking undoes it.
 public partial class BillsPage : UserControl, IHeader, IDisposable
 {
     public FrameworkElement Header { get; }
@@ -35,7 +36,7 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
     internal static string DueKey(Bill b, DateTime today) => (b.Due.Date - today).Days switch { < 0 => "Red", <= 3 => "Amber", _ => "Sub" };
 
     public sealed record Row(Bill Bill, string Name, string Kind, string Icon, Brush KindBrush, Brush KindBg, string Repeats, string PerMonth,
-        string When, string DueDate, Brush DueBrush, Brush DueBg, string Amount, string InHome);
+        string When, string DueDate, Brush DueBrush, Brush DueBg, string Amount, string InHome, bool Paid);
 
     readonly DispatcherTimer toastTimer;
 
@@ -82,7 +83,7 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
             return new Row(b, b.Name, b.Kind, icon, new SolidColorBrush(hue), Tint(hue),
                 repeats, perMonth, b.When(today), b.Due.ToString("dddd, MMM d yyyy", En), dueBrush,
                 due == "Sub" ? Skin.Brush("CardBg") : Tint(Skin.BrushColor(due)),
-                b.AmountText, inHome);
+                b.AmountText, inHome, b.PaidUp(today));
         }).ToArray();
         var none = Money.Bills.Count == 0;
         Empty.Visibility = none ? Visibility.Visible : Visibility.Collapsed;
@@ -106,7 +107,8 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
     {
         e.Handled = true;
         var b = Of(sender);
-        if (!Money.Pay(b)) { Say($"No {b.Currency} rate yet: connect to the internet and try again"); return; }
+        if (b.PaidUp(DateTime.Today)) { Money.Unpay(b); Say("Not paid: taken out of Budget"); return; }
+        if (!Money.Pay(b)) { Render(); Say($"No {b.Currency} rate yet: connect to the internet and try again"); return; } // Render: untick
         Say($"{Money.Format(-b.Amount, currency: b.Currency)} added to Budget");
     }
 
@@ -121,7 +123,7 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
     static bool FindButton(DependencyObject d)
     {
         for (DependencyObject? x = d; x is not null and not Border { Name: "Row" }; x = VisualTreeHelper.GetParent(x))
-            if (x is Button) return true;
+            if (x is System.Windows.Controls.Primitives.ButtonBase) return true; // the tick too
         return false;
     }
 

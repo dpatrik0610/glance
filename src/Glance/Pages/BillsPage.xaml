@@ -48,6 +48,8 @@
                                             <ColumnDefinition Width="150" />
                                         </Grid.ColumnDefinitions>
                                         <DockPanel Margin="0,0,12,0">
+                                            <CheckBox Style="{StaticResource Check}" IsChecked="{Binding Paid, Mode=OneWay}" Click="Paid" Margin="0,0,12,0"
+                                                      VerticalAlignment="Center" ToolTip="Paid: books it in Budget and moves it to the next due date. Unticks itself 3 days before that." />
                                             <Border Width="32" Height="32" CornerRadius="9" Background="{Binding KindBg}" Margin="0,0,12,0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Icon}" FontFamily="{StaticResource Icons}" FontSize="15" Foreground="{Binding KindBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -84,8 +86,6 @@
                                             </TextBlock>
                                         </StackPanel>
                                         <StackPanel x:Name="Actions" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Opacity="0">
-                                            <Button Style="{StaticResource Act}" Content="Paid" Foreground="{StaticResource Green}" Click="Paid"
-                                                    ToolTip="Adds it to Budget as an expense and moves it to the next due date" />
                                             <Button Style="{StaticResource Act}" Content="&#xE70F;" FontFamily="{StaticResource Icons}" ToolTip="Edit" Click="Edit" />
                                             <Button Style="{StaticResource Act}" Content="&#xE74D;" FontFamily="{StaticResource Icons}" ToolTip="Delete" Click="Delete" />
                                         </StackPanel>

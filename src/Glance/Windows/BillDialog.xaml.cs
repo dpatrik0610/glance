@@ -149,7 +149,7 @@ public partial class BillDialog : Window
         if (DueDate is not { } due) { Fail("Can't read the date: try \"dec 5\", \"2026-12-05\" or \"fri\".", DueBox); return; }
         var bill = new Bill(name, amount, due, repeat, kind, RemindBox.IsChecked == true, Day: due.Day, Currency: currency);
         // Same due date: keep "already reminded", so saving an edit doesn't remind again.
-        if (existing is not null) Money.Replace(existing, bill with { Reminded = existing.Due == bill.Due ? existing.Reminded : null });
+        if (existing is not null) Money.Replace(existing, existing.Due == bill.Due ? bill with { Reminded = existing.Reminded, Paid = existing.Paid } : bill);
         else Money.Bills.Add(bill);
         Close();
     }
