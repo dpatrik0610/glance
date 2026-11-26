@@ -19,6 +19,8 @@ A glassy Windows 11 tray dashboard: system stats, everyday tools and a terminal 
 | ![System](docs/system.png) | ![Notes](docs/notes.png) |
 | ![Bills](docs/bills.png) | ![Budget](docs/budget.png) |
 
+![CLI](docs/cli.png)
+
 ## Install
 
 Download `Glance-x.y.z-setup.exe` from [Releases](https://github.com/dpatrik0610/glance/releases/latest) and run it (no admin needed). For a portable copy, unzip the `-win-x64.zip` instead. Glance updates itself.
