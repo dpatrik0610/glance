@@ -122,6 +122,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // The default size, shrunk to fit small screens (CenterScreen then centers what is left)
+        Width = Math.Min(Width, SystemParameters.WorkArea.Width - 40);
+        Height = Math.Min(Height, SystemParameters.WorkArea.Height - 40);
         navView = new ListCollectionView(Tabs) { Filter = Shown };
         navView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(Tab.Group)));
         Nav.ItemsSource = navView;
