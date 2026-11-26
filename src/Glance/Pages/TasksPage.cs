@@ -10,7 +10,7 @@ namespace Glance.Pages;
 public class TasksPage : UserControl, IHeader
 {
     /// A task from either place, with how to tick it and how to go to it.
-    record Row(string Text, DateTime? Due, string Source, Action Tick, Action Go);
+    internal record Row(string Text, DateTime? Due, string Source, Action Tick, Action Go);
 
     readonly StackPanel list = new();
     readonly CheckBox showDone;
@@ -30,7 +30,7 @@ public class TasksPage : UserControl, IHeader
         Draw();
     }
 
-    IEnumerable<(Row Row, bool Done)> All()
+    internal static IEnumerable<(Row Row, bool Done)> All()
     {
         foreach (var n in NoteStore.Notes)
             foreach (var i in n.Items)

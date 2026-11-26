@@ -50,14 +50,15 @@ public partial class MainWindow : Window
     // groups appear in first-seen order. Icons: Segoe Fluent Icons code points.
     internal static readonly Tab[] Tabs = new Tab[]
     {
+        new("Today", "Home", "", () => new TodayPage()),
         Merged("System", "Monitor", "\uE7F4", new("Live", "\uE7F4", () => new SystemPage()), new("History", "\uE81C", () => new HistoryPage()),
             new("Analysis", "\uE9D9", () => new AnalysisPage())),
         new("Network", "Monitor", "\uE839", () => new NetworkPage()),
         Kept("Disk", "Monitor", "\uEDA2", new("Clean", "\uEA99", () => new CleanPage()), new("Scan", "\uEB05", () => new ScanPage())),
         new("Weather", "Life", "\uE706", () => new WeatherPage()),
         new("Map", "Life", "\uE707", () => new MapPage()),
-        Merged("Money", "Life", "\uE825", new("Budget", "\uE8C7", () => new BudgetPage()), new("Exchange", "\uE8AB", () => new ExchangePage()),
-            new("Stocks", "\uE9D2", () => new StocksPage())),
+        Merged("Money", "Life", "\uE825", new("Budget", "\uE8C7", () => new BudgetPage()), new("Bills", "\uE787", () => new BillsPage()),
+            new("Exchange", "\uE8AB", () => new ExchangePage()), new("Stocks", "\uE9D2", () => new StocksPage())),
         new("Now Playing", "Life", "\uEC4F", () => new NowPlayingPage()),
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
         new("Notes", "Tools", "\uE70B", () => new NotesPage()),

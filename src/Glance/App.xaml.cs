@@ -254,6 +254,13 @@ public partial class App : Application
             AlertWindow.Show(new Toast($"Reminder · {t.Board.Name}", t.Text.Length > 0 ? t.Text : "(no text)", "",
                 "Due", t.Due!.Value.ToString("HH:mm"), Color.FromRgb(0x5A, 0xA9, 0xFF), true), () => ((Pages.BoardPage)Go("Board")).Reveal(t.Board, t.Item));
         }
+        foreach (var b in Features.On("Bills") ? Money.DueReminders(DateTime.Now) : [])
+        {
+            Money.Replace(b, b with { Reminded = b.Due }); // saved
+            Db.Info($"bill reminder: {b.Name}");
+            AlertWindow.Show(new Toast($"Bill · {b.Kind}", b.Name, "", b.When(DateTime.Today), Money.Format(b.Amount, plus: false),
+                Pages.BillsPage.Look(b.Kind).Hue, true), () => Go("Bills"));
+        }
         foreach (var (ev, minutes) in Features.On("Calendar") ? GoogleCalendar.DueAlerts(DateTime.Now) : [])
         {
             Db.Info($"calendar reminder: {ev.Title}");

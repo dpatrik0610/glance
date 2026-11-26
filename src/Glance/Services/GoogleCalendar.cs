@@ -179,6 +179,9 @@ public static class GoogleCalendar
     // ---- Reminder popups: the next two days, refreshed every few minutes while Glance runs ----
 
     static List<CalEvent> upcoming = [];
+
+    /// The last fetch of the next two days (Today shows them); empty until connected.
+    public static IReadOnlyList<CalEvent> Upcoming => upcoming;
     static readonly HashSet<string> fired = [];
 
     public static async Task RefreshUpcoming()

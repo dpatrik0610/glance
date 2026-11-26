@@ -37,6 +37,28 @@ static class SelfTest
                 && quote.Closes.Length == 4 && float.IsNaN(quote.Closes[1]), $"stock quote: {quote}");
             Check(Stocks.Parse("x", """{"chart":{"result":null,"error":{"code":"Not Found"}}}""") is null, "stock quote: unknown symbol");
 
+            var rent = new Bill("Rent", 1000, new DateTime(2027, 1, 31), Repeat.Monthly, "Housing", Day: 31);
+            var feb = rent with { Due = rent.NextDue() };
+            Check(feb.Due == new DateTime(2027, 2, 28) && feb.NextDue() == new DateTime(2027, 3, 31), $"bills: the 31st stays the 31st where it can: {feb.Due:d} {feb.NextDue():d}");
+            Check((rent with { Repeat = Repeat.Yearly }).NextDue() == new DateTime(2028, 1, 31) && (rent with { Repeat = Repeat.Weekly }).NextDue() == new DateTime(2027, 2, 7)
+                && (rent with { Repeat = Repeat.Quarterly }).NextDue() == new DateTime(2027, 4, 30), "bills: yearly, weekly, quarterly");
+            Check((rent with { Repeat = Repeat.Yearly, Amount = 1200 }).PerMonth == 100 && (rent with { Repeat = Repeat.Once }).PerMonth == 0, "bills: per month");
+            Check(rent.When(new DateTime(2027, 1, 30)) == "Tomorrow" && rent.When(new DateTime(2027, 2, 2)) == "2 days late" && rent.When(new DateTime(2027, 1, 31)) == "Today",
+                "bills: when");
+            Money.Bills.Add(rent);
+            Check(Money.DueReminders(new DateTime(2027, 1, 30, 8, 0, 0)).Count == 0 && Money.DueReminders(new DateTime(2027, 1, 30, 9, 0, 0)) is [{ Name: "Rent" }],
+                "bills: reminder from 9:00 the day before");
+            Money.Replace(rent, rent with { Reminded = rent.Due });
+            Check(Money.DueReminders(new DateTime(2027, 1, 31)).Count == 0, "bills: a reminder shows once per due date");
+            var entries = Money.Entries.Count;
+            Money.Pay(Money.Bills[^1]);
+            Check(Money.Entries.Count == entries + 1 && Money.Entries[^1].Amount == -1000 && Money.Bills[^1] is { Reminded: null } paid && paid.Due == new DateTime(2027, 2, 28),
+                "bills: paid books an expense and moves on");
+            Check(new Pages.BillsPage().Content is not null, "bills page loads");
+            Check(new Pages.TodayPage().Content is not null, "today page loads");
+            Money.Bills.Clear();
+            Money.Entries.RemoveAt(Money.Entries.Count - 1);
+
             var watch = new Cloudflare.Watch();
             Deploy Cf(string key, string id, string status) => new(key, key, id, status, "", "", "", "", DateTime.UtcNow);
             Check(watch.Check([Cf("worker:a", "1", "success"), Cf("pages:p", "x", "success")]).Count == 0, "cloudflare: the first look only remembers");

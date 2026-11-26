@@ -63,7 +63,7 @@ public class CaptureWindow : Window
     }
 
     /// "- HH:mm text" at the end of today's note.
-    static void Today(string text)
+    internal static void Today(string text)
     {
         var note = NoteStore.Today();
         note.Text = note.Text.TrimEnd() + (note.Text.Trim() == "" ? "" : "\n") + $"- {DateTime.Now:HH:mm} {text}";
