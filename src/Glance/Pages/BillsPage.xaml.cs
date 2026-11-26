@@ -35,7 +35,7 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
     internal static string DueKey(Bill b, DateTime today) => (b.Due.Date - today).Days switch { < 0 => "Red", <= 3 => "Amber", _ => "Sub" };
 
     public sealed record Row(Bill Bill, string Name, string Kind, string Icon, Brush KindBrush, Brush KindBg, string Repeats, string PerMonth,
-        string When, string DueDate, Brush DueBrush, Brush DueBg, string Amount);
+        string When, string DueDate, Brush DueBrush, Brush DueBg, string Amount, string InHome);
 
     readonly DispatcherTimer toastTimer;
 
@@ -48,7 +48,12 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
         toastTimer.Stop();
         Money.Bills.CollectionChanged += BillsChanged;
         PreviewKeyDown += Key;
-        IsVisibleChanged += (_, _) => { if (IsVisible) Render(); }; // "in 3 days" moves on with the date
+        IsVisibleChanged += async (_, _) =>
+        {
+            if (!IsVisible) return;
+            Render(); // "in 3 days" moves on with the date
+            if (Money.Bills.Any(b => b.Currency != Money.Home) && await Rates.Refresh()) Render(); // bills in another currency
+        };
         Render();
     }
 
@@ -72,11 +77,12 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
                 Repeat.Yearly => "Yearly · " + b.Due.ToString("MMM d", En),
                 _ => "Once",
             };
-            var perMonth = b.Repeat is Repeat.Monthly or Repeat.Once ? "" : $"≈ {Money.Format(b.PerMonth, plus: false)} a month";
+            var perMonth = b.Repeat is Repeat.Monthly or Repeat.Once ? "" : $"≈ {Money.Format(b.PerMonth, plus: false, currency: b.Currency)} a month";
+            var inHome = b.Currency == Money.Home ? "" : Money.InHome(b.Amount, b.Currency) is { } h ? $"≈ {Money.Format(h, plus: false)}" : "no rate yet";
             return new Row(b, b.Name, b.Kind, icon, new SolidColorBrush(hue), Tint(hue),
                 repeats, perMonth, b.When(today), b.Due.ToString("dddd, MMM d yyyy", En), dueBrush,
                 due == "Sub" ? Skin.Brush("CardBg") : Tint(Skin.BrushColor(due)),
-                Money.Format(b.Amount, plus: false));
+                b.AmountText, inHome);
         }).ToArray();
         var none = Money.Bills.Count == 0;
         Empty.Visibility = none ? Visibility.Visible : Visibility.Collapsed;
@@ -86,7 +92,9 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
         var late = Money.Bills.Count(b => b.Due.Date < today);
         Count.Inlines.Clear();
         if (none) return;
-        Count.Inlines.Add($"{Money.Bills.Count} {(Money.Bills.Count == 1 ? "bill" : "bills")} · {Money.Format(Money.Bills.Sum(b => b.PerMonth), plus: false)} a month");
+        // Bills in another currency count at today's rate; one without a rate yet is left out, and the total says so.
+        var month = Money.Bills.Select(b => Money.InHome(b.PerMonth, b.Currency)).ToList();
+        Count.Inlines.Add($"{Money.Bills.Count} {(Money.Bills.Count == 1 ? "bill" : "bills")} · {(month.Any(m => m is null) ? "at least " : "")}{Money.Format(month.Sum(m => m ?? 0), plus: false)} a month");
         if (late > 0) Count.Inlines.Add(new System.Windows.Documents.Run($" · {late} late") { Foreground = Skin.Brush("Red") });
     }
 
@@ -98,8 +106,8 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
     {
         e.Handled = true;
         var b = Of(sender);
-        Money.Pay(b);
-        Say($"{Money.Format(-b.Amount)} added to Budget");
+        if (!Money.Pay(b)) { Say($"No {b.Currency} rate yet: connect to the internet and try again"); return; }
+        Say($"{Money.Format(-b.Amount, currency: b.Currency)} added to Budget");
     }
 
     void Edit(object sender, RoutedEventArgs e) { e.Handled = true; Open(Of(sender)); }

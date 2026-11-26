@@ -27,6 +27,7 @@ static class SelfTest
             }
             Check(Passwords.Generate(30, false, false, true, false, false).Password.All(char.IsDigit), "digits only");
 
+            App.Settings.Currency = "HUF"; // a fresh settings file starts in the Windows region's currency
             Check(Money.Format(-4500).EndsWith(" Ft") && Money.Format(-4500)[0] == '−' && Money.Format(12000)[0] == '+'
                 && Money.Format(-4500, plus: false)[0] == '4', $"money format: {Money.Format(-4500)} {Money.Format(12000)} {Money.Format(-4500, plus: false)}");
             var quote = Stocks.Parse("aapl", """
@@ -56,6 +57,21 @@ static class SelfTest
                 "bills: paid books an expense and moves on");
             Check(new Pages.BillsPage().Content is not null, "bills page loads");
             Check(new Pages.TodayPage().Content is not null, "today page loads");
+            Money.Bills.Clear();
+            Money.Entries.RemoveAt(Money.Entries.Count - 1);
+
+            // Currencies: formatting by the currency's own rules, and a bill in another one booked at the rate.
+            Check(Money.Format(12.99, plus: false, currency: "EUR") == $"{12.99:N2} €" && Money.Format(15, plus: false, currency: "EUR") == "15 €"
+                && Money.Format(-1200, currency: "USD") == $"−${1200:N0}" && Money.Format(4500.4, plus: false, currency: "HUF") == $"{4500:N0} Ft",
+                $"currency format: {Money.Format(12.99, plus: false, currency: "EUR")} {Money.Format(-1200, currency: "USD")} {Money.Format(4500.4, plus: false, currency: "HUF")}");
+            Rates.Use("2027-01-01", new() { ["HUF"] = 400, ["USD"] = 1.25 });
+            Check(Rates.Convert(10, "EUR", "HUF") == 4000 && Math.Abs(Rates.Convert(10, "USD", "HUF")!.Value - 3200) < 1e-9 && Rates.Convert(1, "JPY", "HUF") is null,
+                "rates: cross rates through EUR, none for an unknown one");
+            var netflix = new Bill("Netflix", 12.99, DateTime.Today.AddDays(3), Repeat.Monthly, "Subscription", Currency: "EUR");
+            Money.Bills.Add(netflix);
+            Check(Money.Pay(netflix) && Money.Entries[^1] is { Amount: var paidHuf, Note: var paidNote } && Math.Abs(paidHuf + 5196) < 1e-9 && paidNote.Contains("€"),
+                $"bills: another currency is booked at today's rate: {Money.Entries[^1]}");
+            Check(!Money.Pay(Money.Bills[^1] with { Currency = "JPY" }), "bills: no rate, nothing booked");
             Money.Bills.Clear();
             Money.Entries.RemoveAt(Money.Entries.Count - 1);
 

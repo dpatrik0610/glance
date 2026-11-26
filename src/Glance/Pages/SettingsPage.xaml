@@ -243,6 +243,16 @@
                     </StackPanel>
                 </Border>
 
+                <TextBlock Text="Money" Style="{StaticResource Section}" />
+                <Border Style="{StaticResource Group}">
+                    <StackPanel>
+                        <local:SettingRow Icon="&#xE825;" Title="Currency"
+                                          Description="What Budget, Bills and Exchange count in. Amounts already in Budget keep their numbers; a bill keeps its own currency.">
+                            <Button x:Name="CurrencyButton" Click="PickCurrency" Padding="12,6" />
+                        </local:SettingRow>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Text="Pages" Style="{StaticResource Section}" />
                 <Border Style="{StaticResource Group}">
                     <StackPanel x:Name="PagesList" />

@@ -46,10 +46,10 @@ public partial class BarWindow : Window
     Weather.Forecast? forecast;
     Weather.Current? weather => forecast?.Current;
     DateTime weatherAt, ratesAt;
-    float[]? eurDays, usdDays; // the last week, for the panel
+    (string Code, float[] Days)[]? week; // the two usual currencies over the last week, in the home one (Money.Home)
+    string ratesFor = ""; // the home currency they were fetched in
     readonly List<float> downs = [], ups = []; // the last minute of network rates, for the panel
     string? weatherFor; // hometown + units the weather was fetched for
-    (float Eur, float Usd)? rates;
     string? failed; // the view whose fetch failed, so it says so instead of "…"
     bool fetching;
 
@@ -119,7 +119,7 @@ public partial class BarWindow : Window
     internal string ViewIcon => Views[index].Icon;
     internal Snapshot? Snap => snap;
     internal Weather.Forecast? Forecast => forecast;
-    internal (float[] Eur, float[] Usd)? Week => eurDays is null ? null : (eurDays, usdDays!);
+    internal (string Code, float[] Days)[]? Week => week;
     internal IReadOnlyList<float> Downs => downs;
     internal IReadOnlyList<float> Ups => ups;
     internal bool Failed => failed == ViewName;
@@ -450,8 +450,8 @@ public partial class BarWindow : Window
                 if (weather is not { } w) return [(place, failed == v.Name ? "can't reach Open-Meteo" : "…")];
                 return [(place, $"{w.Temp:0}°"), ("", Weather.Describe(w.Code, w.IsDay == 1).Text)];
             case "Exchange":
-                if (rates is not { } r) return [("EUR", failed == v.Name ? "can't reach the ECB rates" : "…")];
-                return [("EUR", $"{r.Eur:0.00} Ft"), ("USD", $"{r.Usd:0.00} Ft")];
+                if (week is not { } r) return [("Rates", failed == v.Name ? "can't reach the ECB rates" : "…")];
+                return [.. r.Select(x => (x.Code, Rates.Text(x.Days[^1], ratesFor)))];
             case "Reminder":
                 var now = DateTime.Now;
                 var next = NoteStore.Notes.SelectMany(n => n.Items).Where(i => !i.Done && i.Due is not null).MinBy(i => i.Due);
@@ -477,11 +477,13 @@ public partial class BarWindow : Window
                 weatherAt = DateTime.Now;
                 weatherFor = $"{lat},{lon},{s.Fahrenheit}";
             }
-            else if (v == "Exchange" && DateTime.Now - ratesAt > RatesAge)
+            else if (v == "Exchange" && (DateTime.Now - ratesAt > RatesAge || ratesFor != Money.Home))
             {
-                var (_, huf) = await Rates.Get(7);
-                (eurDays, usdDays) = (huf["EUR"], huf["USD"]);
-                rates = (eurDays[^1], usdDays[^1]);
+                var home = Money.Home;
+                var codes = Rates.Watched(home)[..2];
+                var (_, days) = await Rates.Get(7, home, codes);
+                week = [.. codes.Select(c => (c, days[c]))];
+                ratesFor = home;
                 ratesAt = DateTime.Now;
             }
             else return;

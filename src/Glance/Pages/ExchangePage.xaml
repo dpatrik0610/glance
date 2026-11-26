@@ -27,7 +27,7 @@
                             </DockPanel>
                             <TextBlock DockPanel.Dock="Top" Text="{Binding Value}" Style="{StaticResource Big}" Margin="0,6,0,8" />
                             <TextBlock DockPanel.Dock="Bottom" Text="{Binding Range}" Style="{StaticResource Label}" FontSize="11" Margin="0,6,0,0" />
-                            <g:Spark Series="{Binding Series}" Format="{}{0:N2} Ft" Color="#E6A65D" Max="0" MinHeight="40" />
+                            <g:Spark Series="{Binding Series}" Format="{Binding SparkFormat}" Color="#E6A65D" Max="0" MinHeight="40" />
                         </DockPanel>
                     </Border>
                 </DataTemplate>

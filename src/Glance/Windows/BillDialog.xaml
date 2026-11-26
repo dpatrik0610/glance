@@ -42,7 +42,8 @@
 
                 <TextBlock Text="Amount" Style="{StaticResource Label}" VerticalAlignment="Center" />
                 <DockPanel Grid.Column="1" Margin="0,0,0,10">
-                    <TextBlock DockPanel.Dock="Right" Text="Ft" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,0,2,0" />
+                    <Button x:Name="CurrencyButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Margin="8,0,0,0" Padding="10,6" Click="PickCurrency"
+                            ToolTip="What it's charged in" />
                     <TextBox x:Name="AmountBox" Tag="4500" TextChanged="Changed" />
                 </DockPanel>
 

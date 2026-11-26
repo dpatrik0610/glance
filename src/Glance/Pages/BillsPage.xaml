@@ -68,8 +68,21 @@
                                                 <TextBlock Text="{Binding When}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding DueBrush}" />
                                             </StackPanel>
                                         </Border>
-                                        <TextBlock Grid.Column="3" Text="{Binding Amount}" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                   Typography.NumeralAlignment="Tabular" />
+                                        <StackPanel Grid.Column="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Amount}" FontWeight="SemiBold" HorizontalAlignment="Right" Typography.NumeralAlignment="Tabular" />
+                                            <TextBlock Text="{Binding InHome}" FontSize="12" HorizontalAlignment="Right" Margin="0,2,0,0"
+                                                       Typography.NumeralAlignment="Tabular" ToolTip="At today's ECB rate">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Label}">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="Text" Value="">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
                                         <StackPanel x:Name="Actions" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Opacity="0">
                                             <Button Style="{StaticResource Act}" Content="Paid" Foreground="{StaticResource Green}" Click="Paid"
                                                     ToolTip="Adds it to Budget as an expense and moves it to the next due date" />

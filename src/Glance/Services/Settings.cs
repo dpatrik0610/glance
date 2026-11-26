@@ -57,6 +57,9 @@ public class Settings
     public string ScanPath { get; set; } = "";
 
     public bool Fahrenheit { get; set; }
+    /// What Budget, Bills and Exchange count in (an ISO code from Rates.All). Load fills it in: HUF for settings from
+    /// before it existed (everything was in forints then), the Windows region's currency on a fresh start.
+    public string Currency { get; set; } = "";
     /// The symbols the Stocks part of the Money page follows.
     public List<string> StockSymbols { get; set; } = [];
     /// Before OffPages (1.1.13 and earlier): read once by Load, then dropped from the file.
@@ -100,11 +103,19 @@ public class Settings
     {
         Settings s;
         try { s = JsonSerializer.Deserialize<Settings>(File.ReadAllText(File_)) ?? new(); }
-        catch (Exception e) when (e is IOException or JsonException) { return new(); }
+        catch (Exception e) when (e is IOException or JsonException) { return new() { Currency = RegionCurrency() }; }
+        if (s.Currency == "") s.Currency = "HUF";
         if (s.StocksShown == false && !s.OffPages.Contains("Stocks")) s.OffPages.Add("Stocks");
         if (s.CloudflareShown == true) s.OffPages.Remove("Cloudflare");
         s.StocksShown = s.CloudflareShown = null;
         return s;
+    }
+
+    /// The Windows region's currency, when ECB has rates for it; else euros.
+    static string RegionCurrency()
+    {
+        try { return new System.Globalization.RegionInfo(System.Globalization.CultureInfo.CurrentCulture.Name).ISOCurrencySymbol is var c && Rates.All.Any(x => x.Code == c) ? c : "EUR"; }
+        catch (ArgumentException) { return "EUR"; } // a neutral culture has no region
     }
 
     public void Save() => WriteAtomic(File_, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));

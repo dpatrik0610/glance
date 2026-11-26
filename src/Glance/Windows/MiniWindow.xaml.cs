@@ -157,10 +157,9 @@ public partial class MiniWindow : Window
 
     void ShowExchange()
     {
-        if (bar.Week is not var (eur, usd)) { Add(Header(bar.ViewIcon, "Exchange rates", bar.Failed ? "Can't reach the ECB rates" : "Loading…", "Exchange")); return; }
-        Add(Header(bar.ViewIcon, $"1 EUR = {eur[^1]:0.00} Ft", "ECB reference rates · the last week", "Exchange"));
-        Add(Rate("EUR", eur));
-        Add(Rate("USD", usd));
+        if (bar.Week is not { Length: > 0 } week) { Add(Header(bar.ViewIcon, "Exchange rates", bar.Failed ? "Can't reach the ECB rates" : "Loading…", "Exchange")); return; }
+        Add(Header(bar.ViewIcon, $"1 {week[0].Code} = {Rates.Text(week[0].Days[^1], Money.Home)}", "ECB reference rates · the last week", "Exchange"));
+        foreach (var (code, days) in week) Add(Rate(code, days));
     }
 
     void ShowReminders()
@@ -247,13 +246,13 @@ public partial class MiniWindow : Window
         var row = new DockPanel { Margin = new(0, 10, 0, 0) };
         var name = new TextBlock { Text = code, FontSize = 11.5, Foreground = Skin.Brush("Sub"), Width = 40, VerticalAlignment = VerticalAlignment.Center };
         var value = new StackPanel { Width = 112, VerticalAlignment = VerticalAlignment.Center };
-        value.Children.Add(new TextBlock { Text = $"{days[^1]:0.00} Ft", FontSize = 13, FontWeight = FontWeights.SemiBold });
+        value.Children.Add(new TextBlock { Text = Rates.Text(days[^1], Money.Home), FontSize = 13, FontWeight = FontWeights.SemiBold });
         if (days.Length > 1)
         {
             var change = days[^1] - days[^2];
             value.Children.Add(new TextBlock
             {
-                Text = change == 0 ? "no change" : $"{(change > 0 ? "▲" : "▼")} {Math.Abs(change):0.00}", FontSize = 11,
+                Text = change == 0 ? "no change" : $"{(change > 0 ? "▲" : "▼")} {Math.Abs(change).ToString("N" + Rates.Digits(days[^1]))}", FontSize = 11,
                 Foreground = change == 0 ? Skin.Brush("Sub") : new SolidColorBrush(change > 0 ? Up : Down),
             });
         }
@@ -261,7 +260,7 @@ public partial class MiniWindow : Window
         DockPanel.SetDock(value, Dock.Left);
         row.Children.Add(name);
         row.Children.Add(value);
-        row.Children.Add(new Spark { Series = days, Color = Color.FromRgb(0x5A, 0xA9, 0xFF), Max = 0, Format = "{0:0.00} Ft", Step = TimeSpan.FromDays(1), Height = 26 });
+        row.Children.Add(new Spark { Series = days, Color = Color.FromRgb(0x5A, 0xA9, 0xFF), Max = 0, Format = Rates.SparkFormat(days[^1], Money.Home), Step = TimeSpan.FromDays(1), Height = 26 });
         return row;
     }
 

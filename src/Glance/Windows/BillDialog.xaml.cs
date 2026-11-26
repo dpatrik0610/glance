@@ -15,7 +15,7 @@ public partial class BillDialog : Window
     static readonly CultureInfo En = CultureInfo.InvariantCulture;
 
     readonly Bill? existing;
-    string kind;
+    string kind, currency;
     Repeat repeat;
 
     /// Saves or deletes in Money.Bills; nothing when cancelled.
@@ -37,6 +37,7 @@ public partial class BillDialog : Window
         existing = b;
         kind = b?.Kind ?? "Subscription";
         repeat = b?.Repeat ?? Repeat.Monthly;
+        currency = b?.Currency ?? Money.Home;
         Label.Text = string.Join(" ", (b is null ? "NEW BILL" : "BILL").ToCharArray());
         NameBox.Text = b?.Name ?? "";
         AmountBox.Text = b is null ? "" : b.Amount.ToString("0.##", CultureInfo.CurrentCulture);
@@ -62,8 +63,13 @@ public partial class BillDialog : Window
             RepeatChips.Children.Add(chip);
         }
         ShowKind();
+        ShowCurrency();
         Changed(this, new RoutedEventArgs());
-        Loaded += (_, _) => { if (b is null) NameBox.Focus(); };
+        Loaded += async (_, _) =>
+        {
+            if (b is null) NameBox.Focus();
+            if (await Rates.Refresh()) Changed(this, new RoutedEventArgs()); // for "≈ … a month" in another currency
+        };
     }
 
     void ShowKind()
@@ -72,6 +78,47 @@ public partial class BillDialog : Window
         Dot.Fill = TileIcon.Foreground = new SolidColorBrush(hue);
         Tile.Background = BillsPage.Tint(hue);
         TileIcon.Text = icon;
+    }
+
+    void ShowCurrency()
+    {
+        CurrencyButton.Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Children =
+            {
+                new TextBlock { Text = currency, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = "", FontFamily = Skin.Icons, FontSize = 10, Margin = new(8, 1, 0, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Skin.Brush("Sub") },
+            },
+        };
+    }
+
+    void PickCurrency(object sender, RoutedEventArgs e) => CurrencyMenu(CurrencyButton, currency, code =>
+    {
+        currency = code;
+        ShowCurrency();
+        Changed(this, e);
+    });
+
+    /// A menu of every currency under `target`: the home one and the usual ones first, then the rest by code.
+    internal static void CurrencyMenu(FrameworkElement target, string current, Action<string> picked)
+    {
+        var menu = new ContextMenu { PlacementTarget = target, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom, MaxHeight = 420 };
+        var top = new[] { Money.Home, "EUR", "USD", "GBP", "CHF" }.Distinct().ToList();
+        void Add(Currency c)
+        {
+            var row = new DockPanel { MinWidth = 230 };
+            var code = new TextBlock { Text = c.Code, Width = 46, FontWeight = c.Code == current ? FontWeights.SemiBold : FontWeights.Normal };
+            row.Children.Add(code);
+            row.Children.Add(new TextBlock { Text = c.Name, Foreground = Skin.Brush("Sub") });
+            var item = new MenuItem { Header = row, IsChecked = c.Code == current };
+            item.Click += (_, _) => picked(c.Code);
+            menu.Items.Add(item);
+        }
+        foreach (var c in top) Add(Rates.Of(c));
+        menu.Items.Add(new Separator());
+        foreach (var c in Rates.All.Where(c => !top.Contains(c.Code)).OrderBy(c => c.Code)) Add(c);
+        menu.IsOpen = true;
     }
 
     DateTime? DueDate => Due.Parse(DueBox.Text, DateTime.Now)?.Date;
@@ -84,9 +131,11 @@ public partial class BillDialog : Window
         if (DueDate is not { } d) { ReadText.Text = "Can't read that date yet: try \"dec 5\" or \"2026-12-05\"."; return; }
         var days = (d - DateTime.Today).Days;
         var rel = days switch { < -1 => $"{-days} days ago", -1 => "yesterday", 0 => "today", 1 => "tomorrow", _ => $"in {days} days" };
-        var probe = new Bill("", ExchangePage.TryParse(AmountBox.Text, out var a) ? a : 0, d, repeat, kind);
+        var probe = new Bill("", ExchangePage.TryParse(AmountBox.Text, out var a) ? a : 0, d, repeat, kind, Currency: currency);
+        // What it comes to a month, in the home currency (at today's rate when it's charged in another).
+        var month = repeat == Repeat.Once ? null : Money.InHome(probe.PerMonth, currency);
         ReadText.Text = d.ToString(d.Year == DateTime.Today.Year ? "dddd, MMMM d" : "dddd, MMMM d yyyy", En) + " · " + rel
-            + (probe.Amount > 0 && repeat is not (Repeat.Monthly or Repeat.Once) ? $" · ≈ {Money.Format(probe.PerMonth, plus: false)} a month" : "");
+            + (probe.Amount > 0 && month is { } m && (repeat != Repeat.Monthly || currency != Money.Home) ? $" · ≈ {Money.Format(m, plus: false)} a month" : "");
     }
 
     void SaveClick(object sender, RoutedEventArgs e)
@@ -95,7 +144,7 @@ public partial class BillDialog : Window
         if (name.Length == 0) { Fail("Give it a name, like Rent.", NameBox); return; }
         if (!ExchangePage.TryParse(AmountBox.Text, out var amount) || amount <= 0) { Fail("Type an amount, like 4500.", AmountBox); return; }
         if (DueDate is not { } due) { Fail("Can't read the date: try \"dec 5\", \"2026-12-05\" or \"fri\".", DueBox); return; }
-        var bill = new Bill(name, amount, due, repeat, kind, RemindBox.IsChecked == true, Day: due.Day);
+        var bill = new Bill(name, amount, due, repeat, kind, RemindBox.IsChecked == true, Day: due.Day, Currency: currency);
         // Same due date: keep "already reminded", so saving an edit doesn't remind again.
         if (existing is not null) Money.Replace(existing, bill with { Reminded = existing.Due == bill.Due ? existing.Reminded : null });
         else Money.Bills.Add(bill);

@@ -56,6 +56,7 @@ public partial class SettingsPage : UserControl
         TopBox.IsChecked = s.Topmost;
         CompactBox.IsChecked = s.Compact;
         FBox.IsChecked = s.Fahrenheit;
+        ShowCurrency();
         foreach (var tab in MainWindow.Tabs)
         {
             AddPageSwitch(tab.Name, tab.Icon, tab.Group);
@@ -83,6 +84,28 @@ public partial class SettingsPage : UserControl
             ShowHotkeyStatus();
         };
     }
+
+    void ShowCurrency()
+    {
+        var c = Rates.Of(s.Currency);
+        CurrencyButton.Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Children =
+            {
+                new TextBlock { Text = c.Code, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = c.Name, Foreground = Skin.Brush("Sub"), Margin = new(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = "", FontFamily = Skin.Icons, FontSize = 10, Margin = new(10, 1, 0, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Skin.Brush("Sub") },
+            },
+        };
+    }
+
+    void PickCurrency(object sender, RoutedEventArgs e) => BillDialog.CurrencyMenu(CurrencyButton, s.Currency, code =>
+    {
+        s.Currency = code;
+        App.ApplySettings(); // saves; Money pages pick it up when shown
+        ShowCurrency();
+    });
 
     /// Settings → Pages: one switch per page and per part; off = not offered anywhere and its background work stops (Features).
     void AddPageSwitch(string name, string icon, string description, bool indent = false)

@@ -7,7 +7,7 @@ using System.Windows;
 
 namespace Glance.Services;
 
-/// One income (Amount > 0) or expense (Amount < 0), in forints.
+/// One income (Amount > 0) or expense (Amount < 0), in the currency money is kept in (Money.Home).
 public sealed record Entry(DateTime Date, double Amount, string Note);
 
 /// Income and expenses, in money.json. Entries come one at a time, by hand, so every change saves right away (and exit
@@ -32,9 +32,22 @@ public static class Money
         catch (IOException e) { Db.Error("money.json save", e); } // still in memory: the next change or exit retries
     }
 
-    /// "+12 000 Ft" / "−4 500 Ft" (unsigned when plus is false).
-    public static string Format(double amount, bool plus = true) =>
-        $"{(!plus ? "" : amount < 0 ? "−" : amount > 0 ? "+" : "")}{Math.Abs(amount):N0} Ft";
+    /// The currency Budget, Bills and Exchange count in (Settings → Money). Changing it relabels; amounts keep their numbers.
+    public static string Home => App.Settings.Currency;
+
+    /// "+12 000 Ft", "−12.99 €", "$1,200" (unsigned when plus is false). Cents only when there are some, and never for
+    /// currencies without them in everyday use (forint, yen). decimals: always that many (exchange rates).
+    public static string Format(double amount, bool plus = true, string? currency = null, int? decimals = null)
+    {
+        var c = Rates.Of(currency ?? Home);
+        var digits = decimals ?? (c.Whole || Math.Abs(Math.Round(amount, 2) % 1) < 0.005 ? 0 : 2);
+        var n = Math.Abs(amount).ToString("N" + digits);
+        var sign = !plus ? "" : amount < 0 ? "−" : amount > 0 ? "+" : "";
+        return c.Before ? $"{sign}{c.Symbol}{n}" : $"{sign}{n} {c.Symbol}";
+    }
+
+    /// amount in `currency`, in the home currency; null while there's no rate for it.
+    public static double? InHome(double amount, string currency) => Rates.Convert(amount, currency, Home);
 
     static readonly string BillsFile = Path.Combine(Settings.Dir, "bills.json");
 
@@ -63,11 +76,14 @@ public static class Money
     }
 
     /// Paid today: an expense in Budget, and the bill moves to its next due date (a one-off is done and goes).
-    public static void Pay(Bill b)
+    /// In another currency it's booked at today's rate, with what was paid in the note; false (nothing done) without a rate.
+    public static bool Pay(Bill b)
     {
-        Entries.Add(new Entry(DateTime.Today, -b.Amount, b.Name));
+        if (InHome(b.Amount, b.Currency) is not { } amount) return false;
+        Entries.Add(new Entry(DateTime.Today, -amount, b.Currency == Home ? b.Name : $"{b.Name} · {b.AmountText}"));
         if (b.Repeat == Repeat.Once) Bills.Remove(b);
         else Replace(b, b with { Due = b.NextDue(), Reminded = null });
+        return true;
     }
 
     /// Bills whose reminder is due (from 9:00 the day before) and hasn't shown for this due date yet.
@@ -79,8 +95,11 @@ public enum Repeat { Monthly, Quarterly, Yearly, Weekly, Once }
 
 /// Something to pay, by a date, maybe again and again. Day: the day of the month it's due on, so a bill on the 31st
 /// goes Jan 31 → Feb 28 → Mar 31 instead of drifting to the 28th. Reminded: the due date its reminder last showed for.
-public sealed record Bill(string Name, double Amount, DateTime Due, Repeat Repeat, string Kind, bool Remind = true, DateTime? Reminded = null, int Day = 0)
+public sealed record Bill(string Name, double Amount, DateTime Due, Repeat Repeat, string Kind, bool Remind = true, DateTime? Reminded = null, int Day = 0, string Currency = "HUF")
 {
+    /// "12.99 €": the amount in its own currency (Currency: what it's charged in; bills from before there was a choice were forints).
+    public string AmountText => Money.Format(Amount, plus: false, currency: Currency);
+
     public static readonly string[] Kinds = ["Subscription", "Housing", "Utilities", "Insurance", "Loan", "Other"];
 
     public DateTime NextDue()

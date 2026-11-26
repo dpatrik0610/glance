@@ -20,6 +20,7 @@ public partial class BudgetPage : UserControl, IDisposable, IHeader
         InitializeComponent();
         Header = MainWindow.Lift(Bar);
         Money.Entries.CollectionChanged += EntriesChanged;
+        IsVisibleChanged += (_, _) => { if (IsVisible) Render(); }; // the currency may have changed in Settings
         Render();
     }
 
@@ -29,6 +30,7 @@ public partial class BudgetPage : UserControl, IDisposable, IHeader
 
     void Render()
     {
+        AmountBox.Tag = $"Amount, {Rates.Of(Money.Home).Symbol}";
         MonthText.Text = month.ToString("MMMM yyyy");
         NextButton.IsEnabled = month < new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         var these = Money.Entries.Where(e => e.Date.Year == month.Year && e.Date.Month == month.Month).OrderByDescending(e => e.Date).ToArray();

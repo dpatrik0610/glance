@@ -35,7 +35,13 @@ public partial class TodayPage : UserControl, IHeader
         InitializeComponent();
         // The clock moves things from "next" to "late" and calendar events refresh in the background: redraw each minute while shown.
         var timer = new DispatcherTimer(TimeSpan.FromMinutes(1), DispatcherPriority.Background, (_, _) => Render(), Dispatcher) { IsEnabled = false };
-        IsVisibleChanged += (_, e) => { timer.IsEnabled = (bool)e.NewValue; if (timer.IsEnabled) Render(); };
+        IsVisibleChanged += async (_, e) =>
+        {
+            timer.IsEnabled = (bool)e.NewValue;
+            if (!timer.IsEnabled) return;
+            Render();
+            if (Money.Bills.Any(b => b.Currency != Money.Home) && await Rates.Refresh()) Render(); // bills in another currency
+        };
         Render();
     }
 
@@ -71,8 +77,9 @@ public partial class TodayPage : UserControl, IHeader
                     new SolidColorBrush(ev.Calendar.Color), null, "Open", () => App.Go("Calendar"), false));
         if (Features.On("Bills"))
             foreach (var b in Money.Bills.Where(b => b.Due < end))
-                list.Add(new(b.Due.Date, false, b.Name, $"{b.Kind} · {Money.Format(b.Amount, plus: false)}", new SolidColorBrush(BillsPage.Look(b.Kind).Hue),
-                    null, "Paid", () => Money.Pay(b), b.Due.Date < now.Date, Green: true));
+                list.Add(new(b.Due.Date, false, b.Name, $"{b.Kind} · {b.AmountText}", new SolidColorBrush(BillsPage.Look(b.Kind).Hue),
+                    null, "Paid", () => { if (!Money.Pay(b)) Dialog.Info("Bills", $"No {b.Currency} rate yet", "Glance needs today's exchange rate to book it in Budget. Connect to the internet and try again."); },
+                    b.Due.Date < now.Date, Green: true));
         return list.OrderBy(i => i.At).ThenBy(i => i.HasTime).ToList();
     }
 
@@ -97,7 +104,8 @@ public partial class TodayPage : UserControl, IHeader
         // Bills: only for someone who keeps them.
         var bills = Money.Bills.Where(b => b.Due.Date < now.Date.AddDays(7)).OrderBy(b => b.Due).ToList();
         Show(BillsCell, Features.On("Bills") && Money.Bills.Count > 0);
-        BillsValue.Text = Money.Format(bills.Sum(b => b.Amount), plus: false);
+        // In the home currency; one in another currency counts at today's rate (left out until there is one).
+        BillsValue.Text = Money.Format(bills.Sum(b => Money.InHome(b.Amount, b.Currency) ?? 0), plus: false);
         BillsSub.Text = bills.Count == 0 ? "None due" : $"{bills[0].Name} {bills[0].When(now).ToLowerInvariant()}" + (bills.Count > 1 ? $" · {bills.Count - 1} more" : "");
         BillsSub.Foreground = Skin.Brush(bills.Any(b => b.Due.Date < now.Date) ? "Red" : "Sub");
 

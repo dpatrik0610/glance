@@ -258,7 +258,7 @@ public partial class App : Application
         {
             Money.Replace(b, b with { Reminded = b.Due }); // saved
             Db.Info($"bill reminder: {b.Name}");
-            AlertWindow.Show(new Toast($"Bill · {b.Kind}", b.Name, "", b.When(DateTime.Today), Money.Format(b.Amount, plus: false),
+            AlertWindow.Show(new Toast($"Bill · {b.Kind}", b.Name, "", b.When(DateTime.Today), b.AmountText,
                 Pages.BillsPage.Look(b.Kind).Hue, true), () => Go("Bills"));
         }
         foreach (var (ev, minutes) in Features.On("Calendar") ? GoogleCalendar.DueAlerts(DateTime.Now) : [])
