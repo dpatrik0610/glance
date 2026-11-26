@@ -121,7 +121,7 @@
                                     <Border x:Name="sel" CornerRadius="10" Background="{StaticResource Track}" Opacity="0" />
                                     <Border x:Name="pill" Width="3" Height="16" CornerRadius="1.5" Background="{StaticResource Accent}" Opacity="0"
                                             HorizontalAlignment="Left" VerticalAlignment="Center" />
-                                    <ContentPresenter Margin="12,10"><ContentPresenter.Resources><Style TargetType="TextBlock" /></ContentPresenter.Resources></ContentPresenter>
+                                    <ContentPresenter x:Name="cp" Margin="12,10"><ContentPresenter.Resources><Style TargetType="TextBlock" /></ContentPresenter.Resources></ContentPresenter>
                                 </Grid>
                                 <ControlTemplate.Triggers>
                                     <!-- The compact strip runs sideways, so its pill sits under the icon -->
@@ -130,6 +130,14 @@
                                         <Setter TargetName="pill" Property="Height" Value="3" />
                                         <Setter TargetName="pill" Property="HorizontalAlignment" Value="Center" />
                                         <Setter TargetName="pill" Property="VerticalAlignment" Value="Bottom" />
+                                    </DataTrigger>
+                                    <!-- The main sidebar: denser rows, selection is the soft fill and an accent icon (no pill) -->
+                                    <DataTrigger Binding="{Binding Name, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="Nav">
+                                        <Setter Property="Margin" Value="0,0,0,1" />
+                                        <Setter TargetName="cp" Property="Margin" Value="10,7" />
+                                        <Setter TargetName="hov" Property="CornerRadius" Value="8" />
+                                        <Setter TargetName="sel" Property="CornerRadius" Value="8" />
+                                        <Setter TargetName="pill" Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter Property="Foreground" Value="{StaticResource Text}" />

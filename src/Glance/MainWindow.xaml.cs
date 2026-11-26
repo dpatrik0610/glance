@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -76,6 +77,23 @@ public partial class MainWindow : Window
     /// Group name → folded. Read when the group's container is built, so changes go through RefreshNav.
     public static readonly IValueConverter Folded = new Conv(v => v is string g && App.Settings.FoldedGroups.Contains(g));
 
+    public static readonly IValueConverter Upper = new Conv(v => (v as string)?.ToUpperInvariant());
+
+    /// A sidebar item's live value, one per page name, made on first use; most stay empty.
+    public sealed class Badge : INotifyPropertyChanged
+    {
+        string text = "";
+        Brush brush = Skin.Brush("Sub");
+        public string Text { get => text; set { if (text != value) { text = value; Changed(); } } }
+        public Brush Brush { get => brush; set { if (brush != value) { brush = value; Changed(); } } }
+        public event PropertyChangedEventHandler? PropertyChanged;
+        void Changed([CallerMemberName] string? p = null) => PropertyChanged?.Invoke(this, new(p));
+    }
+
+    static readonly Dictionary<string, Badge> badges = [];
+    static Badge BadgeFor(string name) => badges.TryGetValue(name, out var b) ? b : badges[name] = new();
+    public static readonly IValueConverter BadgeOf = new Conv(v => BadgeFor((string)v));
+
     static bool Enabled(Tab t) => Features.On(t.Name);
     static bool Shown(object o) => Enabled((Tab)o) && !App.Settings.HiddenTabs.Contains(((Tab)o).Name);
     /// Hidden from the sidebar by the user: still in the "…" menu.
@@ -99,6 +117,39 @@ public partial class MainWindow : Window
         Deactivated += (_, _) => Dispatcher.BeginInvoke(LostToOutside, System.Windows.Threading.DispatcherPriority.Input);
         IsVisibleChanged += (_, _) => { if (!IsVisible) Undrop(); else trimmed = false; };
         new System.Windows.Threading.DispatcherTimer(TimeSpan.FromMinutes(2), System.Windows.Threading.DispatcherPriority.ApplicationIdle, (_, _) => Sweep(), Dispatcher);
+        VersionText.Text = "v" + Updater.Current;
+        LoadSpark.Color = Skin.BrushColor("Accent");
+        BadgeFor("Timer").Brush = Skin.Brush("Accent");
+        App.Sampled += s => Dispatcher.BeginInvoke(() => Sampled(s));
+        new System.Windows.Threading.DispatcherTimer(TimeSpan.FromSeconds(1), System.Windows.Threading.DispatcherPriority.Background, (_, _) => TimerBadge(), Dispatcher);
+    }
+
+    // ---- Live values: sidebar badges and the load card (only drawn while the window is up) ----
+
+    void Sampled(Snapshot s)
+    {
+        if (!IsVisible) return;
+        BadgeFor("System").Text = s.CpuLoad is { } c ? $"{c:0}%" : "";
+        BadgeFor("Network").Text = s.NetDown >= 100_000 ? Units.Rate(s.NetDown) : ""; // quiet when idle
+        LoadCpu.Text = s.CpuLoad is { } x ? $"{x:0}" : "—";
+        LoadRam.Text = s.RamUsed / s.RamTotal is { } r ? $"RAM {r * 100:0}%" : "";
+        LoadSpark.Push(s.CpuLoad);
+    }
+
+    /// The Timer item shows what's counting: the Pomodoro phase or the soonest timer, else a running stopwatch.
+    void TimerBadge()
+    {
+        if (!IsVisible) return;
+        var d = Timers.Data;
+        var now = DateTime.Now;
+        var ends = d.Timers.Where(t => t.Ends is not null).Select(t => t.Ends!.Value).Append(d.PhaseEnds ?? DateTime.MaxValue).Min();
+        BadgeFor("Timer").Text = ends != DateTime.MaxValue ? Timers.Clock((ends - now).TotalSeconds)
+            : d.WatchStarted is { } w ? Timers.Clock(d.WatchSeconds + (now - w).TotalSeconds) : "";
+    }
+
+    void LoadClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Features.On("System")) ShowTab("System");
     }
 
     // Drops pages nobody has looked at for a while: their controls, bitmaps and handlers go, and a compacting GC
@@ -218,6 +269,8 @@ public partial class MainWindow : Window
         Side.Visibility = on || !navShown ? Visibility.Collapsed : Visibility.Visible;
         Strip.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         Body.Margin = new Thickness(on ? 10 : 14);
+        SearchField.Width = on ? double.NaN : 240; // just the icon and the key next to the strip
+        SearchHint.Visibility = shown;
         CompactButton.Content = on ? "\uE740" : "\uE73F";
         CompactButton.ToolTip = on ? "Full layout" : "Compact mode";
         if (Dropped) Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - Width) / 2; // stay centered under the bar

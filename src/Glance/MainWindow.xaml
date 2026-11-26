@@ -43,76 +43,35 @@
             <Grid.RenderTransform>
                 <TranslateTransform x:Name="BodyShift" />
             </Grid.RenderTransform>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition />
-            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
 
-            <!-- Drag area: the top bar's row out to the window's edges (the body's margin and the gap under the bar too) -->
-            <Border Grid.ColumnSpan="2" Background="Transparent" MouseLeftButtonDown="Drag" Margin="-14,-14,-14,0" />
-            <!-- Top bar -->
-            <Grid Grid.ColumnSpan="2" Background="Transparent" MouseLeftButtonDown="Drag" Margin="0,0,6,10">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="NavToggle" Style="{StaticResource Ghost}" Width="44" ToolTip="Hide sidebar" Click="ToggleNav">
-                        <local:Logo Icon="menu" Width="17" Height="17" />
-                    </Button>
-                    <!-- The mark: glances when the window opens, flinches when poked -->
-                    <local:Logo x:Name="Mark" Width="28" Height="28" Margin="4,0,6,0" Cursor="Hand" Pokeable="True" />
-                    <StackPanel x:Name="Brand" Orientation="Horizontal">
-                        <TextBlock Text="Glance" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Text="/" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" Margin="10,0" />
-                        <TextBlock x:Name="PageTitle" Style="{StaticResource Label}" FontSize="16" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <!-- Compact mode: the tabs as a row of icons instead of the sidebar -->
-                    <ListBox x:Name="Strip" Style="{StaticResource Sidebar}" Visibility="Collapsed" Margin="2,0,0,0" SelectionChanged="StripChanged">
-                        <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </ListBox.ItemsPanel>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Icon}" ToolTip="{Binding Name}" FontFamily="{StaticResource Icons}" FontSize="15" Margin="-3,-3"
-                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button x:Name="PinButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
-                            Content="&#xE718;" Click="PinClick" />
-                    <Button x:Name="CompactButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
-                            Content="&#xE73F;" ToolTip="Compact mode"
-                            Click="CompactClick" />
-                    <Button Style="{StaticResource Ghost}" Margin="0,0,4,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick">
-                        <local:Logo Icon="search" Width="17" Height="17" />
-                    </Button>
-                    <Button Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="12" Margin="0,0,4,0"
-                            Content="&#xE921;" ToolTip="Minimize" Click="MinimizeClick" />
-                    <Button x:Name="MaxButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="12" Margin="0,0,4,0"
-                            Content="&#xE922;" ToolTip="Maximize" Click="MaximizeClick" />
-                    <Button Style="{StaticResource Ghost}" ToolTip="Hide to tray (Esc)" Click="HideClick">
-                        <local:Logo Icon="close" Width="17" Height="17" />
-                    </Button>
-                </StackPanel>
-            </Grid>
+            <!-- Drag strip: the body's margin along the top edge -->
+            <Border Grid.ColumnSpan="2" Height="14" VerticalAlignment="Top" Margin="-14,-14,-14,0" Background="Transparent" MouseLeftButtonDown="Drag" />
 
-            <!-- Sidebar: grouped tabs (scroll when they don't fit), Settings pinned below as an icon -->
-            <!-- Side clips; the hamburger animates its width to slide the pane in and out (ShowNav).
-                 The pane: its own quiet layer (lighter than the glass, calmer than the cards), lined up with the cards' top and bottom. -->
-            <Grid x:Name="Side" Grid.Row="1" ClipToBounds="True" HorizontalAlignment="Left">
-            <Border x:Name="Pane" Margin="0,6,8,6" Padding="6" CornerRadius="18" HorizontalAlignment="Right"
+            <!-- Sidebar: a floating card. Brand, grouped tabs with live badges, the load card, Settings at the bottom.
+                 Side clips; the hamburger animates its width to slide the pane in and out (ShowNav). -->
+            <Grid x:Name="Side" ClipToBounds="True" HorizontalAlignment="Left">
+            <Border x:Name="Pane" Margin="0,0,12,0" CornerRadius="14" HorizontalAlignment="Right"
                     Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
-            <Grid>
+            <Grid Width="232">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <ListBox x:Name="Nav" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged" ContextMenuOpening="NavMenuOpening">
+                <DockPanel Background="Transparent" MouseLeftButtonDown="Drag" Margin="14,14,14,6">
+                    <!-- The mark: glances when the window opens, flinches when poked -->
+                    <local:Logo x:Name="Mark" Width="28" Height="28" Cursor="Hand" Pokeable="True" />
+                    <Border DockPanel.Dock="Right" CornerRadius="6" BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="6,1" VerticalAlignment="Center">
+                        <TextBlock x:Name="VersionText" FontSize="11" Foreground="{StaticResource Sub}" />
+                    </Border>
+                    <TextBlock Text="Glance" FontSize="16" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
+                </DockPanel>
+                <ListBox x:Name="Nav" Grid.Row="1" Margin="6,0" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged" ContextMenuOpening="NavMenuOpening">
                     <ListBox.ContextMenu>
                         <ContextMenu>
                             <MenuItem x:Name="HideItem" Click="HideTab" />
@@ -143,11 +102,11 @@
                             <GroupStyle.HeaderTemplate>
                                 <!-- Group name and a fold chevron (click to fold) -->
                                 <DataTemplate>
-                                    <Grid Margin="12,10,12,4" Background="Transparent" Cursor="Hand" MouseLeftButtonUp="GroupClick">
+                                    <Grid Margin="10,12,10,4" Background="Transparent" Cursor="Hand" MouseLeftButtonUp="GroupClick">
                                         <DockPanel>
                                             <TextBlock x:Name="Chevron" DockPanel.Dock="Right" Text="&#xE70D;" FontFamily="{StaticResource Icons}" FontSize="9"
                                                        Foreground="{StaticResource Sub}" VerticalAlignment="Center" Opacity="0.7" />
-                                            <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Sub}" />
+                                            <TextBlock Text="{Binding Name, Converter={x:Static local:MainWindow.Upper}}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Sub}" />
                                         </DockPanel>
                                     </Grid>
                                     <DataTemplate.Triggers>
@@ -161,16 +120,44 @@
                     </ListBox.GroupStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" ToolTip="{Binding Name}">
-                                <TextBlock Text="{Binding Icon}" FontFamily="{StaticResource Icons}" FontSize="16" Width="20"
+                            <DockPanel ToolTip="{Binding Name}">
+                                <!-- Live value (CPU, download rate, running timer); empty for most pages -->
+                                <TextBlock DockPanel.Dock="Right" DataContext="{Binding Name, Converter={x:Static local:MainWindow.BadgeOf}}"
+                                           Text="{Binding Text}" Foreground="{Binding Brush}" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Icon}" FontFamily="{StaticResource Icons}" FontSize="15" Width="20" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding Name}" Margin="10,0,0,0" FontSize="13.5" VerticalAlignment="Center"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
-                                <TextBlock Text="{Binding Name}" Margin="12,0,20,0" FontSize="13.5"
-                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
-                            </StackPanel>
+                            </DockPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                <!-- Load card: CPU now and its last minute, RAM; click for System -->
+                <Border Grid.Row="2" Margin="10,8,10,0" Padding="14,10" CornerRadius="12" Cursor="Hand" ToolTip="Open System" MouseLeftButtonUp="LoadClick"
+                        Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+                    <StackPanel>
+                        <DockPanel>
+                            <TextBlock x:Name="LoadRam" DockPanel.Dock="Right" FontSize="12" Foreground="{StaticResource Sub}" />
+                            <TextBlock Text="SYSTEM LOAD" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Sub}" />
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
+                            <TextBlock x:Name="LoadCpu" Text="—" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock Text="% CPU" FontSize="12" Foreground="{StaticResource Sub}" VerticalAlignment="Bottom" Margin="4,0,0,5" />
+                        </StackPanel>
+                        <local:Spark x:Name="LoadSpark" Height="30" Max="100" Format="{}{0:0}%" />
+                    </StackPanel>
+                </Border>
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="6,6,6,2">
                     <ListBox x:Name="Bottom" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -187,11 +174,73 @@
             </Border>
             </Grid>
 
-            <ContentControl x:Name="Page" Grid.Row="1" Grid.Column="1" Focusable="False">
-                <ContentControl.RenderTransform>
-                    <TranslateTransform x:Name="PageShift" />
-                </ContentControl.RenderTransform>
-            </ContentControl>
+            <!-- Main card: page title, search and window buttons on top, the page below -->
+            <Border Grid.Column="1" CornerRadius="14" Background="#1F000000" BorderBrush="{StaticResource Line}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <Grid Background="Transparent" MouseLeftButtonDown="Drag" Margin="8,8,8,6">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="NavToggle" Style="{StaticResource Ghost}" Width="40" ToolTip="Hide sidebar" Click="ToggleNav">
+                                <local:Logo Icon="menu" Width="17" Height="17" />
+                            </Button>
+                            <StackPanel x:Name="Brand" Orientation="Horizontal">
+                                <TextBlock x:Name="PageTitle" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,1" />
+                            </StackPanel>
+                            <!-- Compact mode: the tabs as a row of icons instead of the sidebar -->
+                            <ListBox x:Name="Strip" Style="{StaticResource Sidebar}" Visibility="Collapsed" Margin="2,0,0,0" SelectionChanged="StripChanged">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Icon}" ToolTip="{Binding Name}" FontFamily="{StaticResource Icons}" FontSize="15" Margin="-3,-3"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <!-- Looks like a search box, opens the Ctrl+K palette -->
+                            <Button Style="{StaticResource Ghost}" Padding="0" Margin="0,0,8,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick"
+                                    AutomationProperties.Name="Search">
+                                <Border x:Name="SearchField" Width="240" Height="32" CornerRadius="8" Padding="10,0,6,0"
+                                        Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+                                    <DockPanel>
+                                        <local:Logo Icon="search" Width="14" Height="14" VerticalAlignment="Center" />
+                                        <Border x:Name="SearchKey" DockPanel.Dock="Right" CornerRadius="4" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                                Padding="5,1" VerticalAlignment="Center">
+                                            <TextBlock Text="Ctrl K" FontSize="11" Foreground="{StaticResource Sub}" />
+                                        </Border>
+                                        <TextBlock x:Name="SearchHint" Text="Search" Margin="8,0" FontSize="13" Foreground="{StaticResource Sub}" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Border>
+                            </Button>
+                            <Button x:Name="PinButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
+                                    Content="&#xE718;" Click="PinClick" />
+                            <Button x:Name="CompactButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
+                                    Content="&#xE73F;" ToolTip="Compact mode" Click="CompactClick" />
+                            <Button Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="12" Margin="0,0,4,0"
+                                    Content="&#xE921;" ToolTip="Minimize" Click="MinimizeClick" />
+                            <Button x:Name="MaxButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="12" Margin="0,0,4,0"
+                                    Content="&#xE922;" ToolTip="Maximize" Click="MaximizeClick" />
+                            <Button Style="{StaticResource Ghost}" ToolTip="Hide to tray (Esc)" Click="HideClick">
+                                <local:Logo Icon="close" Width="17" Height="17" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <ContentControl x:Name="Page" Grid.Row="1" Margin="14,4,14,14" Focusable="False">
+                        <ContentControl.RenderTransform>
+                            <TranslateTransform x:Name="PageShift" />
+                        </ContentControl.RenderTransform>
+                    </ContentControl>
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- Ctrl+K command palette: one search over pages, actions, repos, containers, notes and clipboard -->
