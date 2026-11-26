@@ -10,13 +10,13 @@ using Glance.Services;
 
 namespace Glance;
 
-/// One sticky on the desktop. Always on top, out of the taskbar and Alt+Tab; remembers where it was put.
+/// A note that's a sticky, on the desktop. Always on top, out of the taskbar and Alt+Tab; remembers where it was put.
 public partial class StickyWindow : Window
 {
-    readonly Sticky sticky;
+    readonly Note sticky;
     IntPtr hwnd;
 
-    public StickyWindow(Sticky s)
+    public StickyWindow(Note s)
     {
         InitializeComponent();
         sticky = s;
@@ -52,7 +52,7 @@ public partial class StickyWindow : Window
         if (sticky.Left is { } l && sticky.Top is { } t && screens.IntersectsWith(new Rect(l, t, 80, 40))) (Left, Top) = (l, t);
         else
         {
-            var k = Stickies.Items.IndexOf(sticky) % 6; // cascade, so new ones don't hide each other
+            var k = NoteStore.Notes.Where(n => n.Sticky).ToList().IndexOf(sticky) % 6; // cascade, so new ones don't hide each other
             (Left, Top) = (area.Right - Width - 24 - k * 28, area.Top + 72 + k * 28);
         }
     }
@@ -65,7 +65,7 @@ public partial class StickyWindow : Window
 
     void Changed(object? o, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(Sticky.Color) or nameof(Sticky.Opacity)) Paint();
+        if (e.PropertyName is nameof(Note.Color) or nameof(Note.Opacity)) Paint();
     }
 
     void Paint()
@@ -80,13 +80,15 @@ public partial class StickyWindow : Window
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
     }
 
-    void HideClick(object sender, RoutedEventArgs e) => sticky.Shown = false;
+    void HideClick(object sender, RoutedEventArgs e) => sticky.Sticky = false;
 
-    // The dot's menu: the six tints and how see-through it is.
-    void DotClick(object sender, RoutedEventArgs e)
+    void DotClick(object sender, RoutedEventArgs e) => ShowLook(sticky, DotButton);
+
+    /// The sticky's six tints and how see-through it is, in a pop-up under target (its dot, or the Notes page's).
+    public static void ShowLook(Note sticky, UIElement target)
     {
         var colors = new WrapPanel { Margin = new(0, 0, 0, 10) };
-        foreach (var (name, _, dot) in Sticky.Colors)
+        foreach (var (name, _, dot) in Note.Colors)
         {
             var b = new Button { Style = Skin.Style("Ghost"), Padding = new(5), ToolTip = name };
             b.Content = new Ellipse
@@ -101,7 +103,7 @@ public partial class StickyWindow : Window
         see.ValueChanged += (_, v) => sticky.Opacity = Math.Round(v.NewValue, 2);
         var popup = new Popup
         {
-            PlacementTarget = DotButton, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true,
+            PlacementTarget = target, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true,
             Child = new Border
             {
                 Background = new SolidColorBrush(Skin.Get("SurfaceColor", 0xF4)), CornerRadius = new(12), Padding = new(12),

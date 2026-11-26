@@ -17,7 +17,7 @@
                 <Button x:Name="DotButton" DockPanel.Dock="Left" Style="{StaticResource Ghost}" Padding="6" Click="DotClick" ToolTip="Color and see-through">
                     <Ellipse x:Name="Dot" Width="11" Height="11" />
                 </Button>
-                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="✕" FontSize="11" ToolTip="Take off the desktop (it stays in Stickies)"
+                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="✕" FontSize="11" ToolTip="Take off the desktop (it stays in Notes)"
                         Click="HideClick" />
                 <!-- Only as wide as the title, so the rest of the header drags -->
                 <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Tag="Title" FontWeight="SemiBold" FontSize="13"

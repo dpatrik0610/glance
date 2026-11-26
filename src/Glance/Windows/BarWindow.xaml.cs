@@ -422,7 +422,7 @@ public partial class BarWindow : Window
     {
         "Music" => Media.Current is not { Title.Length: > 0 },
         "Weather" => App.Settings.Lat is null,
-        "Reminder" => !NoteStore.Everything.SelectMany(n => n.Items).Any(i => !i.Done && i.Due is not null),
+        "Reminder" => !NoteStore.Notes.SelectMany(n => n.Items).Any(i => !i.Done && i.Due is not null),
         _ => false,
     };
 
@@ -454,7 +454,7 @@ public partial class BarWindow : Window
                 return [("EUR", $"{r.Eur:0.00} Ft"), ("USD", $"{r.Usd:0.00} Ft")];
             case "Reminder":
                 var now = DateTime.Now;
-                var next = NoteStore.Everything.SelectMany(n => n.Items).Where(i => !i.Done && i.Due is not null).MinBy(i => i.Due);
+                var next = NoteStore.Notes.SelectMany(n => n.Items).Where(i => !i.Done && i.Due is not null).MinBy(i => i.Due);
                 return next is null ? [("", "No reminders")] : [(Due.Format(next.Due!.Value, now), next.Text.Length > 0 ? next.Text : "(no text)")];
         }
         return [];

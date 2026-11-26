@@ -5,7 +5,7 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-/// Every open task in one list: checklist items from Notes and Stickies, and "- [ ]" lines in board notes,
+/// Every open task in one list: checklist items from Notes (stickies too), and "- [ ]" lines in board notes,
 /// grouped by when they're due. Ticking one ticks it where it lives; the source name jumps there.
 public class TasksPage : UserControl, IHeader
 {
@@ -23,7 +23,7 @@ public class TasksPage : UserControl, IHeader
     {
         showDone = new CheckBox { Content = "Show done  ", Style = Skin.Style("Switch"), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left };
         showDone.Click += (_, _) => { withDone = showDone.IsChecked == true; Draw(); };
-        var hint = new TextBlock { Text = "From Notes, Stickies and board notes. A due date on a board task: - [ ] call mom @tomorrow 9", Style = Skin.Style("Label"), Margin = new(12, 4, 0, 12) };
+        var hint = new TextBlock { Text = "From Notes and board notes. A due date on a board task: - [ ] call mom @tomorrow 9", Style = Skin.Style("Label"), Margin = new(12, 4, 0, 12) };
         DockPanel.SetDock(hint, Dock.Top);
         Content = new DockPanel { Children = { hint, new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = list, Padding = new(12, 0, 8, 0) } } };
         IsVisibleChanged += (_, _) => { if (IsVisible) Draw(); };
@@ -32,11 +32,11 @@ public class TasksPage : UserControl, IHeader
 
     IEnumerable<(Row Row, bool Done)> All()
     {
-        foreach (var n in NoteStore.Everything)
+        foreach (var n in NoteStore.Notes)
             foreach (var i in n.Items)
-                yield return (new Row(i.Text, i.Due, n is Sticky ? $"Sticky · {n.DisplayTitle}" : n.DisplayTitle, () => i.Done = !i.Done, () =>
+                yield return (new Row(i.Text, i.Due, n.Sticky ? $"Sticky · {n.DisplayTitle}" : n.DisplayTitle, () => i.Done = !i.Done, () =>
                 {
-                    if (n is Sticky s) { Stickies.Reveal(s); return; }
+                    if (n.Sticky) { Stickies.Reveal(n); return; }
                     App.Go("Notes");
                     NoteStore.RequestFocus(n);
                 }), i.Done);

@@ -60,7 +60,7 @@ public partial class MainWindow : Window
             new("Stocks", "\uE9D2", () => new StocksPage())),
         new("Now Playing", "Life", "\uEC4F", () => new NowPlayingPage()),
         new("Clipboard", "Tools", "\uE77F", () => new ClipboardPage()),
-        Merged("Notes", "Tools", "\uE70B", new("Notes", "\uE70B", () => new NotesPage()), new("Stickies", "\uE840", () => new StickiesPage())),
+        new("Notes", "Tools", "\uE70B", () => new NotesPage()),
         new("Board", "Tools", "\uE80A", () => new BoardPage(), Keep: true),
         new("Tasks", "Tools", "\uE73A", () => new TasksPage()),
         new("Timer", "Tools", "\uE916", () => new TimerPage()),
@@ -360,7 +360,7 @@ public partial class MainWindow : Window
         Mark.Play();
     }
 
-    /// Opens a page, or a part of a merged page (History, Stickies), and returns it.
+    /// Opens a page, or a part of a merged page (History, Exchange), and returns it.
     public UserControl ShowTab(string name)
     {
         var t = Tabs.FirstOrDefault(t => t.Parts?.Any(p => p.Name == name) == true) ?? Tabs.First(t => t.Name == name);

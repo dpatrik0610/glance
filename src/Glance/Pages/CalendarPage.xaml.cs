@@ -109,7 +109,7 @@ public partial class CalendarPage : UserControl, IHeader
     }
 
     static IEnumerable<(Note Note, TodoItem Item)> DueOn(DateTime d) =>
-        from n in NoteStore.Everything
+        from n in NoteStore.Notes
         from i in n.Items
         where i.Due?.Date == d
         orderby i.Due
@@ -241,7 +241,7 @@ public partial class CalendarPage : UserControl, IHeader
         text.Children.Add(new TextBlock { Text = $"Due {item.Due:HH:mm}" + (item.Remind ? "  ·  🔔" : ""), Style = Label, FontSize = 11.5 });
         text.Children.Add(new TextBlock { Text = item.Text.Length > 0 ? item.Text : "(no text)", FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap,
             Margin = new(0, 2, 0, 0), Opacity = item.Done ? 0.45 : 1 });
-        text.Children.Add(new TextBlock { Text = (note is Sticky ? "Sticky · " : "Note · ") + note.DisplayTitle, Style = Label, FontSize = 10.5, Margin = new(0, 2, 0, 0) });
+        text.Children.Add(new TextBlock { Text = (note.Sticky ? "Sticky · " : "Note · ") + note.DisplayTitle, Style = Label, FontSize = 10.5, Margin = new(0, 2, 0, 0) });
         var body = new DockPanel();
         DockPanel.SetDock(check, Dock.Left);
         body.Children.Add(check);

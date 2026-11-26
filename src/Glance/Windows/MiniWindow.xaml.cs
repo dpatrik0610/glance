@@ -166,12 +166,12 @@ public partial class MiniWindow : Window
     void ShowReminders()
     {
         var now = DateTime.Now;
-        var due = (from n in NoteStore.Everything from i in n.Items where !i.Done && i.Due is not null orderby i.Due select (n, i)).ToList();
+        var due = (from n in NoteStore.Notes from i in n.Items where !i.Done && i.Due is not null orderby i.Due select (n, i)).ToList();
         if (due.Count == 0) { Add(Header(bar.ViewIcon, "No reminders", "Due checklist items show up here", "Notes")); return; }
         var late = due.Count(d => d.i.Due < now);
         Add(Header(bar.ViewIcon, "Coming up", $"{due.Count} due" + (late > 0 ? $" · {late} overdue" : ""), "Notes"));
         foreach (var (note, item) in due.Take(4)) Add(Reminder(note, item, now));
-        if (due.Count > 4) Add(Line($"+{due.Count - 4} more in Notes and Stickies", 6));
+        if (due.Count > 4) Add(Line($"+{due.Count - 4} more in Notes", 6));
     }
 
     // ---- Pieces ----
@@ -281,7 +281,7 @@ public partial class MiniWindow : Window
         var text = new StackPanel();
         text.Children.Add(new TextBlock { Text = item.Text.Length > 0 ? item.Text : "(no text)", FontSize = 12.5, FontWeight = FontWeights.SemiBold,
             TextTrimming = TextTrimming.CharacterEllipsis });
-        text.Children.Add(new TextBlock { Text = (note is Sticky ? "Sticky · " : "Note · ") + note.DisplayTitle, FontSize = 11, Foreground = Skin.Brush("Sub"),
+        text.Children.Add(new TextBlock { Text = (note.Sticky ? "Sticky · " : "Note · ") + note.DisplayTitle, FontSize = 11, Foreground = Skin.Brush("Sub"),
             TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(0, 1, 0, 0) });
         DockPanel.SetDock(check, Dock.Left);
         DockPanel.SetDock(when, Dock.Right);

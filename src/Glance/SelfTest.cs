@@ -89,7 +89,7 @@ static class SelfTest
                 }
                 finally { Directory.Delete(dir, true); }
             }
-            Check(new Pages.TimerPage().Content is not null && new Pages.TasksPage().Content is not null, "timer and tasks pages load");
+            Check(new Pages.TimerPage().Content is not null && new Pages.TasksPage().Content is not null && new Pages.NotesPage().Content is not null, "timer, tasks and notes pages load");
             {
                 // A page dropped when idle must let go of app-wide events, or they keep it (and its work) alive.
                 int Handlers(string name) => (typeof(App).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
@@ -198,22 +198,31 @@ static class SelfTest
                 .Frames[0].CopyPixels(back, 8, 0);
             Check(back.SequenceEqual(px), "clipboard image: png keeps pixels and alpha");
 
-            // Stickies: everything a sticky holds survives a save and load (an absolute name keeps it out of AppData)
+            // Notes: everything a note (and its sticky) holds survives a save and load (an absolute name keeps it out of AppData)
             var tmp = Path.Combine(Path.GetTempPath(), $"glance-selftest-{Guid.NewGuid():N}.json");
             try
             {
-                var store = new JsonStore<Sticky>(tmp);
+                var store = new JsonStore<Note>(tmp);
                 Check(store.Load(), "store: no file yet");
-                var sticky = new Sticky { Title = "t", Kind = NoteKind.Checklist, Color = "Blue", Opacity = 0.5, Left = -10, Width = 300, Shown = false, Font = "Consolas", FontSize = 18 };
+                var sticky = new Note { Title = "t", Kind = NoteKind.Checklist, Color = "Blue", Opacity = 0.5, Left = -10, Width = 300, Sticky = true, Font = "Consolas", FontSize = 18 };
                 sticky.Items.Add(new TodoItem { Text = "a", Done = true, Due = new DateTime(2026, 1, 2, 3, 4, 0), Remind = true, Reminded = true });
                 store.Items.Add(sticky);
-                store.Items.Add(new Sticky()); // never placed: no position yet
+                store.Items.Add(new Note()); // never placed: no position yet
+                sticky.Title = "t"; // unchanged: not an edit
+                Check(sticky.Edited is null, "note: no edit, no Edited");
+                sticky.Items.Add(new TodoItem { Text = "b" });
+                Check(sticky.Edited is not null && sticky.Meta.EndsWith("1/2 done") && sticky.Summary == "1/2 done · b", "note: an item edit stamps Edited");
                 store.Flush();
-                var reread = new JsonStore<Sticky>(tmp);
+                var reread = new JsonStore<Note>(tmp);
                 Check(!reread.Load() && reread.Items.Count == 2, "store: reload");
-                Check(reread.Items[0] is { Title: "t", Kind: NoteKind.Checklist, Color: "Blue", Opacity: 0.5, Left: -10, Top: null, Width: 300, Shown: false, Font: "Consolas", FontSize: 18 }
-                      && reread.Items[0].Items[0] is { Text: "a", Done: true, Remind: true, Reminded: true } && reread.Items[1].Left is null,
-                    "store: sticky round-trip");
+                Check(reread.Items[0] is { Title: "t", Kind: NoteKind.Checklist, Color: "Blue", Opacity: 0.5, Left: -10, Top: null, Width: 300, Sticky: true, Font: "Consolas", FontSize: 18, Edited: not null }
+                      && reread.Items[0].Items[0] is { Text: "a", Done: true, Remind: true, Reminded: true } && reread.Items[1] is { Left: null, Sticky: false },
+                    "store: note and sticky round-trip");
+                // stickies.json: "Shown" becomes Sticky (on when missing), and is saved under the new name
+                var old = System.Text.Json.JsonSerializer.Deserialize<List<NoteStore.OldSticky>>("""[{"Title":"a","Shown":false},{"Title":"b"}]""")!;
+                var json = System.Text.Json.JsonSerializer.Serialize<List<Note>>([.. old]);
+                Check(old is [{ Sticky: false }, { Sticky: true }] && !json.Contains("Shown") && json.Contains("\"Sticky\":true"),
+                    "stickies.json: migrates to notes");
                 Check(reread.Items[1] is { Font: Note.DefaultFont, FontSize: 14 } && new Note { FontSize = 99, Font = " " } is { FontSize: 40, Font: Note.DefaultFont },
                     "note: default font, size clamped");
             }

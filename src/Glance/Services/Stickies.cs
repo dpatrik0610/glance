@@ -1,68 +1,64 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 
 namespace Glance.Services;
 
-/// The desktop stickies: the list (stickies.json) and a window for each one that's out.
-/// A sticky is on the desktop when it's Shown and stickies are shown at all (Settings.StickiesShown, the tray switch).
+/// The desktop windows of the notes that are stickies. A sticky is on the desktop when its note is Sticky and stickies
+/// are shown at all (Settings.StickiesShown, the tray switch).
 public static class Stickies
 {
-    static readonly JsonStore<Sticky> store = new("stickies.json");
-    static readonly Dictionary<Sticky, StickyWindow> open = [];
-
-    public static ObservableCollection<Sticky> Items => store.Items;
+    static readonly Dictionary<Note, StickyWindow> open = [];
 
     public static void Load()
     {
-        store.Load();
-        foreach (var s in Items) s.PropertyChanged += ShownChanged;
-        Items.CollectionChanged += (_, e) =>
+        foreach (var n in NoteStore.Notes) n.PropertyChanged += StickyChanged;
+        NoteStore.Notes.CollectionChanged += (_, e) =>
         {
-            foreach (Sticky s in e.NewItems ?? Array.Empty<Sticky>()) s.PropertyChanged += ShownChanged;
+            foreach (Note n in e.NewItems ?? Array.Empty<Note>()) n.PropertyChanged += StickyChanged;
             Sync();
         };
         App.SettingsChanged += Sync;
         Sync();
     }
 
-    static void ShownChanged(object? o, PropertyChangedEventArgs e)
+    static void StickyChanged(object? o, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(Sticky.Shown)) Sync();
+        if (e.PropertyName == nameof(Note.Sticky)) Sync();
     }
 
-    /// Opens the windows that should be out and closes the rest (also those of deleted stickies).
+    /// Opens the windows that should be out and closes the rest (also those of deleted notes).
     static void Sync()
     {
-        foreach (var s in Items)
+        foreach (var n in NoteStore.Notes)
         {
-            var want = App.Settings.StickiesShown && Features.On("Stickies") && s.Shown;
-            if (want && !open.ContainsKey(s))
+            var want = App.Settings.StickiesShown && Features.On("Notes") && n.Sticky;
+            if (want && !open.ContainsKey(n))
             {
-                var w = new StickyWindow(s);
-                open[s] = w;
-                w.Closed += (_, _) => open.Remove(s);
+                var w = new StickyWindow(n);
+                open[n] = w;
+                w.Closed += (_, _) => open.Remove(n);
                 w.Show();
             }
-            else if (!want && open.Remove(s, out var gone)) gone.Close();
+            else if (!want && open.Remove(n, out var gone)) gone.Close();
         }
-        foreach (var deleted in open.Keys.Except(Items).ToList())
+        foreach (var deleted in open.Keys.Except(NoteStore.Notes).ToList())
             if (open.Remove(deleted, out var w)) w.Close();
     }
 
-    public static Sticky Add(NoteKind kind)
+    /// Adds the note at the top of the list and puts it on the desktop.
+    public static Note Add(Note n)
     {
-        var s = new Sticky { Kind = kind };
-        Items.Insert(0, s);
-        Reveal(s);
-        return s;
+        n.Sticky = true;
+        NoteStore.Notes.Insert(0, n);
+        Reveal(n);
+        return n;
     }
 
     /// Puts it on the desktop (turning stickies on if they were hidden) and brings it to the front.
-    public static void Reveal(Sticky s)
+    public static void Reveal(Note n)
     {
-        s.Shown = true;
+        n.Sticky = true;
         if (!App.Settings.StickiesShown) SetShown(true);
-        if (open.TryGetValue(s, out var w)) w.Activate();
+        if (open.TryGetValue(n, out var w)) w.Activate();
     }
 
     public static void SetShown(bool on)

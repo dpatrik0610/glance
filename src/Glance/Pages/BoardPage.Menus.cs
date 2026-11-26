@@ -128,9 +128,7 @@ public partial class BoardPage
 
     static void PinSticky(BoardItem it)
     {
-        var s = new Sticky { Kind = NoteKind.Text, Title = it.Title, Text = it.Text };
-        Stickies.Items.Insert(0, s);
-        Stickies.Reveal(s);
+        Stickies.Add(new Note { Title = it.Title, Text = it.Text });
     }
 
     void MoveTo(BoardItem it, Board to)

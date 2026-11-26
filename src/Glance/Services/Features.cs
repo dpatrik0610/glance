@@ -6,7 +6,7 @@ namespace Glance.Services;
 /// App.SettingsChanged; anything that must react right away (close windows, re-register a hotkey) listens to that.
 public static class Features
 {
-    /// A page, or a part of a merged page ("Stickies", "Exchange"): on unless it, or the page it's part of, is turned off.
+    /// A page, or a part of a merged page ("History", "Exchange"): on unless it, or the page it's part of, is turned off.
     public static bool On(string name)
     {
         var off = App.Settings.OffPages;

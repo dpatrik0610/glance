@@ -86,7 +86,7 @@ public partial class MainWindow
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var claude = Shell.OnPath("claude.exe");
         var list = Tabs.Where(Enabled).Append(SettingsTab).Select(t => new Cmd(t.Name, "Page", t.Icon, Do(() => Go(t)))).ToList();
-        // A merged page's other parts (History, Stickies) are still found by name; the first part is the page itself.
+        // A merged page's other parts (History, Exchange) are still found by name; the first part is the page itself.
         list.AddRange(Tabs.Where(Enabled).SelectMany(t => t.Parts?.Skip(1) ?? []).Where(Tabbed.Offered).Select(p => new Cmd(p.Name, "Page", p.Icon, Do(() => Go(p.Name)))));
 
         // A command that opens or works for a page goes with it when the page is off.
@@ -103,8 +103,8 @@ public partial class MainWindow
             Task.FromResult<string?>(ClipboardHistory.CopySecret(Passwords.Generate(20, true, true, true, true, true).Password, TimeSpan.FromSeconds(30))
                 ? "Copied a 20-character password · clipboard clears in 30s" : "Clipboard busy, try again.")));
 
-        Add("Stickies", new("New sticky", "Stickies", "\uE840", Do(() => { Go("Stickies"); Stickies.Add(NoteKind.Text); })));
-        Add("Stickies", new(App.Settings.StickiesShown ? "Hide stickies" : "Show stickies", "Stickies", "\uE840",
+        Add("Notes", new("New sticky", "Notes", "\uE840", Do(() => { Go("Notes"); NoteStore.RequestFocus(Stickies.Add(new Note())); })));
+        Add("Notes", new(App.Settings.StickiesShown ? "Hide stickies" : "Show stickies", "Notes", "\uE840",
             Do(() => Stickies.SetShown(!App.Settings.StickiesShown))));
         Add("Color", new("Pick color from screen", "Color", "\uE790", async () =>
         {
