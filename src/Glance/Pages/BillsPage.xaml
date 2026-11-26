@@ -7,9 +7,6 @@
             <Setter Property="Padding" Value="8,3" />
             <Setter Property="Foreground" Value="{StaticResource Sub}" />
         </Style>
-        <Style x:Key="Field" TargetType="TextBlock" BasedOn="{StaticResource Label}">
-            <Setter Property="Margin" Value="0,14,0,6" />
-        </Style>
     </UserControl.Resources>
     <Grid>
         <DockPanel>
@@ -103,51 +100,6 @@
                 </StackPanel>
             </Grid>
         </DockPanel>
-
-        <!-- The editor: a modal over the page -->
-        <Grid x:Name="Editor" Background="#8C000000" Visibility="Collapsed" MouseLeftButtonDown="EditorBackdrop">
-            <Border Style="{StaticResource Card}" Background="{StaticResource Popup}" Width="540" Padding="24,20" HorizontalAlignment="Center" VerticalAlignment="Center"
-                    KeyDown="EditorKey">
-                <StackPanel>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="{StaticResource Icons}" ToolTip="Close (Esc)" Click="CloseEditor" />
-                        <TextBlock x:Name="EditorTitle" Text="New bill" Style="{StaticResource H}" FontSize="17" VerticalAlignment="Center" />
-                    </DockPanel>
-                    <TextBlock Text="Name" Style="{StaticResource Field}" />
-                    <TextBox x:Name="NameBox" Tag="Rent, Netflix, car insurance…" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="Amount" Style="{StaticResource Field}" />
-                            <TextBox x:Name="AmountBox" Tag="4500" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Next due" Style="{StaticResource Field}" />
-                            <TextBox x:Name="DueBox" Tag="dec 5, 2026-12-05, fri" ToolTip="dec 5, 12.05, 2026-12-05, tomorrow, fri" />
-                        </StackPanel>
-                    </Grid>
-                    <TextBlock Text="Repeats" Style="{StaticResource Field}" />
-                    <Border Style="{StaticResource Segment}" HorizontalAlignment="Left">
-                        <StackPanel x:Name="RepeatChips" Orientation="Horizontal" />
-                    </Border>
-                    <TextBlock Text="Kind" Style="{StaticResource Field}" />
-                    <WrapPanel x:Name="KindChips" />
-                    <CheckBox x:Name="RemindBox" Style="{StaticResource Switch}" Content="Remind me the day before" IsChecked="True" Margin="0,16,0,0" />
-                    <TextBlock x:Name="EditorHint" Style="{StaticResource Label}" Foreground="{StaticResource Red}" Margin="0,12,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
-                    <DockPanel Margin="0,20,0,0">
-                        <Button x:Name="DeleteButton" DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="Delete" Foreground="{StaticResource Red}" Click="DeleteEditing" />
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Style="{StaticResource Ghost}" Content="Cancel" Click="CloseEditor" Margin="0,0,8,0" />
-                            <Button Style="{StaticResource Primary}" Content="Save" Click="Save" />
-                        </StackPanel>
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-        </Grid>
 
         <!-- Toast -->
         <Border x:Name="Toast" Background="{StaticResource Accent}" CornerRadius="14" Padding="14,6" HorizontalAlignment="Center" VerticalAlignment="Bottom"

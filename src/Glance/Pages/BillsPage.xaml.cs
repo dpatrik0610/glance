@@ -37,7 +37,6 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
     public sealed record Row(Bill Bill, string Name, string Kind, string Icon, Brush KindBrush, Brush KindBg, string Repeats, string PerMonth,
         string When, string DueDate, Brush DueBrush, Brush DueBg, string Amount);
 
-    Bill? editing;
     readonly DispatcherTimer toastTimer;
 
     public BillsPage()
@@ -45,10 +44,6 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
         InitializeComponent();
         Header = MainWindow.Lift(Bar);
         State = MainWindow.Lift(Count);
-        foreach (var r in Enum.GetValues<Repeat>())
-            RepeatChips.Children.Add(new RadioButton { Style = Skin.Style("Chip"), Content = r == Repeat.Once ? "Once" : r.ToString(), Tag = r, GroupName = "repeat" });
-        foreach (var k in Bill.Kinds)
-            KindChips.Children.Add(new RadioButton { Style = Skin.Style("Chip"), Content = k, Tag = k, GroupName = "kind", Margin = new(0, 0, 4, 4) });
         toastTimer = new DispatcherTimer(TimeSpan.FromSeconds(1.6), DispatcherPriority.Background, (_, _) => { Toast.Visibility = Visibility.Collapsed; toastTimer!.Stop(); }, Dispatcher);
         toastTimer.Stop();
         Money.Bills.CollectionChanged += BillsChanged;
@@ -129,86 +124,17 @@ public partial class BillsPage : UserControl, IHeader, IDisposable
         if (Dialog.Confirm("Delete", $"Delete {b.Name}?", "It's gone from Bills. What you already paid stays in Budget.", "Delete")) Money.Bills.Remove(b);
     }
 
-    // ---- The editor ----
+    void NewBill(object sender, RoutedEventArgs e) => BillDialog.Edit(null);
 
-    void NewBill(object sender, RoutedEventArgs e) => Open(null);
+    void Open(Bill b) => BillDialog.Edit(b);
 
-    /// Opens the editor here; Today uses it to edit a bill too.
-    internal void Open(Bill? b)
-    {
-        editing = b;
-        EditorTitle.Text = b is null ? "New bill" : "Edit bill";
-        NameBox.Text = b?.Name ?? "";
-        AmountBox.Text = b is null ? "" : b.Amount.ToString("0.##", CultureInfo.CurrentCulture);
-        DueBox.Text = b is null ? "" : b.Due.ToString("yyyy-MM-dd", En);
-        Pick(RepeatChips.Children, b?.Repeat ?? Repeat.Monthly);
-        Pick(KindChips.Children, b?.Kind ?? "Subscription");
-        RemindBox.IsChecked = b?.Remind ?? true;
-        DeleteButton.Visibility = b is null ? Visibility.Collapsed : Visibility.Visible;
-        Hint(null);
-        Editor.Visibility = Visibility.Visible;
-        Dispatcher.BeginInvoke(() => NameBox.Focus(), DispatcherPriority.Input);
-    }
-
-    static void Pick(UIElementCollection chips, object value)
-    {
-        foreach (RadioButton c in chips) c.IsChecked = Equals(c.Tag, value);
-    }
-
-    static object? Picked(UIElementCollection chips) => chips.OfType<RadioButton>().FirstOrDefault(c => c.IsChecked == true)?.Tag;
-
-    void Save(object sender, RoutedEventArgs e)
-    {
-        var name = NameBox.Text.Trim();
-        if (name.Length == 0) { Hint("Give it a name, like Rent."); NameBox.Focus(); return; }
-        if (!ExchangePage.TryParse(AmountBox.Text, out var amount) || amount <= 0) { Hint("Type an amount, like 4500."); AmountBox.Focus(); return; }
-        if (Due.Parse(DueBox.Text, DateTime.Now) is not { } due) { Hint("Can't read the date: try \"dec 5\", \"2026-12-05\" or \"fri\"."); DueBox.Focus(); return; }
-        var bill = new Bill(name, amount, due.Date, (Repeat)Picked(RepeatChips.Children)!, (string)Picked(KindChips.Children)!, RemindBox.IsChecked == true, Day: due.Day);
-        // Same due date: keep "already reminded", so saving an edit doesn't remind again.
-        if (editing is not null) Money.Replace(editing, bill with { Reminded = editing.Due == bill.Due ? editing.Reminded : null });
-        else Money.Bills.Add(bill);
-        CloseEditor(sender, e);
-    }
-
-    void DeleteEditing(object sender, RoutedEventArgs e)
-    {
-        if (editing is null || !Dialog.Confirm("Delete", $"Delete {editing.Name}?", "It's gone from Bills. What you already paid stays in Budget.", "Delete")) return;
-        Money.Bills.Remove(editing);
-        CloseEditor(sender, e);
-    }
-
-    void CloseEditor(object sender, RoutedEventArgs e)
-    {
-        Editor.Visibility = Visibility.Collapsed;
-        editing = null;
-    }
-
-    void EditorBackdrop(object sender, MouseButtonEventArgs e)
-    {
-        if (e.OriginalSource == Editor) CloseEditor(sender, e);
-    }
-
-    void EditorKey(object sender, KeyEventArgs e)
-    {
-        if (e.Key != System.Windows.Input.Key.Enter || e.OriginalSource is RadioButton or CheckBox or Button) return;
-        e.Handled = true;
-        Save(sender, e);
-    }
-
-    // Esc closes the editor before anything else; Ctrl+N starts a new bill.
+    // Ctrl+N starts a new bill.
     void Key(object sender, KeyEventArgs e)
     {
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
-        if (e.Key == System.Windows.Input.Key.Escape && Editor.IsVisible) CloseEditor(sender, e);
-        else if (ctrl && e.Key == System.Windows.Input.Key.N && !Editor.IsVisible) Open(null);
-        else return;
+        if (!ctrl || e.Key != System.Windows.Input.Key.N) return;
         e.Handled = true;
-    }
-
-    void Hint(string? text)
-    {
-        EditorHint.Text = text ?? "";
-        EditorHint.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
+        BillDialog.Edit(null);
     }
 
     void Say(string text)
