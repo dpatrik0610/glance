@@ -249,7 +249,7 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </StackPanel>
-                        <ContentControl x:Name="TitleSlot" Grid.Column="1" Focusable="False" VerticalAlignment="Center" Margin="8,0,8,0" />
+                        <ContentControl x:Name="TitleSlot" Grid.Column="1" Focusable="False" HorizontalContentAlignment="Stretch" VerticalAlignment="Center" Margin="8,0,8,0" />
                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                             <!-- Looks like a search box, opens the Ctrl+K palette -->
                             <Button x:Name="SearchButton" Style="{StaticResource Ghost}" Padding="0" Margin="0,0,8,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick"

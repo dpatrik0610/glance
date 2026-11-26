@@ -108,7 +108,7 @@ public class CliTab : Bindable
 /// Shells live as long as Glance does: switching pages or hiding to the tray only hides them, so servers keep running.
 public partial class CliPage : UserControl, IHeader
 {
-    public FrameworkElement Header => Strip;
+    public FrameworkElement Header => Bar;
     public bool OwnsTitleRow => true; // the tab strip sits in the window's title row, no page header
 
     public static readonly string[] Palette = ["#FF6A3D", "#FF4D5E", "#F5B83D", "#3DDC84", "#5AA9FF", "#B57BFF", "#9C9CA3"];
@@ -144,7 +144,7 @@ public partial class CliPage : UserControl, IHeader
     public CliPage()
     {
         InitializeComponent();
-        MainWindow.Lift(Strip);
+        MainWindow.Lift(Bar);
         TabList.ItemsSource = tabs;
         Folders.ItemsSource = App.Settings.CliFolders;
         ClaudeItem.Visibility = Shell.OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;

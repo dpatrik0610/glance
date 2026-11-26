@@ -50,9 +50,13 @@
     </UserControl.Resources>
 
     <DockPanel>
-        <!-- Tab strip: the tabs in one row (the wheel scrolls it), then + for a new shell (right-click it for more).
+        <!-- Tab strip: the tabs in one row (the wheel scrolls it), then + for a new shell (right-click it for more); the folder button sits at the far right, by the pin.
              Moved into the window's title row (IHeader) when the page is built. -->
-        <DockPanel x:Name="Strip" DockPanel.Dock="Top" HorizontalAlignment="Left">
+        <DockPanel x:Name="Bar" DockPanel.Dock="Top">
+            <ToggleButton x:Name="FoldersToggle" DockPanel.Dock="Right" Style="{StaticResource IconToggle}" Width="34" Height="34" Padding="0"
+                          Margin="8,0,0,0" Content="&#xE8B7;" FontFamily="{StaticResource Icons}" FontSize="14"
+                          ToolTip="Quick folders" AutomationProperties.Name="Quick folders" Checked="ToggleFolders" Unchecked="ToggleFolders" />
+        <DockPanel x:Name="Strip" HorizontalAlignment="Left">
             <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Width="34" Height="34" Padding="0" Margin="2,0,0,0"
                     Content="&#xE710;" FontFamily="{StaticResource Icons}" FontSize="13" Click="NewShell"
                     ToolTip="New terminal (right-click for more)" AutomationProperties.Name="New terminal">
@@ -67,9 +71,6 @@
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>
-            <ToggleButton x:Name="FoldersToggle" DockPanel.Dock="Right" Style="{StaticResource IconToggle}" Width="34" Height="34" Padding="0"
-                          Margin="2,0,0,0" Content="&#xE8B7;" FontFamily="{StaticResource Icons}" FontSize="14"
-                          ToolTip="Quick folders" AutomationProperties.Name="Quick folders" Checked="ToggleFolders" Unchecked="ToggleFolders" />
             <ListBox x:Name="TabList" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource TabChip}"
                      ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                      SelectionChanged="TabSelected" AllowDrop="True" PreviewMouseMove="TabDragMove" DragOver="TabDragOver"
@@ -132,6 +133,7 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+        </DockPanel>
         </DockPanel>
 
         <Grid>
