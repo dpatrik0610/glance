@@ -90,7 +90,6 @@ public partial class NotesPage : UserControl, IDisposable, IHeader
         Editor.DataContext = Current;
         Editor.Visibility = Current is null ? Visibility.Collapsed : Visibility.Visible;
         var any = NoteStore.Notes.Count > 0;
-        Split.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
         Empty.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
         ListEmpty.Visibility = any && List.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         ListEmpty.Text = StickyChip.IsChecked == true
@@ -113,10 +112,10 @@ public partial class NotesPage : UserControl, IDisposable, IHeader
         TitleBox.Focus();
     }
 
-    // Turned on: out on the desktop now, even if stickies were hidden from the tray.
+    // A row's pin. Turned on: out on the desktop now, even if stickies were hidden from the tray.
     void StickyClick(object sender, RoutedEventArgs e)
     {
-        if (Current is { Sticky: true } n) Stickies.Reveal(n);
+        if (((FrameworkElement)sender).DataContext is Note { Sticky: true } n) Stickies.Reveal(n);
         Count();
     }
 
@@ -125,13 +124,14 @@ public partial class NotesPage : UserControl, IDisposable, IHeader
         if (Current is { } n) StickyWindow.ShowLook(n, (UIElement)sender);
     }
 
+    // A row's delete; the next note opens if it was the open one.
     void DeleteNote(object sender, RoutedEventArgs e)
     {
-        if (Current is not { } n) return;
+        if (((FrameworkElement)sender).DataContext is not Note n) return;
         if (!Dialog.Confirm("Delete note", $"Delete \"{n.DisplayTitle}\"?", n.Sticky ? "It also leaves the desktop. This can't be undone." : "This can't be undone.", "Delete")) return;
-        var i = List.SelectedIndex;
+        var (i, open) = (List.Items.IndexOf(n), n == Current);
         NoteStore.Notes.Remove(n);
-        List.SelectedIndex = Math.Min(i, List.Items.Count - 1);
+        if (open) List.SelectedIndex = Math.Min(i, List.Items.Count - 1);
     }
 
     void FontClick(object sender, RoutedEventArgs e) => Body.ShowFontMenu((UIElement)sender);

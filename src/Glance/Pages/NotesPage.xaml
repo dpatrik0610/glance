@@ -24,9 +24,9 @@
         </Style>
     </UserControl.Resources>
     <Grid>
-        <!-- Title row bar (IHeader): which notes, then new note, checklist, today -->
+        <!-- Title row bar (IHeader): which notes -->
         <StackPanel x:Name="Bar" Orientation="Horizontal">
-            <Border Style="{StaticResource Segment}" Margin="0,0,10,0">
+            <Border Style="{StaticResource Segment}">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <RadioButton x:Name="AllChip" Style="{StaticResource Chip}" IsChecked="True" Checked="FilterChanged">
                         <StackPanel Orientation="Horizontal"><TextBlock Text="All" /><TextBlock x:Name="AllCount" Style="{StaticResource Count}" /></StackPanel>
@@ -39,24 +39,6 @@
                     </RadioButton>
                 </StackPanel>
             </Border>
-            <Button Style="{StaticResource Primary}" Margin="0,0,6,0" Click="NewText" ToolTip="New text note">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE710;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource OnAccent}" />
-                    <TextBlock Text="New note" Foreground="{StaticResource OnAccent}" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource Ghost}" Margin="0,0,2,0" Click="NewChecklist" ToolTip="New checklist">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE9D5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <TextBlock Text="Checklist" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource Ghost}" Click="OpenToday" ToolTip="Today's daily note (made if there isn't one)">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE8BF;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <TextBlock Text="Today" />
-                </StackPanel>
-            </Button>
         </StackPanel>
 
         <!-- The list on the left, the open note on the right, a hairline between -->
@@ -66,7 +48,25 @@
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
             <Border Width="1" HorizontalAlignment="Right" Background="{StaticResource Line}" />
-            <ListBox x:Name="List" Style="{StaticResource Sidebar}" Margin="0,2,12,8" SelectionChanged="Selected">
+            <!-- New note, checklist, today's note -->
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="0,0,12,0">
+                <Button Style="{StaticResource Primary}" Padding="9,6" Margin="0,0,6,0" Click="NewText" ToolTip="New note">
+                    <TextBlock Text="&#xE710;" FontFamily="{StaticResource Icons}" FontSize="13" Foreground="{StaticResource OnAccent}" />
+                </Button>
+                <Button Style="{StaticResource Ghost}" Margin="0,0,2,0" Click="NewChecklist" ToolTip="New checklist">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE9D5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBlock Text="Checklist" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Ghost}" Click="OpenToday" ToolTip="Today's daily note (made if there isn't one)">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8BF;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBlock Text="Today" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <ListBox x:Name="List" Style="{StaticResource Sidebar}" Margin="0,46,12,8" SelectionChanged="Selected">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel>
@@ -74,8 +74,16 @@
                                 <TextBlock DockPanel.Dock="Left" Text="&#xE840;" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="{Binding Dot}"
                                            Margin="0,0,7,0" VerticalAlignment="Center" ToolTip="On the desktop as a sticky"
                                            Visibility="{Binding Sticky, Converter={StaticResource Vis}}" />
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding When}" Style="{StaticResource Label}" FontSize="12" Margin="10,0,0,0"
-                                           VerticalAlignment="Center" />
+                                <!-- The edit time, swapped for the row's actions on hover or selection -->
+                                <Grid DockPanel.Dock="Right" Margin="10,0,0,0">
+                                    <TextBlock x:Name="WhenText" Text="{Binding When}" Style="{StaticResource Label}" FontSize="12" VerticalAlignment="Center" />
+                                    <StackPanel x:Name="Actions" Orientation="Horizontal" Margin="0,-5,-6,-5" Visibility="Collapsed">
+                                        <ToggleButton Style="{StaticResource IconToggle}" Content="&#xE840;" FontSize="12" Padding="7,4" IsChecked="{Binding Sticky}"
+                                                      Click="StickyClick" ToolTip="Sticky: keep it on the desktop, always on top" />
+                                        <Button Style="{StaticResource Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Icons}" FontSize="12" Padding="7,4"
+                                                Foreground="{StaticResource Sub}" Click="DeleteNote" ToolTip="Delete note" />
+                                    </StackPanel>
+                                </Grid>
                                 <TextBlock Text="{Binding DisplayTitle}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text}"
                                            TextTrimming="CharacterEllipsis" />
                             </DockPanel>
@@ -89,6 +97,16 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                <Setter TargetName="WhenText" Property="Visibility" Value="Hidden" />
+                                <Setter TargetName="Actions" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                <Setter TargetName="WhenText" Property="Visibility" Value="Hidden" />
+                                <Setter TargetName="Actions" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
@@ -106,22 +124,11 @@
                                 <TextBlock Text="{Binding NextDue}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Accent}" />
                             </StackPanel>
                         </Border>
-                        <ToggleButton Style="{StaticResource IconToggle}" IsChecked="{Binding Sticky}" Click="StickyClick"
-                                      ToolTip="Sticky: keep it on the desktop, always on top">
-                            <!-- Accent when on: these TextBlocks belong to the toggle, so they'd get the app's TextBlock color otherwise -->
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE840;" VerticalAlignment="Center"
-                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
-                                <TextBlock Text="Sticky" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13" Margin="6,0,0,0" VerticalAlignment="Center"
-                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
-                            </StackPanel>
-                        </ToggleButton>
                         <Button Style="{StaticResource Ghost}" Padding="9,6" Click="LookClick" ToolTip="Sticky color and see-through"
                                 Visibility="{Binding Sticky, Converter={StaticResource Vis}}">
                             <Ellipse Width="12" Height="12" Fill="{Binding Dot}" />
                         </Button>
                         <Button Style="{StaticResource Ghost}" Content="&#xE8D2;" FontFamily="{StaticResource Icons}" ToolTip="Font and text size" Click="FontClick" />
-                        <Button Style="{StaticResource Ghost}" Content="&#xE74D;" FontFamily="{StaticResource Icons}" ToolTip="Delete note" Click="DeleteNote" />
                     </StackPanel>
                     <TextBlock Text="{Binding Meta}" Style="{StaticResource Label}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
@@ -129,11 +136,11 @@
                          FontSize="28" FontWeight="SemiBold" Background="Transparent" BorderThickness="0" Padding="0,4" Margin="0,12,0,8" />
                 <g:NoteEditor x:Name="Body" />
             </DockPanel>
-        </Grid>
 
-        <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <g:Logo Width="44" Height="44" Margin="0,0,0,12" Status="No notes" />
-            <TextBlock Text="No notes yet. New note makes one; Sticky puts it on the desktop." Style="{StaticResource Label}" HorizontalAlignment="Center" />
-        </StackPanel>
+            <StackPanel x:Name="Empty" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <g:Logo Width="44" Height="44" Margin="0,0,0,12" Status="No notes" />
+                <TextBlock Text="No notes yet. + makes one; its pin puts it on the desktop." Style="{StaticResource Label}" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>
