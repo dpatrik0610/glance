@@ -71,7 +71,44 @@
                     </Border>
                     <TextBlock Text="Glance" FontSize="16" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
                 </DockPanel>
-                <ListBox x:Name="Nav" Grid.Row="1" Margin="6,0" Style="{StaticResource Sidebar}" ScrollViewer.VerticalScrollBarVisibility="Hidden" SelectionChanged="NavChanged" ContextMenuOpening="NavMenuOpening">
+                <ListBox x:Name="Nav" Grid.Row="1" Margin="6,0" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged" ContextMenuOpening="NavMenuOpening">
+                    <ListBox.Resources>
+                        <!-- A thin scrollbar in the theme's horizon colour and glow, only while the pointer is over the list -->
+                        <Style TargetType="ScrollBar" BasedOn="{StaticResource {x:Type ScrollBar}}">
+                            <Setter Property="Width" Value="4" />
+                            <Setter Property="Opacity" Value="0" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ScrollBar">
+                                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                            <Track.Thumb>
+                                                <Thumb>
+                                                    <Thumb.Template>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <Border CornerRadius="2">
+                                                                <Border.Background><SolidColorBrush Color="{StaticResource TopLineGlow}" /></Border.Background>
+                                                                <Border.Effect><DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.7" Color="{StaticResource TopLineGlow}" /></Border.Effect>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Thumb.Template>
+                                                </Thumb>
+                                            </Track.Thumb>
+                                        </Track>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="{StaticResource In}" /></Storyboard></BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Out}" /></Storyboard></BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListBox.Resources>
                     <ListBox.ContextMenu>
                         <ContextMenu>
                             <MenuItem x:Name="HideItem" Click="HideTab" />
