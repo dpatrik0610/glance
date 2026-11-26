@@ -2,15 +2,22 @@
 
 A glassy Windows 11 tray dashboard: system stats, everyday tools and a terminal in one window.
 
-![Glance](docs/screenshot.png)
+![Today](docs/today.png)
 
 ## What's inside
 
-- **Monitor**: live CPU, GPU, memory and network with history, a network page, disk cleanup and a disk usage scan
-- **Life**: weather, map, budget, exchange rates, stocks, now playing
-- **Tools**: clipboard history, notes and sticky notes, Google Calendar, password generator, color picker, image and media converters, file and folder compare
-- **Dev**: a tabbed terminal (xterm.js + ConPTY), ports, Git, Docker, JSON viewer
-- A Ctrl+K command palette, a mini window and a bar window, and it lives in the tray
+- **Today**: the home page. The week's due tasks, calendar events and bills (late, today, then by day), what's next, what you've spent this month, the weather and today's note
+- **Monitor**: live CPU, GPU, memory, network and disk with a process table; history, and an analysis of which apps strain the PC (with Windows' reliability and error reports); a network page with a speed test; disk cleanup and a disk usage scan
+- **Life**: weather, map, now playing, and Money: a budget, bills with a paid tick that books them in the budget, exchange rates and stocks, all in the currency you pick
+- **Tools**: clipboard history (text and images), notes and checklists that can sit on the desktop as stickies, a board (canvas and Kanban, Markdown, Obsidian canvas import/export), tasks gathered from notes and boards, timers, Google Calendar, password generator, color picker, image and media converters, file and folder compare
+- **Dev**: a tabbed, split terminal (xterm.js + ConPTY) with quick folders, ports, Git, Docker, Cloudflare Workers and Pages, JSON viewer
+- A Ctrl+K command palette, a mini window and a bar window, reminders, and it lives in the tray
+- Two themes (Mint, Flamingo) with adjustable glass and glow; every page can be turned off in Settings → Pages
+
+| | |
+|---|---|
+| ![System](docs/system.png) | ![Notes](docs/notes.png) |
+| ![Bills](docs/bills.png) | ![Budget](docs/budget.png) |
 
 ## Install
 
