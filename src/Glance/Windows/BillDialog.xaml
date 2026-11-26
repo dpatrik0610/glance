@@ -6,16 +6,31 @@
         FontFamily="Segoe UI Variable Text, Segoe UI" Foreground="{StaticResource Text}" TextOptions.TextFormattingMode="Display">
     <!-- The same glass as the event editor. 24px margin leaves room for the shadow. -->
     <Grid Margin="24">
-        <Border CornerRadius="18" Background="#F20C0C10" BorderBrush="#24FFFFFF" BorderThickness="1" MouseLeftButtonDown="Drag">
+        <Border CornerRadius="18" Background="{StaticResource Popup}" BorderBrush="{StaticResource Line}" BorderThickness="1" MouseLeftButtonDown="Drag">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="30" ShadowDepth="4" Opacity="0.45" Color="Black" />
             </Border.Effect>
+        </Border>
+        <!-- Like the confirm dialog: the kind's colour as a glow from the top left and a lit edge -->
+        <Border CornerRadius="18" BorderThickness="1" IsHitTestVisible="False">
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop x:Name="EdgeStop" Offset="0" />
+                    <GradientStop Color="#00FFFFFF" Offset="0.55" />
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+            <Border.Background>
+                <RadialGradientBrush Center="0,0" GradientOrigin="0,0" RadiusX="0.9" RadiusY="1.1">
+                    <GradientStop x:Name="WashStop" Offset="0" />
+                    <GradientStop Color="#00000000" Offset="1" />
+                </RadialGradientBrush>
+            </Border.Background>
         </Border>
 
         <StackPanel Margin="24,20,24,20">
             <StackPanel Orientation="Horizontal" IsHitTestVisible="False" Margin="0,0,0,14">
                 <Ellipse x:Name="Dot" Width="6" Height="6" VerticalAlignment="Center" Margin="0,0,10,0" />
-                <TextBlock x:Name="Label" FontSize="11" Foreground="#C8C8CE" VerticalAlignment="Center" />
+                <TextBlock x:Name="Label" FontSize="11" Foreground="{StaticResource Sub}" VerticalAlignment="Center" />
             </StackPanel>
 
             <!-- The name, big, with the kind's icon beside it -->

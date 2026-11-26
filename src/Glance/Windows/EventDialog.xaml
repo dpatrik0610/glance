@@ -6,7 +6,7 @@
         FontFamily="Segoe UI Variable Text, Segoe UI" Foreground="{StaticResource Text}" TextOptions.TextFormattingMode="Display">
     <!-- Dialog's glass, with a form in it. 24px margin leaves room for the shadow. -->
     <Grid x:Name="Root" Margin="24">
-        <Border CornerRadius="18" Background="#F20C0C10" BorderBrush="#24FFFFFF" BorderThickness="1" MouseLeftButtonDown="Drag">
+        <Border CornerRadius="18" Background="{StaticResource Popup}" BorderBrush="{StaticResource Line}" BorderThickness="1" MouseLeftButtonDown="Drag">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="30" ShadowDepth="4" Opacity="0.45" Color="Black" />
             </Border.Effect>
@@ -15,7 +15,7 @@
         <StackPanel Margin="24,20,24,20">
             <StackPanel Orientation="Horizontal" IsHitTestVisible="False" Margin="0,0,0,14">
                 <Ellipse x:Name="Dot" Width="6" Height="6" VerticalAlignment="Center" Margin="0,0,10,0" Fill="{StaticResource Accent}" />
-                <TextBlock x:Name="Label" FontSize="11" Foreground="#C8C8CE" VerticalAlignment="Center" />
+                <TextBlock x:Name="Label" FontSize="11" Foreground="{StaticResource Sub}" VerticalAlignment="Center" />
             </StackPanel>
 
             <TextBox x:Name="TitleBox" Tag="Title" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />

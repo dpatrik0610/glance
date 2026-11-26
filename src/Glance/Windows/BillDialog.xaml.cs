@@ -77,6 +77,8 @@ public partial class BillDialog : Window
         var (icon, hue) = BillsPage.Look(kind);
         Dot.Fill = TileIcon.Foreground = new SolidColorBrush(hue);
         Tile.Background = BillsPage.Tint(hue);
+        EdgeStop.Color = Color.FromArgb(0xCC, hue.R, hue.G, hue.B); // the same glow as Dialog, in the kind's hue
+        WashStop.Color = Color.FromArgb(0x30, hue.R, hue.G, hue.B);
         TileIcon.Text = icon;
     }
 
@@ -113,6 +115,7 @@ public partial class BillDialog : Window
             row.Children.Add(new TextBlock { Text = c.Name, Foreground = Skin.Brush("Sub") });
             var item = new MenuItem { Header = row, IsChecked = c.Code == current };
             item.Click += (_, _) => picked(c.Code);
+            if (c.Code == current) menu.Opened += (_, _) => item.Dispatcher.BeginInvoke(() => item.BringIntoView(), System.Windows.Threading.DispatcherPriority.Loaded);
             menu.Items.Add(item);
         }
         foreach (var c in top) Add(Rates.Of(c));
