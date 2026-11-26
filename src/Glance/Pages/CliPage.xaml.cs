@@ -535,7 +535,9 @@ public partial class CliPage : UserControl, IHeader
     }
 
     void ToggleFolders(object sender, RoutedEventArgs e) =>
-        FolderPanel.Visibility = FoldersItem.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        FolderPanel.Visibility = FoldersToggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
+    void CloseFolders(object sender, RoutedEventArgs e) => FoldersToggle.IsChecked = false;
 
     static string LeafOf(string dir) => Path.GetFileName(dir.TrimEnd('\\')) is { Length: > 0 } leaf ? leaf : dir;
 

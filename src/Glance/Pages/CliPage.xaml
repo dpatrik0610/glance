@@ -64,11 +64,12 @@
                         <MenuItem Header="Split right" Tag="right" InputGestureText="Alt+Shift+Right" Click="SplitMenu" />
                         <MenuItem Header="Split down" Tag="down" InputGestureText="Alt+Shift+Down" Click="SplitMenu" />
                         <MenuItem Header="Close pane" InputGestureText="Ctrl+Shift+W" Click="ClosePaneMenu" />
-                        <Separator />
-                        <MenuItem x:Name="FoldersItem" Header="Quick folders" IsCheckable="True" Checked="ToggleFolders" Unchecked="ToggleFolders" />
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>
+            <ToggleButton x:Name="FoldersToggle" DockPanel.Dock="Right" Style="{StaticResource IconToggle}" Width="34" Height="34" Padding="0"
+                          Margin="2,0,0,0" Content="&#xE8B7;" FontFamily="{StaticResource Icons}" FontSize="14"
+                          ToolTip="Quick folders" AutomationProperties.Name="Quick folders" Checked="ToggleFolders" Unchecked="ToggleFolders" />
             <ListBox x:Name="TabList" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource TabChip}"
                      ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                      SelectionChanged="TabSelected" AllowDrop="True" PreviewMouseMove="TabDragMove" DragOver="TabDragOver"
@@ -152,9 +153,11 @@
             </Border>
 
             <!-- Quick folders (closed until the folder button is pressed) -->
-            <Border x:Name="FolderPanel" Grid.Column="1" Style="{StaticResource Card}" Width="210" Visibility="Collapsed">
+            <Border x:Name="FolderPanel" Grid.Column="1" Style="{StaticResource Card}" Width="210" Margin="10,0,0,0" Visibility="Collapsed">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="{StaticResource Icons}"
+                                FontSize="11" ToolTip="Close" AutomationProperties.Name="Close folders" Click="CloseFolders" />
                         <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE710;" FontFamily="{StaticResource Icons}"
                                 FontSize="12" ToolTip="Add folder" Click="AddFolder" />
                         <TextBlock Style="{StaticResource H}" Text="Folders" VerticalAlignment="Center" />
