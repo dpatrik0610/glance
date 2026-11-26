@@ -4,7 +4,7 @@ using System.Windows.Media;
 
 namespace Glance;
 
-/// One sidebar page made of related pages, switched with chips along the top. Each part is built on first visit and kept.
+/// One sidebar page made of related pages, switched with chips in the title row. Each part is built on first visit and kept.
 public sealed class Tabbed : UserControl, IDisposable, IHeader
 {
     public record Part(string Name, string Icon, Func<UserControl> Create);
@@ -16,8 +16,6 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
     readonly UserControl?[] built;
     readonly RadioButton[] chips;
     readonly ContentControl host = new() { Focusable = false };
-    readonly ContentControl partBar = new() { Focusable = false, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-    readonly ContentControl partState = new() { Focusable = false };
     readonly TranslateTransform shift = new();
 
     public Tabbed(Part[] parts)
@@ -38,9 +36,8 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
             return chip;
         }).ToArray();
         host.RenderTransform = shift;
-        // Shown in the page header: the open part's own bar, then the chips as one segmented group
-        Header = new StackPanel { Orientation = Orientation.Horizontal, Children = { partBar, new Border { Style = Skin.Style("Segment"), Child = row } } };
-        partBar.Margin = new Thickness(0, 0, 12, 0);
+        // The chips as one segmented group in the title row; the open part's own bar goes under it (Header, State)
+        Tabs = new Border { Style = Skin.Style("Segment"), Child = row, Margin = new Thickness(6, 0, 0, 0) };
         Content = host;
         chips[0].IsChecked = true;
         Sync();
@@ -64,8 +61,9 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
         foreach (var part in built) (part as IDisposable)?.Dispose();
     }
 
-    public FrameworkElement Header { get; }
-    public FrameworkElement State => partState;
+    public FrameworkElement Tabs { get; }
+    public FrameworkElement? Header => (host.Content as IHeader)?.Header;
+    public FrameworkElement? State => (host.Content as IHeader)?.State;
 
     public UserControl Current => (UserControl)host.Content;
 
@@ -82,8 +80,7 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
     {
         var first = host.Content is null;
         host.Content = built[i] ??= parts[i].Create();
-        partBar.Content = (host.Content as IHeader)?.Header;
-        partState.Content = (host.Content as IHeader)?.State;
+        (Window.GetWindow(this) as MainWindow)?.ApplyHead(this);
         if (!first) Motion.Rise(host, shift);
     }
 }

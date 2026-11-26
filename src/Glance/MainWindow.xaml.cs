@@ -12,13 +12,14 @@ using Glance.Services;
 
 namespace Glance;
 
-/// A page that puts its own strip (part chips, shell tabs) in the window's title row, next to the title.
 /// A page's bar under the title row: State on the left (one line of counts), Header (its controls) on the right.
+/// Tabs (a merged page's chips) sit in the title row, right after the page name.
 /// A page that OwnsTitleRow (the CLI) gets no title or bar; its Header goes in the window's title row instead.
 public interface IHeader
 {
     FrameworkElement? Header { get; }
     FrameworkElement? State => null;
+    FrameworkElement? Tabs => null;
     bool OwnsTitleRow => false;
 }
 
@@ -279,7 +280,7 @@ public partial class MainWindow : Window
         other = keep;
         var shown = on ? Visibility.Collapsed : Visibility.Visible;
         NavToggle.Visibility = shown;
-        PageTitle.Visibility = on || TitleSlot.Content is not null ? Visibility.Collapsed : Visibility.Visible;
+        PageTitle.Visibility = on || (Page.Content as IHeader)?.OwnsTitleRow == true ? Visibility.Collapsed : Visibility.Visible;
         Side.Visibility = on || !navShown ? Visibility.Collapsed : Visibility.Visible;
         Strip.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         Body.Margin = new Thickness(on ? 10 : 14);
@@ -319,6 +320,19 @@ public partial class MainWindow : Window
         else { Nav.SelectedItem = Bottom.SelectedItem = null; Show(t); }
     }
 
+    /// Puts the open page's tabs, controls and state in the title row and the bar below it.
+    /// A merged page calls it again when it switches parts, as each part brings its own bar.
+    internal void ApplyHead(UserControl page)
+    {
+        if (Page.Content != page) return;
+        var head = page as IHeader;
+        var own = head?.OwnsTitleRow == true;
+        TitleSlot.Content = own ? head!.Header : head?.Tabs;
+        HeaderSlot.Content = own ? null : head?.Header;
+        StateSlot.Content = head?.State;
+        PageHead.Visibility = own || head?.Header is null && head?.State is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     void Show(Tab t)
     {
         Strip.SelectedItem = Strip.Items.Contains(t) ? t : null;
@@ -330,12 +344,8 @@ public partial class MainWindow : Window
         if (pages.FirstOrDefault(p => p.Value == Page.Content).Key is { } left) leftAt[left] = Environment.TickCount64;
         Page.Content = page;
         PageTitle.Text = t.Name;
-        var head = page as IHeader;
-        var own = head?.OwnsTitleRow == true;
-        TitleSlot.Content = own ? head!.Header : null;
-        HeaderSlot.Content = own ? null : head?.Header;
-        StateSlot.Content = head?.State;
-        PageHead.Visibility = own || head?.Header is null && head?.State is null ? Visibility.Collapsed : Visibility.Visible;
+        ApplyHead(page);
+        var own = (page as IHeader)?.OwnsTitleRow == true;
         SearchButton.Visibility = own ? Visibility.Collapsed : Visibility.Visible; // the CLI: tabs only, Ctrl+K still works
         PageTitle.Visibility = own || compact ? Visibility.Collapsed : Visibility.Visible;
         Page.Margin = own ? new Thickness(12, 0, 12, 12) : new Thickness(24, 4, 24, 18);
