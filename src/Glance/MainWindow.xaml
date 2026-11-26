@@ -56,7 +56,7 @@
             <Grid x:Name="Side" ClipToBounds="True" HorizontalAlignment="Left">
             <Border x:Name="Pane" Margin="0,0,12,0" CornerRadius="14" HorizontalAlignment="Right"
                     Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
-            <Grid Width="232">
+            <Grid Width="220">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition />
@@ -181,7 +181,18 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition />
                     </Grid.RowDefinitions>
+                    <!-- Title row: title, the page's own strip (IHeader: part chips, shell tabs), search and window buttons.
+                         Compact mode moves the page's strip to a second line under the icons. -->
                     <Grid Background="Transparent" MouseLeftButtonDown="Drag" Margin="8,8,8,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Button x:Name="NavToggle" Style="{StaticResource Ghost}" Width="40" ToolTip="Hide sidebar" Click="ToggleNav">
                                 <local:Logo Icon="menu" Width="17" Height="17" />
@@ -204,7 +215,8 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <ContentControl x:Name="HeaderSlot" Grid.Column="1" Focusable="False" VerticalAlignment="Center" Margin="16,0,8,0" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                             <!-- Looks like a search box, opens the Ctrl+K palette -->
                             <Button Style="{StaticResource Ghost}" Padding="0" Margin="0,0,8,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick"
                                     AutomationProperties.Name="Search">

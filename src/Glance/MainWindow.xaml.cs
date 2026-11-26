@@ -12,6 +12,9 @@ using Glance.Services;
 
 namespace Glance;
 
+/// A page that puts its own strip (part chips, shell tabs) in the window's title row, next to the title.
+public interface IHeader { FrameworkElement Header { get; } }
+
 public partial class MainWindow : Window
 {
     /// Needs: an exe that must be on PATH, or the tab is left out (checked at startup).
@@ -271,6 +274,10 @@ public partial class MainWindow : Window
         Body.Margin = new Thickness(on ? 10 : 14);
         SearchField.Width = on ? double.NaN : 240; // just the icon and the key next to the strip
         SearchHint.Visibility = shown;
+        Grid.SetRow(HeaderSlot, on ? 1 : 0);
+        Grid.SetColumnSpan(HeaderSlot, on ? 3 : 1);
+        Grid.SetColumn(HeaderSlot, on ? 0 : 1);
+        HeaderSlot.Margin = on ? new Thickness(0, 8, 0, 0) : new Thickness(16, 0, 8, 0);
         CompactButton.Content = on ? "\uE740" : "\uE73F";
         CompactButton.ToolTip = on ? "Full layout" : "Compact mode";
         if (Dropped) Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - Width) / 2; // stay centered under the bar
@@ -323,6 +330,7 @@ public partial class MainWindow : Window
         if (pages.FirstOrDefault(p => p.Value == Page.Content).Key is { } left) leftAt[left] = Environment.TickCount64;
         Page.Content = page;
         PageTitle.Text = t.Name;
+        HeaderSlot.Content = (page as IHeader)?.Header;
         // The terminal is a native window: it can't fade or move with WPF content, so it just appears.
         if (!IsWeb(page)) Motion.Rise(Page, PageShift);
     }

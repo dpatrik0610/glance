@@ -5,7 +5,7 @@ using System.Windows.Media;
 namespace Glance;
 
 /// One sidebar page made of related pages, switched with chips along the top. Each part is built on first visit and kept.
-public sealed class Tabbed : UserControl, IDisposable
+public sealed class Tabbed : UserControl, IDisposable, IHeader
 {
     public record Part(string Name, string Icon, Func<UserControl> Create);
 
@@ -22,7 +22,7 @@ public sealed class Tabbed : UserControl, IDisposable
     {
         this.parts = parts;
         built = new UserControl?[parts.Length];
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 0, 6, 10) };
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
         chips = parts.Select((p, i) =>
         {
             var label = new StackPanel { Orientation = Orientation.Horizontal };
@@ -36,11 +36,8 @@ public sealed class Tabbed : UserControl, IDisposable
             return chip;
         }).ToArray();
         host.RenderTransform = shift;
-        var dock = new DockPanel();
-        DockPanel.SetDock(row, Dock.Top);
-        dock.Children.Add(row);
-        dock.Children.Add(host);
-        Content = dock;
+        Header = row; // shown in the window's title row
+        Content = host;
         chips[0].IsChecked = true;
         Sync();
         App.SettingsChanged += Sync;
@@ -62,6 +59,8 @@ public sealed class Tabbed : UserControl, IDisposable
         App.SettingsChanged -= Sync;
         foreach (var part in built) (part as IDisposable)?.Dispose();
     }
+
+    public FrameworkElement Header { get; }
 
     public UserControl Current => (UserControl)host.Content;
 

@@ -51,7 +51,8 @@
 
     <DockPanel>
         <!-- Tab strip -->
-        <DockPanel DockPanel.Dock="Top" Margin="6,6,6,6">
+        <!-- Moved into the window's title row (IHeader) when the page is built -->
+        <DockPanel x:Name="Strip" DockPanel.Dock="Top" Margin="6,6,6,6">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
                 <!-- Vector icons drawn on a 20×20 grid: crisp at any DPI, unlike the exes' 32px bitmaps scaled down -->
                 <Button Style="{StaticResource Ghost}" Padding="8,6" ToolTip="New PowerShell tab" Click="NewShell">

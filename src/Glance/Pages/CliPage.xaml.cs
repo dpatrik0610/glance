@@ -106,8 +106,10 @@ public class CliTab : Bindable
 
 /// Terminal tabs: shells run on ConPTY here; xterm.js (Terminal\term.html) in one transparent WebView2 draws them.
 /// Shells live as long as Glance does: switching pages or hiding to the tray only hides them, so servers keep running.
-public partial class CliPage : UserControl
+public partial class CliPage : UserControl, IHeader
 {
+    public FrameworkElement Header => Strip; // the tab strip sits in the window's title row
+
     public static readonly string[] Palette = ["#FF6A3D", "#FF4D5E", "#F5B83D", "#3DDC84", "#5AA9FF", "#B57BFF", "#9C9CA3"];
     public static readonly IValueConverter Leaf = new LeafConverter();
 
@@ -141,6 +143,8 @@ public partial class CliPage : UserControl
     public CliPage()
     {
         InitializeComponent();
+        ((Panel)Strip.Parent).Children.Remove(Strip);
+        Strip.Margin = default;
         TabList.ItemsSource = tabs;
         Folders.ItemsSource = App.Settings.CliFolders;
         ClaudeButton.Visibility = Shell.OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;
