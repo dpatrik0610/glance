@@ -411,6 +411,15 @@ public partial class CliPage : UserControl, IHeader
     }
 
     // Tab menu items act on that tab's focused pane; the toolbar's on the current tab's.
+    // The split button opens its menu on a plain click.
+    void SplitButton(object sender, RoutedEventArgs e)
+    {
+        var b = (Button)sender;
+        b.ContextMenu.PlacementTarget = b;
+        b.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        b.ContextMenu.IsOpen = true;
+    }
+
     void SplitMenu(object sender, RoutedEventArgs e)
     {
         if ((((FrameworkElement)sender).DataContext as CliTab ?? Current) is { } t) Split(t.Focus, (string)((FrameworkElement)sender).Tag);
