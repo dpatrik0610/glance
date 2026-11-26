@@ -10,81 +10,97 @@
     </UserControl.Resources>
     <Border Style="{StaticResource Card}">
         <DockPanel>
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                <Button DockPanel.Dock="Right" Content="↻ Refresh" Click="Refresh" />
-                <TextBlock Text="Containers" Style="{StaticResource H}" VerticalAlignment="Center" />
-                <TextBlock x:Name="Count" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,1,0,0" />
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE72C;" FontFamily="{StaticResource Icons}"
+                        ToolTip="Refresh" Click="Refresh" />
+                <TextBlock x:Name="Count" Style="{StaticResource Label}" VerticalAlignment="Center" />
             </DockPanel>
-            <Grid x:Name="Header" DockPanel.Dock="Top" Margin="0,0,10,6">
+            <Grid x:Name="Header" DockPanel.Dock="Top" Margin="12,0,14,6">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="1.6*" />
+                    <ColumnDefinition Width="2.4*" />
+                    <ColumnDefinition Width="1.4*" />
                     <ColumnDefinition Width="1.2*" />
                     <ColumnDefinition Width="210" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="Name" Style="{StaticResource Label}" Margin="16,0,0,0" />
-                <TextBlock Grid.Column="1" Text="Image" Style="{StaticResource Label}" />
-                <TextBlock Grid.Column="2" Text="Status" Style="{StaticResource Label}" />
-                <TextBlock Grid.Column="3" Text="Ports" Style="{StaticResource Label}" ToolTip="host → container" />
+                <TextBlock Text="Container" Style="{StaticResource Label}" />
+                <TextBlock Grid.Column="1" Text="Status" Style="{StaticResource Label}" />
+                <TextBlock Grid.Column="2" Text="Ports" Style="{StaticResource Label}" ToolTip="host → container" />
             </Grid>
             <Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="Rows">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="0,2,10,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*" />
-                                        <ColumnDefinition Width="2*" />
-                                        <ColumnDefinition Width="1.6*" />
-                                        <ColumnDefinition Width="1.2*" />
-                                        <ColumnDefinition Width="210" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Ellipse Width="7" Height="7" Margin="2,1,7,0">
-                                            <Ellipse.Style>
-                                                <Style TargetType="Ellipse">
-                                                    <Setter Property="Fill" Value="{StaticResource Track}" />
+                                <!-- A row: name over image, a status pill, ports; its actions show on hover -->
+                                <Border x:Name="Row" Margin="0,0,10,2" Padding="12,8,4,8" CornerRadius="10" Background="Transparent">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2.4*" />
+                                            <ColumnDefinition Width="1.4*" />
+                                            <ColumnDefinition Width="1.2*" />
+                                            <ColumnDefinition Width="210" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                            <TextBlock Text="{Binding Names}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding ID}" />
+                                            <TextBlock Text="{Binding Image}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,2,0,0"
+                                                       Foreground="{StaticResource Sub}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Image}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="7" Padding="8,3,9,3"
+                                                Margin="0,0,12,0">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{StaticResource CardBg}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{StaticResource Sub}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Running}" Value="True">
-                                                            <Setter Property="Fill" Value="{StaticResource Green}" />
+                                                            <Setter Property="Background" Value="{StaticResource PillBg}" />
+                                                            <Setter Property="TextElement.Foreground" Value="{StaticResource Green}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
-                                            </Ellipse.Style>
-                                        </Ellipse>
-                                        <TextBlock Text="{Binding Names}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding ID}" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="1" Text="{Binding Image}" FontFamily="{StaticResource Mono}" FontSize="12.5"
-                                               Foreground="{StaticResource Sub}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Image}" />
-                                    <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Label}" VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="3" Text="{Binding Published}" FontFamily="{StaticResource Mono}" FontSize="12.5"
-                                               Foreground="{StaticResource Accent}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                               ToolTip="{Binding Ports}" />
-                                    <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button Style="{StaticResource Act}" Content="Shell" ToolTip="docker exec -it … sh" Click="Shell"
-                                                Visibility="{Binding Running, Converter={StaticResource Vis}}" />
-                                        <Button Style="{StaticResource Act}" Content="Logs" ToolTip="Follow logs in a terminal" Click="Logs" />
-                                        <Button Style="{StaticResource Act}" Content="Restart" Click="Restart"
-                                                Visibility="{Binding Running, Converter={StaticResource Vis}}" />
-                                        <Button Click="Toggle">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource Act}">
-                                                    <Setter Property="Content" Value="Start" />
-                                                    <Setter Property="Foreground" Value="{StaticResource Green}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Running}" Value="True">
-                                                            <Setter Property="Content" Value="Stop" />
-                                                            <Setter Property="Foreground" Value="{StaticResource Red}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
+                                            </Border.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="6" Height="6" Margin="0,1,6,0" VerticalAlignment="Center"
+                                                         Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
+                                                <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock Grid.Column="2" Text="{Binding Published}" FontFamily="{StaticResource Mono}" FontSize="12.5"
+                                                   Foreground="{StaticResource Accent}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Ports}" />
+                                        <StackPanel x:Name="Actions" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" Opacity="0">
+                                            <Button Style="{StaticResource Act}" Content="Shell" ToolTip="docker exec -it … sh" Click="Shell"
+                                                    Visibility="{Binding Running, Converter={StaticResource Vis}}" />
+                                            <Button Style="{StaticResource Act}" Content="Logs" ToolTip="Follow logs in a terminal" Click="Logs" />
+                                            <Button Style="{StaticResource Act}" Content="Restart" Click="Restart"
+                                                    Visibility="{Binding Running, Converter={StaticResource Vis}}" />
+                                            <Button Click="Toggle">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource Act}">
+                                                        <Setter Property="Content" Value="Start" />
+                                                        <Setter Property="Foreground" Value="{StaticResource Green}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Running}" Value="True">
+                                                                <Setter Property="Content" Value="Stop" />
+                                                                <Setter Property="Foreground" Value="{StaticResource Red}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <!-- Hover or keyboard focus inside the row shows its actions -->
+                                    <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{StaticResource CardBg}" />
+                                        <Setter TargetName="Actions" Property="Opacity" Value="1" />
+                                    </Trigger>
+                                    <Trigger SourceName="Row" Property="IsKeyboardFocusWithin" Value="True">
+                                        <Setter TargetName="Actions" Property="Opacity" Value="1" />
+                                    </Trigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
