@@ -2,198 +2,206 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:g="clr-namespace:Glance">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="1.1*" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <UserControl.Resources>
+        <Style x:Key="TileLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource Sub}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="TileValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource Text}" />
+        </Style>
+        <Style x:Key="TileUnit" TargetType="TextBlock" BasedOn="{StaticResource Label}">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="5,0,0,5" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+        </Style>
+        <Style x:Key="Col" TargetType="TextBlock" BasedOn="{StaticResource Label}">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <!-- A column you can sort by -->
+        <Style x:Key="SortCol" TargetType="TextBlock" BasedOn="{StaticResource Col}">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <EventSetter Event="MouseLeftButtonUp" Handler="SortBy" />
+        </Style>
+    </UserControl.Resources>
 
-        <!-- Stat tiles -->
-        <UniformGrid Columns="4">
-            <Border x:Name="CpuTile" Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="CPU load" MouseLeftButtonUp="OpenHistory">
+    <DockPanel>
+        <!-- Page bar (IHeader): which processes the table shows -->
+        <Border x:Name="Bar" DockPanel.Dock="Top" Style="{StaticResource Segment}">
+            <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="AllChip" Style="{StaticResource Chip}" IsChecked="True" Checked="FilterChanged">
+                    <TextBlock>All <Run x:Name="AllCount" FontSize="12" Foreground="{StaticResource Sub}" /></TextBlock>
+                </RadioButton>
+                <RadioButton x:Name="HotChip" Style="{StaticResource Chip}" Checked="FilterChanged"
+                             ToolTip="Over 5% CPU, 10% GPU, 1 GB of memory or 1 MB/s of disk">
+                    <TextBlock>High usage <Run x:Name="HotCount" FontSize="12" Foreground="{StaticResource Sub}" /></TextBlock>
+                </RadioButton>
+            </StackPanel>
+        </Border>
+
+        <!-- Tiles: click one for its chart in History -->
+        <UniformGrid DockPanel.Dock="Top" Columns="5" Margin="-6,0,-6,12">
+            <Border x:Name="CpuTile" Style="{StaticResource Card}" Cursor="Hand" Tag="CPU load" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <DockPanel>
-                        <Border x:Name="CpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right" Tag="CPU temperature" ToolTip="Temperature history" MouseLeftButtonUp="OpenHistory">
-                            <TextBlock x:Name="CpuTemp" FontSize="12" FontWeight="SemiBold" />
+                        <Border x:Name="CpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right" Padding="7,1" Tag="CPU temperature"
+                                ToolTip="Temperature history" MouseLeftButtonUp="OpenHistory">
+                            <TextBlock x:Name="CpuTemp" FontSize="11" FontWeight="SemiBold" />
                         </Border>
-                        <TextBlock Text="CPU" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                        <TextBlock Text="CPU" Style="{StaticResource TileLabel}" />
                     </DockPanel>
-                    <TextBlock x:Name="CpuLoad" Style="{StaticResource Big}" Margin="0,6,0,0" />
-                    <TextBlock x:Name="CpuSub" Style="{StaticResource Label}" />
-                    <g:Spark x:Name="CpuSpark" Format="{}{0:0}%" Color="#E6A65D" Height="34" Margin="0,10,0,0" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock x:Name="CpuLoad" Text="—" Style="{StaticResource TileValue}" />
+                        <TextBlock Text="%" Style="{StaticResource TileUnit}" />
+                    </StackPanel>
+                    <g:Spark x:Name="CpuSpark" Format="{}{0:0}%" Area="True" Height="26" Margin="0,6,0,0" />
+                    <TextBlock x:Name="CpuSub" Style="{StaticResource Label}" FontSize="12" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Border>
-            <Border x:Name="GpuTile" Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="GPU load" MouseLeftButtonUp="OpenHistory">
+            <Border x:Name="GpuTile" Style="{StaticResource Card}" Cursor="Hand" Tag="GPU load" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <DockPanel>
-                        <Border x:Name="GpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right" Tag="GPU temperature" ToolTip="Temperature history" MouseLeftButtonUp="OpenHistory">
-                            <TextBlock x:Name="GpuTemp" FontSize="12" FontWeight="SemiBold" />
+                        <Border x:Name="GpuTempPill" Style="{StaticResource Pill}" DockPanel.Dock="Right" Padding="7,1" Tag="GPU temperature"
+                                ToolTip="Temperature history" MouseLeftButtonUp="OpenHistory">
+                            <TextBlock x:Name="GpuTemp" FontSize="11" FontWeight="SemiBold" />
                         </Border>
-                        <TextBlock Text="GPU" Style="{StaticResource Label}" VerticalAlignment="Center" />
+                        <TextBlock Text="GPU" Style="{StaticResource TileLabel}" />
                     </DockPanel>
-                    <TextBlock x:Name="GpuLoad" Style="{StaticResource Big}" Margin="0,6,0,0" />
-                    <TextBlock x:Name="GpuSub" Style="{StaticResource Label}" />
-                    <g:Spark x:Name="GpuSpark" Format="{}{0:0}%" Color="#4CC37A" Height="34" Margin="0,10,0,0" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock x:Name="GpuLoad" Text="—" Style="{StaticResource TileValue}" />
+                        <TextBlock Text="%" Style="{StaticResource TileUnit}" />
+                    </StackPanel>
+                    <g:Spark x:Name="GpuSpark" Format="{}{0:0}%" Area="True" Height="26" Margin="0,6,0,0" />
+                    <TextBlock x:Name="GpuSub" Style="{StaticResource Label}" FontSize="12" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="Download" MouseLeftButtonUp="OpenHistory">
+                <StackPanel>
+                    <DockPanel>
+                        <TextBlock x:Name="NetUp" DockPanel.Dock="Right" Style="{StaticResource Label}" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="NETWORK" Style="{StaticResource TileLabel}" />
+                    </DockPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock x:Name="NetDown" Text="—" Style="{StaticResource TileValue}" />
+                        <TextBlock x:Name="NetDownUnit" Style="{StaticResource TileUnit}" />
+                    </StackPanel>
+                    <Grid Height="26" Margin="0,6,0,0">
+                        <g:Spark x:Name="DownSpark" Format="rate" Area="True" Max="0" />
+                        <g:Spark x:Name="UpSpark" Format="rate" Max="0" Opacity="0.6" />
+                    </Grid>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="Memory" MouseLeftButtonUp="OpenHistory">
                 <StackPanel>
                     <DockPanel>
-                        <TextBlock x:Name="RamPct" DockPanel.Dock="Right" Style="{StaticResource Label}" />
-                        <TextBlock Text="Memory" Style="{StaticResource Label}" />
+                        <TextBlock x:Name="RamPct" DockPanel.Dock="Right" Style="{StaticResource Label}" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="MEMORY" Style="{StaticResource TileLabel}" />
                     </DockPanel>
-                    <TextBlock x:Name="RamUsed" Style="{StaticResource Big}" Margin="0,6,0,0" />
-                    <TextBlock x:Name="RamSub" Style="{StaticResource Label}" />
-                    <g:Spark x:Name="RamSpark" Format="{}{0:0}%" Color="#F5B83D" Height="34" Margin="0,10,0,0" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock x:Name="RamUsed" Text="—" Style="{StaticResource TileValue}" />
+                        <TextBlock x:Name="RamSub" Style="{StaticResource TileUnit}" />
+                    </StackPanel>
+                    <ProgressBar x:Name="RamBar" Margin="0,16,0,0" />
+                    <TextBlock x:Name="RamTop" Style="{StaticResource Label}" FontSize="12" Margin="0,8,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="Download" MouseLeftButtonUp="OpenHistory">
+            <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Text="Network" Style="{StaticResource Label}" />
-                    <TextBlock x:Name="NetDown" Style="{StaticResource Big}" Margin="0,6,0,0" />
-                    <TextBlock x:Name="NetUp" Style="{StaticResource Label}" />
-                    <Grid Height="34" Margin="0,10,0,0">
-                        <g:Spark x:Name="DownSpark" Format="rate" Color="#5AA9FF" Max="0" />
-                        <g:Spark x:Name="UpSpark" Format="rate" Color="#B07CFF" Max="0" />
-                    </Grid>
+                    <DockPanel>
+                        <TextBlock x:Name="DiskPct" DockPanel.Dock="Right" Style="{StaticResource Label}" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock x:Name="DiskName" Text="DISK" Style="{StaticResource TileLabel}" />
+                    </DockPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock x:Name="DiskFree" Text="—" Style="{StaticResource TileValue}" />
+                        <TextBlock Text="GB free" Style="{StaticResource TileUnit}" />
+                    </StackPanel>
+                    <ProgressBar x:Name="DiskBar" Margin="0,16,0,0" />
+                    <TextBlock x:Name="DiskSub" Style="{StaticResource Label}" FontSize="12" Margin="0,8,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Border>
         </UniformGrid>
 
-        <!-- Load history + drives -->
-        <Grid Grid.Row="1">
+        <!-- Process table: hairline rows, click a column to sort, End task on hover -->
+        <Grid DockPanel.Dock="Top" Margin="12,0,24,8">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition MinWidth="200" />
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="150" />
+                <ColumnDefinition Width="90" />
+                <ColumnDefinition Width="70" />
+                <ColumnDefinition Width="90" />
+                <ColumnDefinition Width="100" />
             </Grid.ColumnDefinitions>
-            <Border Style="{StaticResource Card}" Cursor="Hand" ToolTip="Open in History" Tag="CPU load" MouseLeftButtonUp="OpenHistory">
-                <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource Accent}" Margin="0,0,6,0" />
-                            <TextBlock Text="CPU" Style="{StaticResource Label}" Margin="0,0,14,0" />
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource Green}" Margin="0,0,6,0" />
-                            <TextBlock Text="GPU" Style="{StaticResource Label}" />
-                        </StackPanel>
-                        <TextBlock Text="Load · last 60 samples" Style="{StaticResource H}" />
-                    </DockPanel>
-                    <Grid>
-                        <!-- 25% gridlines -->
-                        <UniformGrid Rows="4">
-                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
-                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
-                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" />
-                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1" />
-                        </UniformGrid>
-                        <g:Spark x:Name="CpuHistory" Format="{}{0:0}%" Color="#E6A65D" />
-                        <g:Spark x:Name="GpuHistory" Format="{}{0:0}%" Color="#4CC37A" />
-                    </Grid>
-                </DockPanel>
-            </Border>
-            <Border Grid.Column="1" Style="{StaticResource Card}">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="Drives" Style="{StaticResource H}" Margin="0,0,0,12" />
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="Drives">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0,0,0,14">
-                                        <DockPanel>
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Text}" Style="{StaticResource Label}" />
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                        </DockPanel>
-                                        <ProgressBar Value="{Binding Pct, Mode=OneWay}" Margin="0,6,0,0" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
+            <Border Grid.ColumnSpan="7" Height="1" VerticalAlignment="Bottom" Margin="-12,0,-24,-8" Background="{StaticResource Line}" />
+            <TextBlock Text="Name" Style="{StaticResource Col}" />
+            <TextBlock Grid.Column="1" Text="Status" Style="{StaticResource Col}" />
+            <TextBlock x:Name="ByCpu" Grid.Column="2" Tag="CPU" Text="CPU ↓" Style="{StaticResource SortCol}" HorizontalAlignment="Left" Foreground="{StaticResource Text}" />
+            <TextBlock x:Name="ByMem" Grid.Column="3" Tag="Memory" Text="Memory" Style="{StaticResource SortCol}" />
+            <TextBlock x:Name="ByGpu" Grid.Column="4" Tag="GPU" Text="GPU" Style="{StaticResource SortCol}" />
+            <TextBlock x:Name="ByDisk" Grid.Column="5" Tag="Disk" Text="Disk" Style="{StaticResource SortCol}" />
         </Grid>
-
-        <!-- Processes + system info -->
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Border Style="{StaticResource Card}">
-                <DockPanel>
-                    <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="70" />
-                            <ColumnDefinition Width="90" />
-                            <ColumnDefinition Width="34" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Processes" Style="{StaticResource H}" />
-                        <!-- Click a column to sort by it -->
-                        <TextBlock x:Name="ByCpu" Grid.Column="1" Tag="CPU" Text="CPU ↓" Style="{StaticResource Label}" HorizontalAlignment="Right"
-                                   Cursor="Hand" Background="Transparent" Foreground="{StaticResource Text}" MouseLeftButtonUp="SortBy" />
-                        <TextBlock x:Name="ByGpu" Grid.Column="2" Tag="GPU" Text="GPU" Style="{StaticResource Label}" HorizontalAlignment="Right"
-                                   Cursor="Hand" Background="Transparent" MouseLeftButtonUp="SortBy" />
-                        <TextBlock x:Name="ByMem" Grid.Column="3" Tag="Memory" Text="Memory" Style="{StaticResource Label}" HorizontalAlignment="Right"
-                                   Cursor="Hand" Background="Transparent" MouseLeftButtonUp="SortBy" />
-                    </Grid>
-                    <!-- Holds still while the mouse is over it, so the end button stays put -->
-                    <ItemsControl x:Name="Procs">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid x:Name="Row" Background="Transparent" MinHeight="24">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition />
-                                        <ColumnDefinition Width="80" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="90" />
-                                        <ColumnDefinition Width="34" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock x:Name="Count" Text="{Binding Count, StringFormat='  ×{0}'}" Style="{StaticResource Label}" />
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <!-- Holds still while the mouse is over it, so End task stays put -->
+            <ItemsControl x:Name="Procs">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border x:Name="Row" Padding="12,8,12,8" Background="Transparent" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition MinWidth="200" />
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="90" />
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="90" />
+                                    <ColumnDefinition Width="100" />
+                                </Grid.ColumnDefinitions>
+                                <DockPanel>
+                                    <Border Width="32" Height="32" CornerRadius="9" Margin="0,0,12,0" Background="{StaticResource CardBg}"
+                                            BorderBrush="{StaticResource Line}" BorderThickness="1">
+                                        <TextBlock Text="{Binding Initial}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Accent}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding P.Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding P.Name}" />
+                                        <TextBlock Text="{Binding Sub}" Style="{StaticResource Label}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
-                                    <TextBlock Grid.Column="1" Text="{Binding CpuText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="2" Text="{Binding GpuText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="3" Text="{Binding MemText}" Style="{StaticResource Label}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                    <Button x:Name="End" Grid.Column="4" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="{StaticResource Icons}"
-                                            FontSize="10" Padding="6,3" HorizontalAlignment="Right" Foreground="{StaticResource Red}" Opacity="0"
-                                            ToolTip="End process" Click="EndProcess"
-                                            Visibility="{Binding CanKill, Converter={StaticResource Vis}}" />
-                                </Grid>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding Count}" Value="1">
-                                        <Setter TargetName="Count" Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                    <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="End" Property="Opacity" Value="1" />
-                                    </Trigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </DockPanel>
-            </Border>
-            <!-- The heaviest process per resource, whatever the table is sorted by -->
-            <Border Grid.Column="1" Style="{StaticResource Card}">
-                <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                        <TextBlock Text="Top processes" Style="{StaticResource H}" />
-                    </DockPanel>
-                    <ItemsControl x:Name="Busiest">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <DockPanel Margin="0,0,0,10">
-                                    <TextBlock Text="{Binding What}" Style="{StaticResource Label}" Width="64" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding Value}" DockPanel.Dock="Right" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" VerticalAlignment="Center" ToolTip="{Binding Name}" />
                                 </DockPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </DockPanel>
-            </Border>
-        </Grid>
-    </Grid>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Ellipse Width="6" Height="6" Fill="{Binding StatusBrush}" Margin="0,1,6,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Status}" FontSize="12.5" Foreground="{Binding StatusBrush}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="{Binding P.CpuText}" FontSize="13" FontWeight="SemiBold" />
+                                    <ProgressBar Height="4" Margin="0,5,0,0" Maximum="25" Value="{Binding P.Cpu, Mode=OneWay}" Foreground="{Binding CpuBrush}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="3" Text="{Binding P.MemText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Text="{Binding P.GpuText}" Foreground="{StaticResource Sub}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="5" Text="{Binding DiskText}" Foreground="{StaticResource Sub}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <Button x:Name="End" Grid.Column="6" Content="End task" Foreground="{StaticResource Red}" FontWeight="SemiBold" FontSize="12.5"
+                                        Padding="10,4" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0" Click="EndProcess"
+                                        Visibility="{Binding P.CanKill, Converter={StaticResource Vis}}" />
+                            </Grid>
+                        </Border>
+                        <DataTemplate.Triggers>
+                            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{StaticResource CardBg}" />
+                                <Setter TargetName="End" Property="Opacity" Value="1" />
+                            </Trigger>
+                            <Trigger SourceName="Row" Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="End" Property="Opacity" Value="1" />
+                            </Trigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
 </UserControl>

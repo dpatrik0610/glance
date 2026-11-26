@@ -13,8 +13,8 @@ using Glance.Services;
 namespace Glance;
 
 /// A page that puts its own strip (part chips, shell tabs) in the window's title row, next to the title.
-/// A page's own parts of the page header: Header sits right of the title, State is the one line under it.
-/// A page that OwnsTitleRow (the CLI) gets no page header; its Header goes in the window's title row instead.
+/// A page's bar under the title row: State on the left (one line of counts), Header (its controls) on the right.
+/// A page that OwnsTitleRow (the CLI) gets no title or bar; its Header goes in the window's title row instead.
 public interface IHeader
 {
     FrameworkElement? Header { get; }
@@ -137,22 +137,18 @@ public partial class MainWindow : Window
         IsVisibleChanged += (_, _) => { if (!IsVisible) Undrop(); else trimmed = false; };
         new System.Windows.Threading.DispatcherTimer(TimeSpan.FromMinutes(2), System.Windows.Threading.DispatcherPriority.ApplicationIdle, (_, _) => Sweep(), Dispatcher);
         VersionText.Text = "v" + Updater.Current;
-        LoadSpark.Color = Skin.BrushColor("Accent");
         BadgeFor("Timer").Brush = Skin.Brush("Accent");
         App.Sampled += s => Dispatcher.BeginInvoke(() => Sampled(s));
         new System.Windows.Threading.DispatcherTimer(TimeSpan.FromSeconds(1), System.Windows.Threading.DispatcherPriority.Background, (_, _) => TimerBadge(), Dispatcher);
     }
 
-    // ---- Live values: sidebar badges and the load card (only drawn while the window is up) ----
+    // ---- Live values: sidebar badges (only drawn while the window is up) ----
 
     void Sampled(Snapshot s)
     {
         if (!IsVisible) return;
         BadgeFor("System").Text = s.CpuLoad is { } c ? $"{c:0}%" : "";
         BadgeFor("Network").Text = s.NetDown >= 100_000 ? Units.Rate(s.NetDown) : ""; // quiet when idle
-        LoadCpu.Text = s.CpuLoad is { } x ? $"{x:0}" : "—";
-        LoadRam.Text = s.RamUsed / s.RamTotal is { } r ? $"RAM {r * 100:0}%" : "";
-        LoadSpark.Push(s.CpuLoad);
     }
 
     /// The Timer item shows what's counting: the Pomodoro phase or the soonest timer, else a running stopwatch.
@@ -164,11 +160,6 @@ public partial class MainWindow : Window
         var ends = d.Timers.Where(t => t.Ends is not null).Select(t => t.Ends!.Value).Append(d.PhaseEnds ?? DateTime.MaxValue).Min();
         BadgeFor("Timer").Text = ends != DateTime.MaxValue ? Timers.Clock((ends - now).TotalSeconds)
             : d.WatchStarted is { } w ? Timers.Clock(d.WatchSeconds + (now - w).TotalSeconds) : "";
-    }
-
-    void LoadClick(object sender, MouseButtonEventArgs e)
-    {
-        if (Features.On("System")) ShowTab("System");
     }
 
     // Drops pages nobody has looked at for a while: their controls, bitmaps and handlers go, and a compacting GC
@@ -285,13 +276,12 @@ public partial class MainWindow : Window
         other = keep;
         var shown = on ? Visibility.Collapsed : Visibility.Visible;
         NavToggle.Visibility = shown;
+        PageTitle.Visibility = on || TitleSlot.Content is not null ? Visibility.Collapsed : Visibility.Visible;
         Side.Visibility = on || !navShown ? Visibility.Collapsed : Visibility.Visible;
         Strip.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         Body.Margin = new Thickness(on ? 10 : 14);
         SearchHint.Visibility = shown; // compact: just the icon and the key next to the strip
         SearchField.Width = on ? double.NaN : 300;
-        CompactButton.Content = on ? "\uE740" : "\uE73F";
-        CompactButton.ToolTip = on ? "Full layout" : "Compact mode";
         if (Dropped) Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - Width) / 2; // stay centered under the bar
     }
 
@@ -300,12 +290,6 @@ public partial class MainWindow : Window
     public static void SetStayOpen(bool on)
     {
         App.Settings.StayOpen = on;
-        App.ApplySettings();
-    }
-
-    void CompactClick(object sender, RoutedEventArgs e)
-    {
-        App.Settings.Compact = !compact;
         App.ApplySettings();
     }
 
@@ -348,8 +332,10 @@ public partial class MainWindow : Window
         TitleSlot.Content = own ? head!.Header : null;
         HeaderSlot.Content = own ? null : head?.Header;
         StateSlot.Content = head?.State;
-        PageHead.Visibility = own ? Visibility.Collapsed : Visibility.Visible;
-        Page.Margin = own ? new Thickness(12, 0, 12, 12) : new Thickness(24, 0, 24, 18);
+        PageHead.Visibility = own || head?.Header is null && head?.State is null ? Visibility.Collapsed : Visibility.Visible;
+        SearchButton.Visibility = own ? Visibility.Collapsed : Visibility.Visible; // the CLI: tabs only, Ctrl+K still works
+        PageTitle.Visibility = own || compact ? Visibility.Collapsed : Visibility.Visible;
+        Page.Margin = own ? new Thickness(12, 0, 12, 12) : new Thickness(24, 4, 24, 18);
         // The terminal is a native window: it can't fade or move with WPF content, so it just appears.
         if (!IsWeb(page)) Motion.Rise(Page, PageShift);
     }

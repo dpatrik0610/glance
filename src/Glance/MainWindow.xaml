@@ -51,7 +51,7 @@
             <!-- Drag strip: the body's margin along the top edge -->
             <Border Grid.ColumnSpan="2" Height="14" VerticalAlignment="Top" Margin="-14,-14,-14,0" Background="Transparent" MouseLeftButtonDown="Drag" />
 
-            <!-- Sidebar: a floating card. Brand, grouped tabs with live badges, the load card, Settings at the bottom.
+            <!-- Sidebar: a floating card. Brand, grouped tabs with live badges, Settings at the bottom.
                  Side clips; the hamburger animates its width to slide the pane in and out (ShowNav). -->
             <Grid x:Name="Side" ClipToBounds="True" HorizontalAlignment="Left">
             <Border x:Name="Pane" Margin="0,0,12,0" CornerRadius="14" HorizontalAlignment="Right"
@@ -142,21 +142,6 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <!-- Load card: CPU now and its last minute, RAM; click for System -->
-                <Border Grid.Row="2" Margin="10,8,10,0" Padding="14,10" CornerRadius="12" Cursor="Hand" ToolTip="Open System" MouseLeftButtonUp="LoadClick"
-                        Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
-                    <StackPanel>
-                        <DockPanel>
-                            <TextBlock x:Name="LoadRam" DockPanel.Dock="Right" FontSize="12" Foreground="{StaticResource Sub}" />
-                            <TextBlock Text="SYSTEM LOAD" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Sub}" />
-                        </DockPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
-                            <TextBlock x:Name="LoadCpu" Text="—" FontSize="24" FontWeight="SemiBold" />
-                            <TextBlock Text="% CPU" FontSize="12" Foreground="{StaticResource Sub}" VerticalAlignment="Bottom" Margin="4,0,0,5" />
-                        </StackPanel>
-                        <local:Spark x:Name="LoadSpark" Height="30" Max="100" Format="{}{0:0}%" />
-                    </StackPanel>
-                </Border>
                 <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="6,6,6,2">
                     <ListBox x:Name="Bottom" Style="{StaticResource Sidebar}" SelectionChanged="NavChanged">
                         <ListBox.ItemTemplate>
@@ -182,7 +167,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition />
                     </Grid.RowDefinitions>
-                    <!-- Title row: search and window buttons (the CLI puts its shell tabs here, IHeader.OwnsTitleRow) -->
+                    <!-- Title row: the page name, search and window buttons (the CLI puts its shell tabs here instead, IHeader.OwnsTitleRow) -->
                     <Grid Background="Transparent" MouseLeftButtonDown="Drag" Margin="8,8,8,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -193,6 +178,7 @@
                             <Button x:Name="NavToggle" Style="{StaticResource Ghost}" Width="40" ToolTip="Hide sidebar" Click="ToggleNav">
                                 <local:Logo Icon="menu" Width="17" Height="17" />
                             </Button>
+                            <TextBlock x:Name="PageTitle" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,1" />
                             <!-- Compact mode: the tabs as a row of icons instead of the sidebar -->
                             <ListBox x:Name="Strip" Style="{StaticResource Sidebar}" Visibility="Collapsed" Margin="2,0,0,0" SelectionChanged="StripChanged">
                                 <ListBox.ItemsPanel>
@@ -211,7 +197,7 @@
                         <ContentControl x:Name="TitleSlot" Grid.Column="1" Focusable="False" VerticalAlignment="Center" Margin="8,0,8,0" />
                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                             <!-- Looks like a search box, opens the Ctrl+K palette -->
-                            <Button Style="{StaticResource Ghost}" Padding="0" Margin="0,0,8,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick"
+                            <Button x:Name="SearchButton" Style="{StaticResource Ghost}" Padding="0" Margin="0,0,8,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick"
                                     AutomationProperties.Name="Search">
                                 <Border x:Name="SearchField" Width="300" Height="34" CornerRadius="9" Padding="12,0,6,0"
                                         Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
@@ -227,8 +213,6 @@
                             </Button>
                             <Button x:Name="PinButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
                                     Content="&#xE718;" Click="PinClick" />
-                            <Button x:Name="CompactButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="13" Margin="0,0,4,0"
-                                    Content="&#xE73F;" ToolTip="Compact mode" Click="CompactClick" />
                             <Button Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="12" Margin="0,0,4,0"
                                     Content="&#xE921;" ToolTip="Minimize" Click="MinimizeClick" />
                             <Button x:Name="MaxButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" FontSize="12" Margin="0,0,4,0"
@@ -239,13 +223,11 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Page header: the title over one line of state (IHeader.State), the page's controls on the right (IHeader.Header) -->
-                    <DockPanel x:Name="PageHead" Grid.Row="1" Margin="24,8,24,16">
-                        <ContentControl x:Name="HeaderSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Bottom" Margin="16,0,0,0" />
-                        <StackPanel VerticalAlignment="Bottom">
-                            <TextBlock x:Name="PageTitle" FontSize="24" FontWeight="SemiBold" />
-                            <ContentControl x:Name="StateSlot" Focusable="False" Margin="0,2,0,0" />
-                        </StackPanel>
+                    <!-- Page bar: one line of state on the left (IHeader.State), the page's controls on the right (IHeader.Header).
+                         Hidden when the page has neither. -->
+                    <DockPanel x:Name="PageHead" Grid.Row="1" Margin="24,2,24,14">
+                        <ContentControl x:Name="HeaderSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ContentControl x:Name="StateSlot" Focusable="False" VerticalAlignment="Center" />
                     </DockPanel>
 
                     <ContentControl x:Name="Page" Grid.Row="2" Margin="24,0,24,18" Focusable="False">

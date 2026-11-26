@@ -147,7 +147,7 @@ public partial class CliPage : UserControl, IHeader
         MainWindow.Lift(Strip);
         TabList.ItemsSource = tabs;
         Folders.ItemsSource = App.Settings.CliFolders;
-        ClaudeButton.Visibility = Shell.OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;
+        ClaudeItem.Visibility = Shell.OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;
         IsVisibleChanged += (_, _) => FocusTerm();
         new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, (_, _) => Reap(), Dispatcher);
         Application.Current.Exit += (_, _) => { Save(); foreach (var p in Panes) Kill(p); };
@@ -421,14 +421,6 @@ public partial class CliPage : UserControl, IHeader
         if ((((FrameworkElement)sender).DataContext as CliTab ?? Current) is { } t) ClosePane(t.Focus);
     }
 
-    void SplitButton(object sender, RoutedEventArgs e)
-    {
-        var b = (Button)sender;
-        b.ContextMenu.PlacementTarget = b;
-        b.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        b.ContextMenu.IsOpen = true;
-    }
-
     // Double-click a tab to rename; single click puts the cursor back in its terminal (or starts a drag).
     void TabMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -543,7 +535,7 @@ public partial class CliPage : UserControl, IHeader
     }
 
     void ToggleFolders(object sender, RoutedEventArgs e) =>
-        FolderPanel.Visibility = FoldersToggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        FolderPanel.Visibility = FoldersItem.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
 
     static string LeafOf(string dir) => Path.GetFileName(dir.TrimEnd('\\')) is { Length: > 0 } leaf ? leaf : dir;
 
