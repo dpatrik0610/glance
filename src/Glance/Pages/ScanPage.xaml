@@ -14,7 +14,9 @@
                         <Button x:Name="ScanButton" Style="{StaticResource Primary}" Content="Scan" MinWidth="80" Click="Scan" />
                     </StackPanel>
                     <!-- Wraps to a second line rather than cutting a drive off -->
-                    <WrapPanel x:Name="Drives" />
+                    <Border Style="{StaticResource Segment}">
+                        <WrapPanel x:Name="Drives" />
+                    </Border>
                 </DockPanel>
                 <TextBlock x:Name="Summary" Style="{StaticResource Label}" Margin="0,8,0,0" TextTrimming="CharacterEllipsis" />
                 <!-- What the folder shown is made of, by file type -->

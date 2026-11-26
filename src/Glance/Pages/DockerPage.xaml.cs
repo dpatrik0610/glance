@@ -9,6 +9,7 @@ namespace Glance.Pages;
 public partial class DockerPage : UserControl, IHeader
 {
     public FrameworkElement Header { get; }
+    public FrameworkElement State { get; }
 
     readonly DispatcherTimer timer;
     bool busy;
@@ -16,6 +17,7 @@ public partial class DockerPage : UserControl, IHeader
     public DockerPage()
     {
         InitializeComponent();
+        State = MainWindow.Lift(Count);
         Header = MainWindow.Lift(Bar);
         // Polls only while visible: picks up containers started from a terminal, and Docker Desktop finishing its start.
         timer = new DispatcherTimer(TimeSpan.FromSeconds(4), DispatcherPriority.Background, (_, _) => Load(), Dispatcher);

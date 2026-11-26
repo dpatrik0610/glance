@@ -9,6 +9,7 @@ namespace Glance.Pages;
 public partial class DevPage : UserControl, IHeader
 {
     public FrameworkElement Header { get; }
+    public FrameworkElement State { get; } = new TextBlock { Style = Skin.Style("Label") };
 
     List<PortInfo> all = [];
 
@@ -28,8 +29,10 @@ public partial class DevPage : UserControl, IHeader
     void ApplyFilter()
     {
         var f = Filter.Text.Trim();
-        Ports.ItemsSource = f.Length == 0 ? all
+        var shown = f.Length == 0 ? all
             : all.Where(p => p.Port.ToString().Contains(f) || p.Process.Contains(f, StringComparison.OrdinalIgnoreCase)).ToList();
+        Ports.ItemsSource = shown;
+        ((TextBlock)State).Text = shown.Count == all.Count ? $"{all.Count} listening" : $"{shown.Count} of {all.Count} listening";
     }
 
     void Refresh(object sender, RoutedEventArgs e) => Load();

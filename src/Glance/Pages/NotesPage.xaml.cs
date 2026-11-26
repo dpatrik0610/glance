@@ -7,6 +7,7 @@ namespace Glance.Pages;
 public partial class NotesPage : UserControl, IDisposable, IHeader
 {
     public FrameworkElement Header { get; }
+    public FrameworkElement State { get; } = new TextBlock { Style = Skin.Style("Label") };
 
     public NotesPage()
     {
@@ -37,6 +38,7 @@ public partial class NotesPage : UserControl, IDisposable, IHeader
         Editor.DataContext = Current;
         Editor.Visibility = Current is null ? Visibility.Collapsed : Visibility.Visible;
         Empty.Visibility = NoteStore.Notes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ((TextBlock)State).Text = NoteStore.Notes.Count switch { 0 => "", 1 => "1 note", var n => $"{n} notes" };
     }
 
     void NewText(object sender, RoutedEventArgs e) => Add(NoteKind.Text);

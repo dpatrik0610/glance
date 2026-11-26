@@ -22,7 +22,9 @@
                 <g:VolumeBar x:Name="Volume" DockPanel.Dock="Right" Margin="24,0,0,0" />
                 <StackPanel VerticalAlignment="Center">
                     <!-- One chip per player; the switch when there are several -->
-                    <WrapPanel x:Name="Sources" Margin="0,0,0,14" />
+                    <Border Style="{StaticResource Segment}" Margin="0,0,0,14">
+                        <WrapPanel x:Name="Sources" />
+                    </Border>
                     <TextBlock x:Name="TitleText" FontSize="24" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock x:Name="ArtistText" FontSize="15" Foreground="{StaticResource Sub}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
                     <TextBlock x:Name="AlbumText" Style="{StaticResource Label}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />

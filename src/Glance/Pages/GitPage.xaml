@@ -17,7 +17,7 @@
                            ToolTip="Repos in your CLI quick folders and their direct subfolders" />
                 <Button Style="{StaticResource Ghost}" Content="&#xE72C;" FontFamily="{StaticResource Icons}" ToolTip="Refresh" Click="Refresh" />
             </StackPanel>
-            <Grid DockPanel.Dock="Top" Margin="12,4,14,6">
+            <Grid DockPanel.Dock="Top" Margin="12,4,14,7">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*" />
                     <ColumnDefinition Width="1.4*" />
@@ -26,6 +26,8 @@
                     <ColumnDefinition Width="3*" />
                     <ColumnDefinition Width="96" />
                 </Grid.ColumnDefinitions>
+                <!-- Hairline under the column names -->
+                <Border Grid.ColumnSpan="9" Height="1" VerticalAlignment="Bottom" Margin="-12,0,-14,-7" Background="{StaticResource Line}" />
                 <TextBlock Text="Repo" Style="{StaticResource Label}" />
                 <TextBlock Grid.Column="1" Text="Branch" Style="{StaticResource Label}" />
                 <TextBlock Grid.Column="2" Text="Remote" Style="{StaticResource Label}" ToolTip="Ahead/behind its upstream, as of the last fetch" />
@@ -38,7 +40,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <!-- Open actions show on hover -->
-                                <Border x:Name="Row" Margin="0,0,10,2" Padding="12,8,4,8" CornerRadius="10" Background="Transparent">
+                                <Border x:Name="Row" Margin="0,0,10,0" Padding="12,10,4,10" Background="Transparent" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="2*" />

@@ -14,13 +14,15 @@
                 <TextBlock x:Name="Count" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <Button Style="{StaticResource Ghost}" Content="&#xE72C;" FontFamily="{StaticResource Icons}" ToolTip="Refresh" Click="Refresh" />
             </StackPanel>
-            <Grid x:Name="Columns" DockPanel.Dock="Top" Margin="12,4,14,6">
+            <Grid x:Name="Columns" DockPanel.Dock="Top" Margin="12,4,14,7">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2.4*" />
                     <ColumnDefinition Width="1.4*" />
                     <ColumnDefinition Width="1.2*" />
                     <ColumnDefinition Width="210" />
                 </Grid.ColumnDefinitions>
+                <!-- Hairline under the column names -->
+                <Border Grid.ColumnSpan="9" Height="1" VerticalAlignment="Bottom" Margin="-12,0,-14,-7" Background="{StaticResource Line}" />
                 <TextBlock Text="Container" Style="{StaticResource Label}" />
                 <TextBlock Grid.Column="1" Text="Status" Style="{StaticResource Label}" />
                 <TextBlock Grid.Column="2" Text="Ports" Style="{StaticResource Label}" ToolTip="host → container" />
@@ -31,7 +33,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <!-- A row: name over image, a status pill, ports; its actions show on hover -->
-                                <Border x:Name="Row" Margin="0,0,10,2" Padding="12,8,4,8" CornerRadius="10" Background="Transparent">
+                                <Border x:Name="Row" Margin="0,0,10,0" Padding="12,10,4,10" Background="Transparent" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="2.4*" />

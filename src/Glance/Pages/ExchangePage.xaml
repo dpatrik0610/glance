@@ -44,7 +44,9 @@
                     <Button Style="{StaticResource Ghost}" Content="&#xE8AB;" FontFamily="{StaticResource Icons}" ToolTip="Swap direction" Click="Swap" />
                     <TextBlock x:Name="Result" FontSize="22" FontWeight="SemiBold" Margin="14,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
-                <StackPanel x:Name="CurrencyChips" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <Border Style="{StaticResource Segment}" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <StackPanel x:Name="CurrencyChips" Orientation="Horizontal" />
+                </Border>
             </DockPanel>
         </Border>
 

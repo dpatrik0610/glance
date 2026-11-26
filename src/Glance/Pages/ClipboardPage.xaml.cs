@@ -10,12 +10,14 @@ namespace Glance.Pages;
 public partial class ClipboardPage : UserControl, IHeader
 {
     public FrameworkElement Header { get; }
+    public FrameworkElement State { get; }
 
     readonly ICollectionView view = CollectionViewSource.GetDefaultView(ClipboardHistory.Items);
 
     public ClipboardPage()
     {
         InitializeComponent();
+        State = MainWindow.Lift(Status);
         Header = MainWindow.Lift(Bar);
         List.ItemsSource = view;
         view.Filter = o => Search.Text.Length == 0 || ((ClipItem)o).Text.Contains(Search.Text, StringComparison.OrdinalIgnoreCase);

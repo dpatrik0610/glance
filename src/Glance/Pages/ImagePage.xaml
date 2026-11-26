@@ -7,7 +7,9 @@
         <Border DockPanel.Dock="Right" Style="{StaticResource Card}" Width="300">
             <StackPanel x:Name="Controls" IsEnabled="False">
                 <TextBlock Text="Crop" Style="{StaticResource H}" Margin="0,0,0,10" />
-                <WrapPanel x:Name="Ratios" Margin="0,0,0,6" />
+                <Border Style="{StaticResource Segment}" Margin="0,0,0,6">
+                    <WrapPanel x:Name="Ratios" />
+                </Border>
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="Reset" Click="ResetCrop" />
                     <TextBlock x:Name="CropText" Style="{StaticResource Label}" VerticalAlignment="Center" />
@@ -24,7 +26,9 @@
                 <WrapPanel x:Name="Scales" />
 
                 <TextBlock Text="Save as" Style="{StaticResource H}" Margin="0,18,0,10" />
-                <WrapPanel x:Name="FormatChips" Margin="0,0,0,6" />
+                <Border Style="{StaticResource Segment}" Margin="0,0,0,6">
+                    <WrapPanel x:Name="FormatChips" />
+                </Border>
                 <DockPanel x:Name="QualityRow" Margin="0,4,0,0">
                     <TextBlock x:Name="QualityText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Style="{StaticResource Label}" />
                     <TextBlock Text="Quality" Width="56" VerticalAlignment="Center" />

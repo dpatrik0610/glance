@@ -38,7 +38,9 @@
             <!-- Verdict: how the PC is doing over the range, and why -->
             <DockPanel Margin="8,2,6,10">
                 <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center">
-                    <StackPanel x:Name="RangeChips" Orientation="Horizontal" HorizontalAlignment="Right" />
+                    <Border Style="{StaticResource Segment}" HorizontalAlignment="Right">
+                        <StackPanel x:Name="RangeChips" Orientation="Horizontal" />
+                    </Border>
                     <TextBlock x:Name="Status" Style="{StaticResource Caption}" HorizontalAlignment="Right" Margin="0,6,6,0" />
                 </StackPanel>
                 <Border x:Name="VerdictBadge" Width="44" Height="44" CornerRadius="14" Background="{StaticResource PillBg}" VerticalAlignment="Center">
@@ -188,7 +190,9 @@
                 <Border Grid.Row="1" Style="{StaticResource Card}">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,10">
-                            <StackPanel x:Name="KindChips" DockPanel.Dock="Right" Orientation="Horizontal" />
+                            <Border Style="{StaticResource Segment}" DockPanel.Dock="Right">
+                                <StackPanel x:Name="KindChips" Orientation="Horizontal" />
+                            </Border>
                             <TextBlock Text="Top consumers" Style="{StaticResource H}" VerticalAlignment="Center" />
                         </DockPanel>
                         <Grid Margin="8,0,8,4">

@@ -5,7 +5,9 @@
     <DockPanel>
         <!-- Title row bar (IHeader) -->
         <DockPanel x:Name="Bar" DockPanel.Dock="Top" Margin="6,0,6,6">
-            <StackPanel x:Name="RangeChips" Orientation="Horizontal" DockPanel.Dock="Right" />
+            <Border Style="{StaticResource Segment}" DockPanel.Dock="Right">
+                <StackPanel x:Name="RangeChips" Orientation="Horizontal" />
+            </Border>
             <TextBlock x:Name="Status" Style="{StaticResource Label}" VerticalAlignment="Center" />
         </DockPanel>
         <ItemsControl x:Name="Charts">

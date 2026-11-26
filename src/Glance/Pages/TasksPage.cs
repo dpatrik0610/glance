@@ -16,7 +16,8 @@ public class TasksPage : UserControl, IHeader
     readonly CheckBox showDone;
     bool withDone;
 
-    public FrameworkElement Header => showDone; // in the window's title row
+    public FrameworkElement Header => showDone;
+    public FrameworkElement State { get; } = new TextBlock { Style = Skin.Style("Label") };
 
     public TasksPage()
     {
@@ -51,7 +52,11 @@ public class TasksPage : UserControl, IHeader
     {
         list.Children.Clear();
         var now = DateTime.Now;
-        var rows = All().Where(r => withDone || !r.Done).ToList();
+        var every = All().ToList();
+        var rows = every.Where(r => withDone || !r.Done).ToList();
+        var open = every.Count(r => !r.Done);
+        var late = every.Count(r => !r.Done && r.Row.Due < now);
+        ((TextBlock)State).Text = late > 0 ? $"{open} open · {late} overdue" : $"{open} open";
         string Group((Row Row, bool Done) r) => r.Done ? "Done" : r.Row.Due is not { } d ? "No date" : d < now ? "Overdue" : d.Date == now.Date ? "Today" : "Upcoming";
         string[] order = ["Overdue", "Today", "Upcoming", "No date", "Done"];
         foreach (var g in rows.GroupBy(Group).OrderBy(g => Array.IndexOf(order, g.Key)))

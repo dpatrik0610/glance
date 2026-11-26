@@ -7,8 +7,11 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class SystemPage : UserControl, IDisposable
+public partial class SystemPage : UserControl, IDisposable, IHeader
 {
+    public FrameworkElement? Header => null;
+    public FrameworkElement State { get; } = new TextBlock { Style = Skin.Style("Label") };
+
     static readonly Brush GreenBg = Frozen(0x22, 0x4C, 0xC3, 0x7A), AmberBg = Frozen(0x22, 0xF5, 0xB8, 0x3D), RedBg = Frozen(0x22, 0xFF, 0x5A, 0x5A);
 
     public SystemPage()
@@ -57,7 +60,7 @@ public partial class SystemPage : UserControl, IDisposable
         ShowBusiest();
         CpuTile.ToolTip = $"{s.CpuName}\nOpen in History";
         GpuTile.ToolTip = $"{s.GpuName}\nOpen in History";
-        Uptime.Text = "up " + TimeSpan.FromMilliseconds(Environment.TickCount64).ToString(@"d\d\ hh\h\ mm\m");
+        ((TextBlock)State).Text = $@"{s.Procs.Sum(p => p.Count)} processes · up {TimeSpan.FromMilliseconds(Environment.TickCount64):d\d\ hh\h\ mm\m}";
     }
 
     public record Busy(string What, string Name, string Value);

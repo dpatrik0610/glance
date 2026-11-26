@@ -17,6 +17,7 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
     readonly RadioButton[] chips;
     readonly ContentControl host = new() { Focusable = false };
     readonly ContentControl partBar = new() { Focusable = false, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly ContentControl partState = new() { Focusable = false };
     readonly TranslateTransform shift = new();
 
     public Tabbed(Part[] parts)
@@ -37,8 +38,9 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
             return chip;
         }).ToArray();
         host.RenderTransform = shift;
-        // Shown in the window's title row: the chips, then the open part's own bar
-        Header = new StackPanel { Orientation = Orientation.Horizontal, Children = { row, partBar } };
+        // Shown in the page header: the open part's own bar, then the chips as one segmented group
+        Header = new StackPanel { Orientation = Orientation.Horizontal, Children = { partBar, new Border { Style = Skin.Style("Segment"), Child = row } } };
+        partBar.Margin = new Thickness(0, 0, 12, 0);
         Content = host;
         chips[0].IsChecked = true;
         Sync();
@@ -63,6 +65,7 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
     }
 
     public FrameworkElement Header { get; }
+    public FrameworkElement State => partState;
 
     public UserControl Current => (UserControl)host.Content;
 
@@ -80,6 +83,7 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
         var first = host.Content is null;
         host.Content = built[i] ??= parts[i].Create();
         partBar.Content = (host.Content as IHeader)?.Header;
+        partState.Content = (host.Content as IHeader)?.State;
         if (!first) Motion.Rise(host, shift);
     }
 }

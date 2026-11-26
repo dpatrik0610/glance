@@ -13,7 +13,14 @@ using Glance.Services;
 namespace Glance;
 
 /// A page that puts its own strip (part chips, shell tabs) in the window's title row, next to the title.
-public interface IHeader { FrameworkElement Header { get; } }
+/// A page's own parts of the page header: Header sits right of the title, State is the one line under it.
+/// A page that OwnsTitleRow (the CLI) gets no page header; its Header goes in the window's title row instead.
+public interface IHeader
+{
+    FrameworkElement? Header { get; }
+    FrameworkElement? State => null;
+    bool OwnsTitleRow => false;
+}
 
 public partial class MainWindow : Window
 {
@@ -277,15 +284,12 @@ public partial class MainWindow : Window
         (Width, Height) = (other.Width, other.Height);
         other = keep;
         var shown = on ? Visibility.Collapsed : Visibility.Visible;
-        Brand.Visibility = NavToggle.Visibility = shown;
+        NavToggle.Visibility = shown;
         Side.Visibility = on || !navShown ? Visibility.Collapsed : Visibility.Visible;
         Strip.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         Body.Margin = new Thickness(on ? 10 : 14);
         SearchHint.Visibility = shown; // compact: just the icon and the key next to the strip
-        Grid.SetRow(HeaderSlot, on ? 1 : 0);
-        Grid.SetColumnSpan(HeaderSlot, on ? 3 : 1);
-        Grid.SetColumn(HeaderSlot, on ? 0 : 1);
-        HeaderSlot.Margin = on ? new Thickness(0, 8, 0, 0) : new Thickness(16, 0, 8, 0);
+        SearchField.Width = on ? double.NaN : 300;
         CompactButton.Content = on ? "\uE740" : "\uE73F";
         CompactButton.ToolTip = on ? "Full layout" : "Compact mode";
         if (Dropped) Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - Width) / 2; // stay centered under the bar
@@ -339,7 +343,13 @@ public partial class MainWindow : Window
         if (pages.FirstOrDefault(p => p.Value == Page.Content).Key is { } left) leftAt[left] = Environment.TickCount64;
         Page.Content = page;
         PageTitle.Text = t.Name;
-        HeaderSlot.Content = (page as IHeader)?.Header;
+        var head = page as IHeader;
+        var own = head?.OwnsTitleRow == true;
+        TitleSlot.Content = own ? head!.Header : null;
+        HeaderSlot.Content = own ? null : head?.Header;
+        StateSlot.Content = head?.State;
+        PageHead.Visibility = own ? Visibility.Collapsed : Visibility.Visible;
+        Page.Margin = own ? new Thickness(12, 0, 12, 12) : new Thickness(24, 0, 24, 18);
         // The terminal is a native window: it can't fade or move with WPF content, so it just appears.
         if (!IsWeb(page)) Motion.Rise(Page, PageShift);
     }

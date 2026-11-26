@@ -62,7 +62,7 @@ public partial class ImagePage : UserControl
     }
 
     RadioButton Chip(string text, string group, bool on) =>
-        new() { Content = text, GroupName = group, IsChecked = on, Style = Skin.Style("Chip"), Margin = new(0, 0, 6, 6) };
+        new() { Content = text, GroupName = group, IsChecked = on, Style = Skin.Style("Chip") };
 
     // ---- Opening ----
 

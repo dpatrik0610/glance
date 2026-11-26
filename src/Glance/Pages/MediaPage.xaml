@@ -24,16 +24,22 @@
 
                 <StackPanel x:Name="ResizePanel">
                     <TextBlock Text="Resize" Style="{StaticResource H}" Margin="0,18,0,10" />
-                    <WrapPanel x:Name="Sizes" />
+                    <Border Style="{StaticResource Segment}">
+                        <WrapPanel x:Name="Sizes" />
+                    </Border>
                     <TextBlock x:Name="ResizeText" Style="{StaticResource Label}" />
                 </StackPanel>
 
                 <TextBlock Text="Save as" Style="{StaticResource H}" Margin="0,18,0,10" />
-                <WrapPanel x:Name="FormatChips" Margin="0,0,0,2" />
+                <Border Style="{StaticResource Segment}" Margin="0,0,0,2">
+                    <WrapPanel x:Name="FormatChips" />
+                </Border>
                 <TextBlock x:Name="FormatText" Style="{StaticResource Label}" TextWrapping="Wrap" Margin="0,0,0,6" />
                 <StackPanel x:Name="QualityRow">
                     <TextBlock Text="Quality" Margin="0,4,0,6" />
-                    <WrapPanel x:Name="Qualities" />
+                    <Border Style="{StaticResource Segment}">
+                        <WrapPanel x:Name="Qualities" />
+                    </Border>
                 </StackPanel>
                 <TextBlock x:Name="SizeText" Style="{StaticResource Label}" Margin="0,10,0,0" TextWrapping="Wrap" />
                 <Button x:Name="SaveButton" Style="{StaticResource Primary}" Content="Save as…" Margin="0,14,0,0" Click="Save" />

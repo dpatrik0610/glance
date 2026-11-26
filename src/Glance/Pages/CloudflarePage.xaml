@@ -221,7 +221,9 @@
                         <DockPanel>
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <StackPanel x:Name="KindChips" Orientation="Horizontal" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                    <Border Style="{StaticResource Segment}" Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <StackPanel x:Name="KindChips" Orientation="Horizontal" />
+                                    </Border>
                                     <Grid Width="180">
                                         <TextBox x:Name="Search" Tag="Search  (Ctrl+F)" Padding="14,6,4,6" TextChanged="SearchChanged" />
                                         <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="{StaticResource Sub}"

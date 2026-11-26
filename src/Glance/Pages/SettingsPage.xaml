@@ -118,7 +118,9 @@
                 <Border Style="{StaticResource Group}">
                     <StackPanel>
                         <local:SettingRow Icon="&#xE2B1;" Title="Theme" Description="Changing it restarts Glance">
-                            <StackPanel x:Name="Themes" Orientation="Horizontal" />
+                            <Border Style="{StaticResource Segment}">
+                                <StackPanel x:Name="Themes" Orientation="Horizontal" />
+                            </Border>
                         </local:SettingRow>
                         <local:SettingRow Icon="&#xE790;" Title="Window opacity">
                             <StackPanel x:Name="OpacityRow" Orientation="Horizontal">
@@ -158,11 +160,13 @@
                             </StackPanel>
                         </local:SettingRow>
                         <local:SettingRow Icon="&#xE799;" Title="Size">
+                            <Border Style="{StaticResource Segment}">
                             <StackPanel x:Name="BarSizes" Orientation="Horizontal">
-                                <RadioButton Style="{StaticResource Chip}" GroupName="barsize" Content="Small" Margin="0,0,6,0" Checked="BarSizeChecked" />
-                                <RadioButton Style="{StaticResource Chip}" GroupName="barsize" Content="Medium" Margin="0,0,6,0" Checked="BarSizeChecked" />
+                                <RadioButton Style="{StaticResource Chip}" GroupName="barsize" Content="Small" Checked="BarSizeChecked" />
+                                <RadioButton Style="{StaticResource Chip}" GroupName="barsize" Content="Medium" Checked="BarSizeChecked" />
                                 <RadioButton Style="{StaticResource Chip}" GroupName="barsize" Content="Large" Checked="BarSizeChecked" />
                             </StackPanel>
+                            </Border>
                         </local:SettingRow>
                         <local:SettingRow Icon="&#xE73F;" Title="Slim over maximized windows" Description="Shrinks to a thin line; hover it to show the bar">
                             <CheckBox x:Name="BarSlimBox" Style="{StaticResource Switch}" Click="Toggled" />
@@ -187,7 +191,9 @@
                         </local:SettingRow>
                         <!-- Picking a sound or letting go of the volume plays it -->
                         <local:SettingRow Icon="&#xEC4F;" Title="Sound">
-                            <WrapPanel x:Name="Sounds" MaxWidth="360" HorizontalAlignment="Right" />
+                            <Border Style="{StaticResource Segment}" MaxWidth="360" HorizontalAlignment="Right">
+                                <WrapPanel x:Name="Sounds" />
+                            </Border>
                         </local:SettingRow>
                         <local:SettingRow Icon="&#xE995;" Title="Volume">
                             <StackPanel x:Name="SoundVolumeRow" Orientation="Horizontal">

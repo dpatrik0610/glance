@@ -174,32 +174,25 @@
             </Border>
             </Grid>
 
-            <!-- Main card: page title, search and window buttons on top, the page below -->
+            <!-- Main card: search and window buttons on top, the page header, the page below -->
             <Border Grid.Column="1" CornerRadius="14" Background="#1F000000" BorderBrush="{StaticResource Line}" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition />
                     </Grid.RowDefinitions>
-                    <!-- Title row: title, the page's own strip (IHeader: part chips, shell tabs), search and window buttons.
-                         Compact mode moves the page's strip to a second line under the icons. -->
+                    <!-- Title row: search and window buttons (the CLI puts its shell tabs here, IHeader.OwnsTitleRow) -->
                     <Grid Background="Transparent" MouseLeftButtonDown="Drag" Margin="8,8,8,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Button x:Name="NavToggle" Style="{StaticResource Ghost}" Width="40" ToolTip="Hide sidebar" Click="ToggleNav">
                                 <local:Logo Icon="menu" Width="17" Height="17" />
                             </Button>
-                            <StackPanel x:Name="Brand" Orientation="Horizontal">
-                                <TextBlock x:Name="PageTitle" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,1" />
-                            </StackPanel>
                             <!-- Compact mode: the tabs as a row of icons instead of the sidebar -->
                             <ListBox x:Name="Strip" Style="{StaticResource Sidebar}" Visibility="Collapsed" Margin="2,0,0,0" SelectionChanged="StripChanged">
                                 <ListBox.ItemsPanel>
@@ -215,12 +208,12 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </StackPanel>
-                        <ContentControl x:Name="HeaderSlot" Grid.Column="1" Focusable="False" VerticalAlignment="Center" Margin="16,0,8,0" />
+                        <ContentControl x:Name="TitleSlot" Grid.Column="1" Focusable="False" VerticalAlignment="Center" Margin="8,0,8,0" />
                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                             <!-- Looks like a search box, opens the Ctrl+K palette -->
                             <Button Style="{StaticResource Ghost}" Padding="0" Margin="0,0,8,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick"
                                     AutomationProperties.Name="Search">
-                                <Border x:Name="SearchField" Height="32" CornerRadius="8" Padding="10,0,6,0"
+                                <Border x:Name="SearchField" Width="300" Height="34" CornerRadius="9" Padding="12,0,6,0"
                                         Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
                                     <DockPanel>
                                         <local:Logo Icon="search" Width="14" Height="14" VerticalAlignment="Center" />
@@ -228,7 +221,7 @@
                                                 Padding="5,1" VerticalAlignment="Center">
                                             <TextBlock Text="Ctrl K" FontSize="11" Foreground="{StaticResource Sub}" />
                                         </Border>
-                                        <TextBlock x:Name="SearchHint" Text="Search" Margin="8,0,12,0" FontSize="13" Foreground="{StaticResource Sub}" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="SearchHint" Text="Search pages, notes, processes…" Margin="8,0,12,0" FontSize="13" Foreground="{StaticResource Sub}" VerticalAlignment="Center" />
                                     </DockPanel>
                                 </Border>
                             </Button>
@@ -246,7 +239,16 @@
                         </StackPanel>
                     </Grid>
 
-                    <ContentControl x:Name="Page" Grid.Row="1" Margin="14,4,14,14" Focusable="False">
+                    <!-- Page header: the title over one line of state (IHeader.State), the page's controls on the right (IHeader.Header) -->
+                    <DockPanel x:Name="PageHead" Grid.Row="1" Margin="24,8,24,16">
+                        <ContentControl x:Name="HeaderSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Bottom" Margin="16,0,0,0" />
+                        <StackPanel VerticalAlignment="Bottom">
+                            <TextBlock x:Name="PageTitle" FontSize="24" FontWeight="SemiBold" />
+                            <ContentControl x:Name="StateSlot" Focusable="False" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <ContentControl x:Name="Page" Grid.Row="2" Margin="24,0,24,18" Focusable="False">
                         <ContentControl.RenderTransform>
                             <TranslateTransform x:Name="PageShift" />
                         </ContentControl.RenderTransform>
