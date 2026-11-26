@@ -10,15 +10,14 @@
             <Setter Property="Foreground" Value="{StaticResource Sub}" />
         </Style>
     </UserControl.Resources>
-    <Border Style="{StaticResource Card}">
         <DockPanel>
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                <Button DockPanel.Dock="Right" Content="↻ Refresh" Click="Refresh" />
-                <TextBlock Text="Repositories" Style="{StaticResource H}" VerticalAlignment="Center" />
-                <TextBlock x:Name="Count" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,1,0,0"
+            <!-- Title row bar (IHeader): the count and refresh -->
+            <StackPanel x:Name="Bar" DockPanel.Dock="Top" Orientation="Horizontal">
+                <TextBlock x:Name="Count" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,6,0"
                            ToolTip="Repos in your CLI quick folders and their direct subfolders" />
-            </DockPanel>
-            <Grid DockPanel.Dock="Top" Margin="0,0,10,6">
+                <Button Style="{StaticResource Ghost}" Content="&#xE72C;" FontFamily="{StaticResource Icons}" ToolTip="Refresh" Click="Refresh" />
+            </StackPanel>
+            <Grid DockPanel.Dock="Top" Margin="12,4,14,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*" />
                     <ColumnDefinition Width="1.4*" />
@@ -38,7 +37,9 @@
                     <ItemsControl x:Name="Repos">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="0,2,10,2">
+                                <!-- Open actions show on hover -->
+                                <Border x:Name="Row" Margin="0,0,10,2" Padding="12,8,4,8" CornerRadius="10" Background="Transparent">
+                                <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="2*" />
                                         <ColumnDefinition Width="1.4*" />
@@ -75,13 +76,23 @@
                                     </TextBlock>
                                     <TextBlock Grid.Column="4" Text="{Binding Last}" Style="{StaticResource Label}" VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis" ToolTip="{Binding Subject}" />
-                                    <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <StackPanel x:Name="Actions" Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" Opacity="0">
                                         <Button Style="{StaticResource Act}" Content="&#xE774;" ToolTip="{Binding Web}" Click="OpenWeb"
                                                 Visibility="{Binding HasWeb, Converter={StaticResource Vis}}" />
                                         <Button Style="{StaticResource Act}" Content="&#xE756;" ToolTip="Open a terminal here" Click="OpenCli" />
                                         <Button Style="{StaticResource Act}" Content="&#xED25;" ToolTip="Open in Explorer" Click="OpenFolder" />
                                     </StackPanel>
                                 </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{StaticResource CardBg}" />
+                                        <Setter TargetName="Actions" Property="Opacity" Value="1" />
+                                    </Trigger>
+                                    <Trigger SourceName="Row" Property="IsKeyboardFocusWithin" Value="True">
+                                        <Setter TargetName="Actions" Property="Opacity" Value="1" />
+                                    </Trigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -92,5 +103,4 @@
                 </StackPanel>
             </Grid>
         </DockPanel>
-    </Border>
 </UserControl>

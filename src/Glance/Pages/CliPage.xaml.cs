@@ -143,8 +143,7 @@ public partial class CliPage : UserControl, IHeader
     public CliPage()
     {
         InitializeComponent();
-        ((Panel)Strip.Parent).Children.Remove(Strip);
-        Strip.Margin = default;
+        MainWindow.Lift(Strip);
         TabList.ItemsSource = tabs;
         Folders.ItemsSource = App.Settings.CliFolders;
         ClaudeButton.Visibility = Shell.OnPath("claude.exe") ? Visibility.Visible : Visibility.Collapsed;

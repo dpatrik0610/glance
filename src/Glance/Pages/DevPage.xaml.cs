@@ -6,13 +6,16 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class DevPage : UserControl
+public partial class DevPage : UserControl, IHeader
 {
+    public FrameworkElement Header { get; }
+
     List<PortInfo> all = [];
 
     public DevPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         IsVisibleChanged += (_, e) => { if ((bool)e.NewValue) Load(); };
     }
 

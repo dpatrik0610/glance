@@ -13,8 +13,10 @@ using Microsoft.Win32;
 namespace Glance.Pages;
 
 /// Two files (a line diff), two folders (what's missing or different), or any folders (identical files).
-public partial class ComparePage : UserControl
+public partial class ComparePage : UserControl, IHeader
 {
+    public FrameworkElement Header { get; }
+
     /// A row of the duplicates list: a group's header (File null) or one of its copies.
     public record DupRow(DupGroup Group, DupFile? File)
     {
@@ -47,6 +49,7 @@ public partial class ComparePage : UserControl
     public ComparePage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         RootList.ItemsSource = roots;
         DupeList.ItemsSource = rows;
         roots.CollectionChanged += (_, _) =>

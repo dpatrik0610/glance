@@ -1,32 +1,32 @@
 <UserControl x:Class="Glance.Pages.DevPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Border Style="{StaticResource Card}">
-        <DockPanel>
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                <Button DockPanel.Dock="Right" Content="↻ Refresh" Click="Refresh" />
-                <TextBox x:Name="Filter" DockPanel.Dock="Right" Width="200" Margin="0,0,10,0" TextChanged="FilterChanged"
-                         ToolTip="Filter by port or process" />
-                <TextBlock Text="Listening ports" Style="{StaticResource H}" VerticalAlignment="Center" />
-            </DockPanel>
-            <Grid DockPanel.Dock="Top" Margin="0,0,10,6">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="90" />
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="80" />
-                    <ColumnDefinition Width="3*" />
-                    <ColumnDefinition Width="70" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="Port" Style="{StaticResource Label}" />
-                <TextBlock Grid.Column="1" Text="Process" Style="{StaticResource Label}" />
-                <TextBlock Grid.Column="2" Text="PID" Style="{StaticResource Label}" />
-                <TextBlock Grid.Column="3" Text="Address" Style="{StaticResource Label}" />
-            </Grid>
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="Ports">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="0,2,10,2">
+    <DockPanel>
+        <!-- Title row bar (IHeader): filter and refresh -->
+        <StackPanel x:Name="Bar" DockPanel.Dock="Top" Orientation="Horizontal">
+            <TextBox x:Name="Filter" Width="200" Tag="Filter by port or process" TextChanged="FilterChanged" />
+            <Button Style="{StaticResource Ghost}" Content="&#xE72C;" FontFamily="{StaticResource Icons}" Margin="6,0,0,0" ToolTip="Refresh" Click="Refresh" />
+        </StackPanel>
+        <Grid DockPanel.Dock="Top" Margin="12,4,14,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="90" />
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="80" />
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="70" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Port" Style="{StaticResource Label}" />
+            <TextBlock Grid.Column="1" Text="Process" Style="{StaticResource Label}" />
+            <TextBlock Grid.Column="2" Text="PID" Style="{StaticResource Label}" />
+            <TextBlock Grid.Column="3" Text="Address" Style="{StaticResource Label}" />
+        </Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="Ports">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <!-- Kill shows on hover -->
+                        <Border x:Name="Row" Margin="0,0,10,2" Padding="12,6,4,6" CornerRadius="10" Background="Transparent">
+                            <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="90" />
                                     <ColumnDefinition Width="2*" />
@@ -36,18 +36,28 @@
                                 </Grid.ColumnDefinitions>
                                 <Button Style="{StaticResource Ghost}" HorizontalAlignment="Left" Padding="0,2" Click="OpenPort"
                                         ToolTip="Open http://localhost:port">
-                                    <TextBlock Text="{Binding Port}" Foreground="{StaticResource Accent}" FontFamily="Cascadia Mono, Consolas" />
+                                    <TextBlock Text="{Binding Port}" Foreground="{StaticResource Accent}" FontFamily="{StaticResource Mono}" />
                                 </Button>
-                                <TextBlock Grid.Column="1" Text="{Binding Process}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="1" Text="{Binding Process}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                 <TextBlock Grid.Column="2" Text="{Binding Pid}" Style="{StaticResource Label}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="3" Text="{Binding Address}" Style="{StaticResource Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                <Button Grid.Column="4" Style="{StaticResource Ghost}" Content="Kill" Foreground="{StaticResource Red}"
-                                        HorizontalAlignment="Right" Click="Kill" />
+                                <TextBlock Grid.Column="3" Text="{Binding Address}" Style="{StaticResource Label}" FontFamily="{StaticResource Mono}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <Button x:Name="KillButton" Grid.Column="4" Style="{StaticResource Ghost}" Content="Kill" Foreground="{StaticResource Red}"
+                                        HorizontalAlignment="Right" Opacity="0" Click="Kill" />
                             </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </DockPanel>
-    </Border>
+                        </Border>
+                        <DataTemplate.Triggers>
+                            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{StaticResource CardBg}" />
+                                <Setter TargetName="KillButton" Property="Opacity" Value="1" />
+                            </Trigger>
+                            <Trigger SourceName="Row" Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="KillButton" Property="Opacity" Value="1" />
+                            </Trigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
 </UserControl>

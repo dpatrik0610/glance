@@ -1,9 +1,10 @@
 <UserControl x:Class="Glance.Pages.JsonPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Border Style="{StaticResource Card}">
+    <Border>
         <DockPanel>
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <!-- Title row bar (IHeader) -->
+            <DockPanel x:Name="Bar" DockPanel.Dock="Top" Margin="0,0,0,12">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button x:Name="GoButton" Content="Go to error" Click="GoToError" Margin="0,0,8,0" Visibility="Collapsed" />
                     <Button x:Name="MinifyButton" Content="Minify" Click="Minify" Margin="0,0,8,0" ToolTip="One line, no spaces" />

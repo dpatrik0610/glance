@@ -11,22 +11,23 @@
         <!-- Sticky list: each with its own on-the-desktop switch -->
         <Border Style="{StaticResource Card}">
             <DockPanel>
-                <CheckBox x:Name="AllBox" DockPanel.Dock="Top" Style="{StaticResource Switch}" Content="Stickies on the desktop" Margin="0,0,0,12"
-                          Click="AllToggled" ToolTip="Hides or brings back all of them (also in the tray menu)" />
-                <UniformGrid DockPanel.Dock="Top" Columns="2" Margin="0,0,0,12">
-                    <Button Margin="0,0,4,0" Click="NewText" ToolTip="New sticky note">
+                <!-- Title row bar (IHeader): new sticky, new checklist, all on the desktop -->
+                <StackPanel x:Name="Bar" DockPanel.Dock="Top" Orientation="Horizontal">
+                    <Button Style="{StaticResource Ghost}" Margin="0,0,2,0" Click="NewText" ToolTip="New sticky note">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE70B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
                             <TextBlock Text="Note" />
                         </StackPanel>
                     </Button>
-                    <Button Margin="4,0,0,0" Click="NewChecklist" ToolTip="New sticky checklist">
+                    <Button Style="{StaticResource Ghost}" Click="NewChecklist" ToolTip="New sticky checklist">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE9D5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,6,0" />
                             <TextBlock Text="Checklist" />
                         </StackPanel>
                     </Button>
-                </UniformGrid>
+                    <CheckBox x:Name="AllBox" Style="{StaticResource Switch}" Content="On the desktop  " Margin="14,0,0,0" VerticalAlignment="Center"
+                              Click="AllToggled" ToolTip="Hides or brings back all of them (also in the tray menu)" />
+                </StackPanel>
                 <ListBox x:Name="List" Style="{StaticResource Sidebar}" SelectionChanged="Selected">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -72,6 +73,6 @@
 
         <TextBlock x:Name="Empty" Grid.Column="1" Style="{StaticResource Label}" FontSize="14" TextAlignment="Center"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                   Text="No stickies yet. Make one on the left: it goes on your desktop, always on top." />
+                   Text="No stickies yet. Make one with Note at the top: it goes on your desktop, always on top." />
     </Grid>
 </UserControl>

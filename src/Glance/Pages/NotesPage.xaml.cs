@@ -4,11 +4,14 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class NotesPage : UserControl, IDisposable
+public partial class NotesPage : UserControl, IDisposable, IHeader
 {
+    public FrameworkElement Header { get; }
+
     public NotesPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         List.ItemsSource = NoteStore.Notes;
         NoteStore.FocusRequested += FocusNote;
         NoteStore.Notes.CollectionChanged += NotesChanged;

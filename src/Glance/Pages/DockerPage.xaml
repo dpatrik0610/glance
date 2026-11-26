@@ -8,14 +8,13 @@
             <Setter Property="Foreground" Value="{StaticResource Sub}" />
         </Style>
     </UserControl.Resources>
-    <Border Style="{StaticResource Card}">
-        <DockPanel>
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE72C;" FontFamily="{StaticResource Icons}"
-                        ToolTip="Refresh" Click="Refresh" />
-                <TextBlock x:Name="Count" Style="{StaticResource Label}" VerticalAlignment="Center" />
-            </DockPanel>
-            <Grid x:Name="Header" DockPanel.Dock="Top" Margin="12,0,14,6">
+    <DockPanel>
+            <!-- Title row bar (IHeader): the count and refresh -->
+            <StackPanel x:Name="Bar" DockPanel.Dock="Top" Orientation="Horizontal">
+                <TextBlock x:Name="Count" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <Button Style="{StaticResource Ghost}" Content="&#xE72C;" FontFamily="{StaticResource Icons}" ToolTip="Refresh" Click="Refresh" />
+            </StackPanel>
+            <Grid x:Name="Columns" DockPanel.Dock="Top" Margin="12,4,14,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2.4*" />
                     <ColumnDefinition Width="1.4*" />
@@ -112,6 +111,5 @@
                             HorizontalAlignment="Center" Visibility="Collapsed" Click="StartDocker" />
                 </StackPanel>
             </Grid>
-        </DockPanel>
-    </Border>
+    </DockPanel>
 </UserControl>

@@ -16,6 +16,7 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
     readonly UserControl?[] built;
     readonly RadioButton[] chips;
     readonly ContentControl host = new() { Focusable = false };
+    readonly ContentControl partBar = new() { Focusable = false, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly TranslateTransform shift = new();
 
     public Tabbed(Part[] parts)
@@ -36,7 +37,8 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
             return chip;
         }).ToArray();
         host.RenderTransform = shift;
-        Header = row; // shown in the window's title row
+        // Shown in the window's title row: the chips, then the open part's own bar
+        Header = new StackPanel { Orientation = Orientation.Horizontal, Children = { row, partBar } };
         Content = host;
         chips[0].IsChecked = true;
         Sync();
@@ -77,6 +79,7 @@ public sealed class Tabbed : UserControl, IDisposable, IHeader
     {
         var first = host.Content is null;
         host.Content = built[i] ??= parts[i].Create();
+        partBar.Content = (host.Content as IHeader)?.Header;
         if (!first) Motion.Rise(host, shift);
     }
 }

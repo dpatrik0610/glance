@@ -4,11 +4,14 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class GitPage : UserControl
+public partial class GitPage : UserControl, IHeader
 {
+    public FrameworkElement Header { get; }
+
     public GitPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         // Coming back within half a minute shows what's there; the Refresh button always reloads.
         IsVisibleChanged += (_, e) => { if ((bool)e.NewValue && DateTime.Now - loadedAt > TimeSpan.FromSeconds(30)) Load(); };
     }

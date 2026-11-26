@@ -220,7 +220,7 @@
                             <!-- Looks like a search box, opens the Ctrl+K palette -->
                             <Button Style="{StaticResource Ghost}" Padding="0" Margin="0,0,8,0" ToolTip="Search everything (Ctrl+K)" Click="PaletteClick"
                                     AutomationProperties.Name="Search">
-                                <Border x:Name="SearchField" Width="240" Height="32" CornerRadius="8" Padding="10,0,6,0"
+                                <Border x:Name="SearchField" Height="32" CornerRadius="8" Padding="10,0,6,0"
                                         Background="{StaticResource CardBg}" BorderBrush="{StaticResource Line}" BorderThickness="1">
                                     <DockPanel>
                                         <local:Logo Icon="search" Width="14" Height="14" VerticalAlignment="Center" />
@@ -228,7 +228,7 @@
                                                 Padding="5,1" VerticalAlignment="Center">
                                             <TextBlock Text="Ctrl K" FontSize="11" Foreground="{StaticResource Sub}" />
                                         </Border>
-                                        <TextBlock x:Name="SearchHint" Text="Search" Margin="8,0" FontSize="13" Foreground="{StaticResource Sub}" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="SearchHint" Text="Search" Margin="8,0,12,0" FontSize="13" Foreground="{StaticResource Sub}" VerticalAlignment="Center" />
                                     </DockPanel>
                                 </Border>
                             </Button>

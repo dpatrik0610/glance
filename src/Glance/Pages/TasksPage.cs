@@ -7,7 +7,7 @@ namespace Glance.Pages;
 
 /// Every open task in one list: checklist items from Notes and Stickies, and "- [ ]" lines in board notes,
 /// grouped by when they're due. Ticking one ticks it where it lives; the source name jumps there.
-public class TasksPage : UserControl
+public class TasksPage : UserControl, IHeader
 {
     /// A task from either place, with how to tick it and how to go to it.
     record Row(string Text, DateTime? Due, string Source, Action Tick, Action Go);
@@ -16,33 +16,15 @@ public class TasksPage : UserControl
     readonly CheckBox showDone;
     bool withDone;
 
+    public FrameworkElement Header => showDone; // in the window's title row
+
     public TasksPage()
     {
-        showDone = new CheckBox { Content = "Show done", Style = Skin.Style("Switch"), VerticalAlignment = VerticalAlignment.Center };
+        showDone = new CheckBox { Content = "Show done  ", Style = Skin.Style("Switch"), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left };
         showDone.Click += (_, _) => { withDone = showDone.IsChecked == true; Draw(); };
-        DockPanel.SetDock(showDone, Dock.Right);
-        var head = new DockPanel
-        {
-            Margin = new(0, 0, 0, 14),
-            Children =
-            {
-                showDone,
-                new StackPanel
-                {
-                    Children =
-                    {
-                        new TextBlock { Text = "Tasks", Style = Skin.Style("H") },
-                        new TextBlock { Text = "From Notes, Stickies and board notes. A due date on a board task: - [ ] call mom @tomorrow 9", Style = Skin.Style("Label"), Margin = new(0, 2, 0, 0) },
-                    },
-                },
-            },
-        };
-        DockPanel.SetDock(head, Dock.Top);
-        Content = new Border
-        {
-            Style = Skin.Style("Card"),
-            Child = new DockPanel { Children = { head, new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = list } } },
-        };
+        var hint = new TextBlock { Text = "From Notes, Stickies and board notes. A due date on a board task: - [ ] call mom @tomorrow 9", Style = Skin.Style("Label"), Margin = new(12, 4, 0, 12) };
+        DockPanel.SetDock(hint, Dock.Top);
+        Content = new DockPanel { Children = { hint, new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = list, Padding = new(12, 0, 8, 0) } } };
         IsVisibleChanged += (_, _) => { if (IsVisible) Draw(); };
         Draw();
     }

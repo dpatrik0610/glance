@@ -8,13 +8,16 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class JsonPage : UserControl
+public partial class JsonPage : UserControl, IHeader
 {
+    public FrameworkElement Header { get; }
+
     JsonText.Result result = new(false, "");
 
     public JsonPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         Changed();
     }
 

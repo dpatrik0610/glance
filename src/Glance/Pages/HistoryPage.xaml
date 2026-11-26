@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:g="clr-namespace:Glance">
     <DockPanel>
-        <DockPanel DockPanel.Dock="Top" Margin="6,0,6,6">
+        <!-- Title row bar (IHeader) -->
+        <DockPanel x:Name="Bar" DockPanel.Dock="Top" Margin="6,0,6,6">
             <StackPanel x:Name="RangeChips" Orientation="Horizontal" DockPanel.Dock="Right" />
             <TextBlock x:Name="Status" Style="{StaticResource Label}" VerticalAlignment="Center" />
         </DockPanel>

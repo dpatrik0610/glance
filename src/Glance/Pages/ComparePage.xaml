@@ -29,9 +29,10 @@
         </ItemsPanelTemplate>
     </UserControl.Resources>
 
-    <Border Style="{StaticResource Card}">
+    <Border>
         <DockPanel>
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <!-- Title row bar (IHeader) -->
+            <StackPanel x:Name="Bar" DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
                 <RadioButton x:Name="FilesTab" Style="{StaticResource Chip}" GroupName="mode" Content="Files" IsChecked="True" Checked="ModeChanged" />
                 <RadioButton x:Name="FoldersTab" Style="{StaticResource Chip}" GroupName="mode" Content="Folders" Checked="ModeChanged" />
                 <RadioButton x:Name="DupesTab" Style="{StaticResource Chip}" GroupName="mode" Content="Duplicates" Checked="ModeChanged" />

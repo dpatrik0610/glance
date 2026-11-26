@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <DockPanel>
         <!-- The month shown, and its totals -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,6,4">
+        <!-- Title row bar (IHeader) -->
+        <StackPanel x:Name="Bar" DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,6,4">
             <Button Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" Content="&#xE76B;" ToolTip="Previous month" Click="PrevMonth" />
             <TextBlock x:Name="MonthText" FontSize="15" FontWeight="SemiBold" MinWidth="140" TextAlignment="Center" VerticalAlignment="Center" />
             <Button x:Name="NextButton" Style="{StaticResource Ghost}" FontFamily="{StaticResource Icons}" Content="&#xE76C;" ToolTip="Next month" Click="NextMonth" />

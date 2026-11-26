@@ -6,11 +6,14 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class StickiesPage : UserControl, IDisposable
+public partial class StickiesPage : UserControl, IDisposable, IHeader
 {
+    public FrameworkElement Header { get; }
+
     public StickiesPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         List.ItemsSource = Stickies.Items;
         Stickies.Items.CollectionChanged += ItemsChanged;
         List.SelectedIndex = Stickies.Items.Count > 0 ? 0 : -1;

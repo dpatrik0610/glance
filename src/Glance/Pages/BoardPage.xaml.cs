@@ -14,8 +14,10 @@ namespace Glance.Pages;
 /// Boards (one tab each) of nodes: notes, pictures, links, groups, live stats, embedded notes; with arrows between them and a pen layer.
 /// Canvas layout here; Kanban, node bodies, menus and arrows/ink are the other BoardPage.*.cs parts.
 /// Board units are pixels at 100%; the view is pan (screen px) + zoom. Everything lives in BoardStore.Data and saves itself.
-public partial class BoardPage : UserControl
+public partial class BoardPage : UserControl, IHeader
 {
+    public FrameworkElement Header { get; }
+
     const double Tile = 24, MinW = 120, MaxW = 1600, MinZoom = 0.25, MaxZoom = 3, Pad = 26; // Pad: a card's padding + border, around W
     static readonly string[] Pictures = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"];
 
@@ -39,6 +41,7 @@ public partial class BoardPage : UserControl
     public BoardPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         board = boards.All.FirstOrDefault(b => b.Id == boards.Current) ?? boards.All[0];
         // The card's corners are round; keep the dots inside them.
         Surface.SizeChanged += (_, _) =>

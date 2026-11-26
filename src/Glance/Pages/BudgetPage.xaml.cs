@@ -7,8 +7,10 @@ using Glance.Services;
 namespace Glance.Pages;
 
 /// Income and expenses, a month at a time.
-public partial class BudgetPage : UserControl, IDisposable
+public partial class BudgetPage : UserControl, IDisposable, IHeader
 {
+    public FrameworkElement Header { get; }
+
     public record Row(Entry Entry, string Day, string Note, string Amount, Brush Brush);
 
     DateTime month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -16,6 +18,7 @@ public partial class BudgetPage : UserControl, IDisposable
     public BudgetPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         Money.Entries.CollectionChanged += EntriesChanged;
         Render();
     }

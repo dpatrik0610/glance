@@ -6,14 +6,17 @@ using Glance.Services;
 
 namespace Glance.Pages;
 
-public partial class DockerPage : UserControl
+public partial class DockerPage : UserControl, IHeader
 {
+    public FrameworkElement Header { get; }
+
     readonly DispatcherTimer timer;
     bool busy;
 
     public DockerPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         // Polls only while visible: picks up containers started from a terminal, and Docker Desktop finishing its start.
         timer = new DispatcherTimer(TimeSpan.FromSeconds(4), DispatcherPriority.Background, (_, _) => Load(), Dispatcher);
         IsVisibleChanged += (_, e) =>
@@ -32,7 +35,7 @@ public partial class DockerPage : UserControl
             var (state, list) = await Docker.Containers();
             Rows.ItemsSource = list;
             Count.Text = state == Docker.State.Ok ? $"{list.Count(c => c.Running)} running · {list.Count} total" : "";
-            Header.Visibility = list.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            Columns.Visibility = list.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             Empty.Visibility = list.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
             EmptyText.Text = state switch
             {

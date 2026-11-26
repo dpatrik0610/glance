@@ -8,8 +8,10 @@ using MongoDB.Driver;
 
 namespace Glance.Pages;
 
-public partial class HistoryPage : UserControl
+public partial class HistoryPage : UserControl, IHeader
 {
+    public FrameworkElement Header { get; }
+
     public record Chart(string Title, string Stats, string From, float[] Series, Color Color, float Max, string Format, TimeSpan Step,
         Func<int, string?>? Detail);
 
@@ -25,6 +27,7 @@ public partial class HistoryPage : UserControl
     public HistoryPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         for (var i = 0; i < Ranges.Length; i++)
         {
             var index = i;

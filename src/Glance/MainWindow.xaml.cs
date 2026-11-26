@@ -17,6 +17,15 @@ public interface IHeader { FrameworkElement Header { get; } }
 
 public partial class MainWindow : Window
 {
+    /// Takes a page's bar out of its spot in the page's XAML so the title row can show it (IHeader).
+    public static FrameworkElement Lift(FrameworkElement bar)
+    {
+        (bar.Parent as Panel)?.Children.Remove(bar);
+        bar.Margin = default;
+        bar.VerticalAlignment = VerticalAlignment.Center;
+        return bar;
+    }
+
     /// Needs: an exe that must be on PATH, or the tab is left out (checked at startup).
     /// Parts: a merged page, its related pages switched by chips at the top (Tabbed).
     /// Keep: never dropped when idle; it holds work or input that isn't saved anywhere (shells, jobs, scans, typed text).
@@ -272,8 +281,7 @@ public partial class MainWindow : Window
         Side.Visibility = on || !navShown ? Visibility.Collapsed : Visibility.Visible;
         Strip.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         Body.Margin = new Thickness(on ? 10 : 14);
-        SearchField.Width = on ? double.NaN : 240; // just the icon and the key next to the strip
-        SearchHint.Visibility = shown;
+        SearchHint.Visibility = shown; // compact: just the icon and the key next to the strip
         Grid.SetRow(HeaderSlot, on ? 1 : 0);
         Grid.SetColumnSpan(HeaderSlot, on ? 3 : 1);
         Grid.SetColumn(HeaderSlot, on ? 0 : 1);

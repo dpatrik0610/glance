@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <DockPanel>
         <!-- Month, navigation, sync state -->
-        <DockPanel DockPanel.Dock="Top" Margin="6,0,6,8">
+        <!-- Title row bar (IHeader) -->
+        <DockPanel x:Name="Bar" DockPanel.Dock="Top" Margin="6,0,6,8">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button x:Name="RefreshButton" Style="{StaticResource Ghost}" Content="&#xE72C;" FontFamily="{StaticResource Icons}" ToolTip="Sync now"
                         Click="RefreshClick" Margin="0,0,4,0" />
@@ -13,7 +14,7 @@
             <Button Style="{StaticResource Ghost}" Content="&#xE76B;" FontFamily="{StaticResource Icons}" Click="PrevClick" ToolTip="Previous month" />
             <Button Style="{StaticResource Ghost}" Content="&#xE76C;" FontFamily="{StaticResource Icons}" Click="NextClick" ToolTip="Next month"
                     Margin="2,0,10,0" />
-            <TextBlock x:Name="MonthText" Style="{StaticResource H}" FontSize="18" VerticalAlignment="Center" />
+            <TextBlock x:Name="MonthText" Style="{StaticResource H}" VerticalAlignment="Center" />
             <Button Content="Today" Margin="14,0,0,0" Click="TodayClick" />
             <TextBlock x:Name="Status" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="14,0,0,0" TextTrimming="CharacterEllipsis" />
         </DockPanel>

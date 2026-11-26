@@ -10,8 +10,10 @@ using Glance.Services;
 namespace Glance.Pages;
 
 /// Google Calendar month view, with Glance's own due items (notes and stickies) on the same days.
-public partial class CalendarPage : UserControl
+public partial class CalendarPage : UserControl, IHeader
 {
+    public FrameworkElement Header { get; }
+
     static readonly CultureInfo Culture = CultureInfo.CurrentCulture;
     static readonly Color DueColor = Color.FromRgb(0xE6, 0xA6, 0x5D);
 
@@ -25,6 +27,7 @@ public partial class CalendarPage : UserControl
     public CalendarPage()
     {
         InitializeComponent();
+        Header = MainWindow.Lift(Bar);
         ClientIdBox.Text = App.Settings.GoogleClientId;
         ClientSecretBox.Text = App.Settings.GoogleClientSecret;
         // Due items can change on other pages; Google every 5 minutes at most unless asked.
