@@ -255,6 +255,41 @@
             </Border>
         </Grid>
 
+        <!-- Settings: a modal over the page, its sections listed on the left (Esc, the ×, or a click outside closes it) -->
+        <Grid x:Name="SettingsLayer" Visibility="Collapsed" Background="#8C000000" MouseLeftButtonDown="SettingsBackdrop">
+            <Border MaxWidth="1060" MaxHeight="800" Margin="40" CornerRadius="16" Padding="8" RenderTransformOrigin="0.5,0.5"
+                    Background="{StaticResource Popup}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="SettingsZoom" />
+                </Border.RenderTransform>
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="40" ShadowDepth="0" Opacity="0.6" />
+                </Border.Effect>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" Margin="16,8,0,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Ghost}" HorizontalAlignment="Right" ToolTip="Close (Esc)" Click="CloseSettingsClick">
+                        <local:Logo Icon="close" Width="17" Height="17" />
+                    </Button>
+                    <ListBox x:Name="SettingsNav" Grid.Row="1" Margin="4,12,12,4" Style="{StaticResource Sidebar}" SelectionChanged="SettingsNavChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" FontSize="13.5" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <ContentControl x:Name="SettingsHost" Grid.Row="1" Grid.Column="1" Focusable="False" />
+                </Grid>
+            </Border>
+        </Grid>
+
         <!-- Ctrl+K command palette: one search over pages, actions, repos, containers, notes and clipboard -->
         <Grid x:Name="PaletteLayer" Visibility="Collapsed" Background="#8C000000" MouseLeftButtonDown="PaletteBackdrop">
             <Border x:Name="PaletteCard" Width="640" VerticalAlignment="Top" Margin="16,84,16,16" CornerRadius="20" Padding="10"

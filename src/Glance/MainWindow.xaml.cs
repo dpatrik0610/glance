@@ -166,7 +166,7 @@ public partial class MainWindow : Window
         var dropped = false;
         foreach (var (t, page) in pages.ToArray())
         {
-            if (t.Keep || page == Page.Content || now - leftAt.GetValueOrDefault(t, now) < IdleDrop.TotalMilliseconds) continue;
+            if (t.Keep || page == Page.Content || page == SettingsHost.Content || now - leftAt.GetValueOrDefault(t, now) < IdleDrop.TotalMilliseconds) continue;
             pages.Remove(t);
             leftAt.Remove(t);
             (page as IDisposable)?.Dispose();
@@ -308,14 +308,14 @@ public partial class MainWindow : Window
     {
         var list = (ListBox)sender;
         if (list.SelectedItem is not Tab t) return;
-        (list == Nav ? Bottom : Nav).SelectedItem = null;
+        if (t == SettingsTab) { OpenSettings(); return; }
         Show(t);
     }
 
     /// Every way to a page goes through here: a sidebar item when it has one, else the page alone (hidden from the sidebar).
     void Open(Tab t)
     {
-        if (t == SettingsTab) Bottom.SelectedItem = t;
+        if (t == SettingsTab) OpenSettings();
         else if (Nav.Items.Contains(t)) Nav.SelectedItem = t;
         else { Nav.SelectedItem = Bottom.SelectedItem = null; Show(t); }
     }
@@ -327,6 +327,7 @@ public partial class MainWindow : Window
         if (Nav.Items.Contains(t) && App.Settings.FoldedGroups.Remove(t.Group)) Dispatcher.BeginInvoke(RefreshNav);
         if (!pages.TryGetValue(t, out var page)) pages[t] = page = t.Create();
         if (Page.Content == page) return; // re-selected after a sidebar refresh
+        CloseSettings(); // Ctrl+1..9 or the palette went to another page
         if (pages.FirstOrDefault(p => p.Value == Page.Content).Key is { } left) leftAt[left] = Environment.TickCount64;
         Page.Content = page;
         PageTitle.Text = t.Name;
@@ -349,6 +350,62 @@ public partial class MainWindow : Window
         Open(t); // creates the page if needed
         return pages[t] is not Tabbed tabbed ? pages[t] : tabbed.Has(name) ? tabbed.Show(name) : tabbed.Current;
     }
+
+    // ---- Settings: a modal over the current page; its section headings become the list on its left ----
+
+    List<TextBlock> sections = [];
+
+    void OpenSettings()
+    {
+        // The gear and the compact strip don't stay selected: the page underneath is still the current one
+        Bottom.SelectedItem = null;
+        var current = pages.FirstOrDefault(p => p.Value == Page.Content).Key;
+        Strip.SelectedItem = current is not null && Strip.Items.Contains(current) ? current : null;
+        if (SettingsLayer.IsVisible) return;
+        if (!pages.TryGetValue(SettingsTab, out var page)) pages[SettingsTab] = page = SettingsTab.Create();
+        SettingsHost.Content = page;
+        SettingsLayer.Visibility = Visibility.Visible;
+        if (IsWeb(Page.Content)) Page.Visibility = Visibility.Hidden; // WebView2 is a native window; WPF can't draw over it
+        Motion.To(SettingsLayer, OpacityProperty, 1, 140, 0);
+        Motion.To(SettingsZoom, ScaleTransform.ScaleXProperty, 1, 200, 0.97);
+        Motion.To(SettingsZoom, ScaleTransform.ScaleYProperty, 1, 200, 0.97);
+        // After layout: only sections shown (some follow Settings → Pages), top to bottom, left column first on a row
+        Dispatcher.BeginInvoke(() =>
+        {
+            var style = page.TryFindResource("Section");
+            sections = Logical(page).OfType<TextBlock>().Where(t => style is not null && t.Style == style && t.IsVisible)
+                .OrderBy(t => Math.Round(t.TranslatePoint(default, page).Y)).ThenBy(t => t.TranslatePoint(default, page).X).ToList();
+            SettingsNav.ItemsSource = sections.Select(t => t.Text).ToList();
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    void CloseSettings()
+    {
+        if (!SettingsLayer.IsVisible) return;
+        SettingsLayer.Visibility = Visibility.Collapsed;
+        SettingsHost.Content = null; // lets Sweep drop it later
+        leftAt[SettingsTab] = Environment.TickCount64;
+        if (!PaletteLayer.IsVisible) Page.Visibility = Visibility.Visible;
+    }
+
+    void CloseSettingsClick(object sender, RoutedEventArgs e) => CloseSettings();
+
+    void SettingsBackdrop(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource == SettingsLayer) CloseSettings();
+    }
+
+    // Scrolls the section's heading to the top of the settings.
+    void SettingsNavChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SettingsNav.SelectedIndex is not (>= 0 and var i) || i >= sections.Count) return;
+        DependencyObject? d = sections[i];
+        while (d is not (null or ScrollViewer)) d = VisualTreeHelper.GetParent(d);
+        if (d is ScrollViewer sv) sv.ScrollToVerticalOffset(sv.VerticalOffset + sections[i].TranslatePoint(default, sv).Y - 4);
+    }
+
+    static IEnumerable<DependencyObject> Logical(DependencyObject d) =>
+        LogicalTreeHelper.GetChildren(d).OfType<DependencyObject>().SelectMany(Logical).Prepend(d);
 
     // ---- Folding groups and hiding pages: both saved in settings, then the views are rebuilt ----
 
@@ -431,6 +488,7 @@ public partial class MainWindow : Window
         // AltGr arrives as Ctrl+Alt: on e.g. Hungarian keyboards AltGr+, is ";" and AltGr+K is "ł", which are typing, not shortcuts.
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
         if (e.Key == Key.Escape && PaletteLayer.IsVisible) ClosePalette();
+        else if (e.Key == Key.Escape && SettingsLayer.IsVisible) CloseSettings();
         // In a terminal Esc belongs to the shell: PSReadLine clears the typed line, Claude stops its reply.
         else if (e.Key == Key.Escape && !(Page.Content is CliPage && e.OriginalSource is Microsoft.Web.WebView2.Wpf.WebView2)) Away();
         else if (ctrl && e.Key == Key.K) OpenPalette();

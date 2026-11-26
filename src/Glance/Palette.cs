@@ -57,7 +57,7 @@ public partial class MainWindow
     {
         loadId++;
         PaletteLayer.Visibility = Visibility.Collapsed;
-        Page.Visibility = Visibility.Visible;
+        if (!SettingsLayer.IsVisible) Page.Visibility = Visibility.Visible; // the terminal would cover the Settings modal
     }
 
     void Filter()
