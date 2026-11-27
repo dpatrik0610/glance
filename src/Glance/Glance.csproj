@@ -15,7 +15,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <ApplicationIcon>Assets\Glance.ico</ApplicationIcon>
-    <Version>1.1.15</Version>
+    <Version>1.1.16</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- WinForms' "set DPI in code" advice: WPF owns the windows here and reads DPI awareness from the manifest. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
