@@ -83,7 +83,7 @@
                                     <TextBlock Grid.Column="1" Text="{Binding Right}" Foreground="{StaticResource Sub}" TextAlignment="Right" Margin="0,0,8,0" />
                                     <TextBlock Grid.Column="2" Text="{Binding Kind, Converter={x:Static local:ComparePage.Marker}}"
                                                Foreground="{StaticResource Sub}" />
-                                    <TextBlock Grid.Column="3" DataContextChanged="FillLine" Padding="0,1,12,1" />
+                                    <TextBlock Grid.Column="3" local:ComparePage.Line="{Binding}" Padding="0,1,12,1" />
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

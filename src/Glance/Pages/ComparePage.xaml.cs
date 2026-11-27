@@ -152,7 +152,13 @@ public partial class ComparePage : UserControl, IHeader
     }
 
     // The text of a diff line, its changed part marked (Runs can't be bound, so they're filled here).
-    void FillLine(object sender, DependencyPropertyChangedEventArgs e)
+    // A bound attached property, not DataContextChanged: that never fires for a TextBlock in an item template.
+    public static readonly DependencyProperty LineProperty =
+        DependencyProperty.RegisterAttached("Line", typeof(DiffLine), typeof(ComparePage), new(null, FillLine));
+    public static void SetLine(TextBlock tb, DiffLine v) => tb.SetValue(LineProperty, v);
+    public static DiffLine? GetLine(TextBlock tb) => (DiffLine?)tb.GetValue(LineProperty);
+
+    static void FillLine(DependencyObject sender, DependencyPropertyChangedEventArgs e)
     {
         var tb = (TextBlock)sender;
         tb.Inlines.Clear();
