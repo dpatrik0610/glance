@@ -52,7 +52,7 @@ public partial class MainWindow : Window
     {
         new("Today", "Home", "", () => new TodayPage()),
         Merged("System", "Monitor", "\uE7F4", new("Live", "\uE7F4", () => new SystemPage()), new("History", "\uE81C", () => new HistoryPage()),
-            new("Analysis", "\uE9D9", () => new AnalysisPage())),
+            new("Analysis", "\uE9D9", () => new AnalysisPage()), new("Startup", "\uE7B5", () => new StartupPage())),
         new("Network", "Monitor", "\uE839", () => new NetworkPage()),
         Kept("Disk", "Monitor", "\uEDA2", new("Clean", "\uEA99", () => new CleanPage()), new("Scan", "\uEB05", () => new ScanPage())),
         new("Weather", "Life", "\uE706", () => new WeatherPage()),

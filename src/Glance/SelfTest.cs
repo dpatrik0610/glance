@@ -130,6 +130,18 @@ static class SelfTest
                 finally { Directory.Delete(dir, true); }
             }
             Check(new Pages.TimerPage().Content is not null && new Pages.TasksPage().Content is not null && new Pages.NotesPage().Content is not null, "timer, tasks and notes pages load");
+            Check(new Pages.StartupPage().Content is not null, "startup page loads");
+            {
+                bool Is(string? a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+                var cmd = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+                Check(Is(Startup.Exe(@"""C:\Program Files\App\a.exe"" --min"), @"C:\Program Files\App\a.exe")
+                    && Is(Startup.Exe(@"%windir%\system32\cmd.exe /x"), cmd) && Is(Startup.Exe(@"\SystemRoot\System32\cmd.exe"), cmd)
+                    && Is(Startup.Exe("cmd.exe /c x"), cmd) && Is(Startup.Exe(@"C:\Gone\b.exe -x"), @"C:\Gone\b.exe") && Startup.Exe("") is null, "startup: program path from a command line");
+                Check(Startup.Approved_(null) && Startup.Approved_(Startup.ApprovedValue(true)) && !Startup.Approved_(Startup.ApprovedValue(false))
+                    && Startup.Approved_([6, 0, 0, 0]) && !Startup.Approved_([7, 0, 0, 0]), "startup: StartupApproved on/off bytes");
+                var all = Startup.List([]);
+                Check(all.Any(i => i.Kind == StartupKind.Task) && all.Any(i => i.Kind == StartupKind.Service), "startup: lists logon tasks and services");
+            }
             {
                 // A page dropped when idle must let go of app-wide events, or they keep it (and its work) alive.
                 int Handlers(string name) => (typeof(App).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!

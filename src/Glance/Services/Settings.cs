@@ -20,6 +20,8 @@ public class Settings
     public List<string> HiddenTabs { get; set; } = [];
     /// Pages, and parts of merged pages, turned off entirely: not in the sidebar, "…" or Ctrl+K (Settings → Pages).
     public List<string> OffPages { get; set; } = ["Cloudflare"];
+    /// Services that System → Startup switched from Automatic to Manual, so they stay listed (as off) to switch back.
+    public List<string> StartupServicesOff { get; set; } = [];
     /// Smaller window with the tabs as icons across the top instead of the sidebar.
     public bool Compact { get; set; }
     /// Glance stays up when focus goes to another window (normally a window dropped from the bar slides back up).

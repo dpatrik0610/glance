@@ -53,6 +53,8 @@ public partial class App : Application
         if (e.Args.Contains("--selftest")) { Shutdown(SelfTest.Run()); return; }
         // The Clean page's elevated half: `--clean id,id`. The megabytes freed go back as the exit code.
         if (Array.IndexOf(e.Args, "--clean") is >= 0 and var c) { Shutdown(Cleaner.Run(e.Args.ElementAtOrDefault(c + 1)?.Split(',') ?? [])); return; }
+        // System → Startup's elevated half: `--startup <kind> <base64 target> 1|0`.
+        if (Array.IndexOf(e.Args, "--startup") is >= 0 and var u) { Shutdown(Services.Startup.Run(e.Args[(u + 1)..])); return; }
 
         bool first;
         try
