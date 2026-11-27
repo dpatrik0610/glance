@@ -36,10 +36,8 @@ public partial class StartupPage : UserControl, IHeader
         loadedAt = DateTime.Now;
         try
         {
-            var off = App.Settings.StartupServicesOff.ToArray();
-            items = new(await Task.Run(() => Startup.List(off)));
-            // Forget services that someone set back to Automatic elsewhere, or removed.
-            App.Settings.StartupServicesOff.RemoveAll(s => !items.Any(i => i.Kind == StartupKind.Service && i.Target == s && !i.Enabled));
+            // On first; a switched row stays where it is until the next refresh, so it doesn't jump from under the mouse.
+            items = new((await Task.Run(Startup.List)).OrderBy(i => !i.Enabled));
             Rows.ItemsSource = items;
             CollectionViewSource.GetDefaultView(items).Filter = o => Shown((StartupItem)o);
             Show();
@@ -82,21 +80,26 @@ public partial class StartupPage : UserControl, IHeader
         var item = Of(sender);
         var on = box.IsChecked == true;
         box.IsEnabled = false;
-        if (await Startup.Switch(item, on) is { } error)
+        // A disabled service goes back to the start mode it had before (remembered), else Automatic.
+        var modes = App.Settings.StartupServiceModes;
+        var service = item.Kind == StartupKind.Service;
+        var mode = on ? modes.GetValueOrDefault(item.Target, "auto") : service ? Startup.ModeOf(item) : "auto";
+        if (await Startup.Switch(item, on, mode) is { } error)
         {
-            box.IsChecked = item.Enabled;
-            box.IsEnabled = true;
             Dialog.Info("Startup", $"Couldn't turn {item.Name} {(on ? "on" : "off")}", error);
+            Load(); // show what Windows has now
             return;
         }
-        if (item.Kind == StartupKind.Service)
+        var source = item.Source;
+        if (service)
         {
-            App.Settings.StartupServicesOff.Remove(item.Target);
-            if (!on) App.Settings.StartupServicesOff.Add(item.Target);
+            if (on) modes.Remove(item.Target);
+            else modes[item.Target] = mode;
             App.Settings.Save();
+            source = !on ? "Disabled" : mode switch { "delayed-auto" => "Automatic (delayed)", "demand" => "Manual", _ => "Automatic" }; // Manual or on trigger: the next refresh tells
         }
         var i = items.IndexOf(item);
-        if (i >= 0) items[i] = item with { Enabled = on }; // re-renders that row only
+        if (i >= 0) items[i] = item with { Enabled = on, Source = source }; // re-renders that row only
         Show();
     }
 

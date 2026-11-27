@@ -53,7 +53,7 @@ public static class Startup
     static string Short(RegistryHive hive) => hive == RegistryHive.CurrentUser ? "HKCU" : "HKLM";
     static RegistryHive Hive(string s) => s == "HKCU" ? RegistryHive.CurrentUser : RegistryHive.LocalMachine;
 
-    public static List<StartupItem> List(ICollection<string> servicesOff)
+    public static List<StartupItem> List()
     {
         var list = new List<StartupItem>();
         foreach (var (hive, key, approved) in Keys)
@@ -82,7 +82,7 @@ public static class Startup
         }
         try { Tasks(list); }
         catch (Exception e) when (e is COMException or UnauthorizedAccessException or InvalidCastException) { Db.Warn("startup tasks: " + e.Message); }
-        Services(list, servicesOff);
+        Services(list);
         return list;
     }
 
@@ -148,9 +148,10 @@ public static class Startup
         }
     }
 
-    // ---- Services: automatic ones, plus those this page set to Manual ----
+    // ---- Services: automatic, trigger-started (Manual ones Windows starts on an event), other apps' Manual ones (their
+    //      app starts them) and disabled ones ----
 
-    static void Services(List<StartupItem> list, ICollection<string> off)
+    static void Services(List<StartupItem> list)
     {
         using var root = Root(RegistryHive.LocalMachine).OpenSubKey(@"SYSTEM\CurrentControlSet\Services");
         if (root is null) return;
@@ -158,18 +159,32 @@ public static class Startup
         {
             using var k = root.OpenSubKey(name);
             if (k?.GetValue("Start") is not int start || k.GetValue("Type") is not int type || (type & 0x30) == 0) continue; // Win32 services only, no drivers
-            if (start != 2 && !(start == 3 && off.Contains(name))) continue;
+            string mode;
+            if (start == 2) mode = k.GetValue("DelayedAutostart") is 1 ? "Automatic (delayed)" : "Automatic";
+            else if (start == 4) mode = "Disabled";
+            else if (start == 3) mode = k.GetSubKeyNames().Contains("TriggerInfo") ? "On trigger" : "Manual";
+            else continue;
             var command = k.GetValue("ImagePath")?.ToString() ?? "";
+            var windows = UnderWindows(Exe(command));
+            if (mode == "Manual" && windows) continue; // Windows' own on-demand services: hundreds, and none start by themselves
             var display = k.GetValue("DisplayName")?.ToString() is { } d && !d.StartsWith('@') ? d : name;
-            var delayed = k.GetValue("DelayedAutostart") is 1;
-            list.Add(new(display, command, StartupKind.Service, name, delayed ? "Automatic (delayed)" : "Automatic", name, start == 2, UnderWindows(Exe(command))));
+            list.Add(new(display, command, StartupKind.Service, name, mode, name, start != 4, windows));
         }
     }
 
+    /// The sc.exe start mode a service has, from its Source word, to give back when it's switched on again.
+    public static string ModeOf(StartupItem service) => service.Source switch
+    {
+        "Automatic (delayed)" => "delayed-auto",
+        "On trigger" or "Manual" => "demand",
+        _ => "auto",
+    };
+
     // ---- Switching ----
 
-    /// Turns an entry on or off. Throws UnauthorizedAccessException when it takes an administrator (the caller elevates).
-    public static async Task Set(StartupKind kind, string target, bool on)
+    /// Turns an entry on or off. A service turned off is Disabled (nothing can start it, not even a trigger or an app);
+    /// back on, it gets `mode` (an sc.exe start= word). Throws UnauthorizedAccessException when it takes an administrator.
+    public static async Task Set(StartupKind kind, string target, bool on, string mode = "auto")
     {
         switch (kind)
         {
@@ -193,44 +208,77 @@ public static class Startup
                 });
                 break;
             case StartupKind.Service:
-                // ponytail: back on is plain Automatic; a service that was delayed comes back undelayed.
-                var r = await Shell.Run("sc.exe", "config", target, "start=", on ? "auto" : "demand");
+                var r = await Shell.Run("sc.exe", "config", target, "start=", on ? mode : "disabled");
                 if (r.Code == 5) throw new UnauthorizedAccessException();
                 if (r.Code != 0) throw new InvalidOperationException(r.Out.Trim() is { Length: > 0 } o ? o : $"sc.exe exited with {r.Code}");
                 break;
         }
     }
 
-    /// The elevated half: `--startup <kind> <base64 target> 1|0`. Exit code 0 = done.
+    /// The elevated half: `--startup <kind> <base64 target> 1|0 <mode> <error file>`. Exit code 0 = done; otherwise the reason
+    /// is in the error file. Set runs on the thread pool: awaited on this (UI) thread, its continuations would deadlock.
     public static int Run(string[] args)
     {
         try
         {
             var target = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(args[1]));
-            Set(Enum.Parse<StartupKind>(args[0]), target, args[2] == "1").GetAwaiter().GetResult();
+            Task.Run(() => Set(Enum.Parse<StartupKind>(args[0]), target, args[2] == "1", args[3])).GetAwaiter().GetResult();
             return 0;
         }
-        catch (Exception e) { Db.Warn("startup --set: " + e.Message); return 1; }
+        catch (Exception e)
+        {
+            try { System.IO.File.WriteAllText(args[4], e.Message); } catch (Exception) { }
+            return 1;
+        }
     }
 
-    /// Set, through an elevated copy of Glance (one UAC prompt) when this one isn't allowed. Returns an error, or null.
-    public static async Task<string?> Switch(StartupItem item, bool on)
+    /// Set, through an elevated copy of Glance (one UAC prompt) when this one isn't allowed, then reads the entry back:
+    /// the change must be there. Returns what went wrong, or null.
+    public static async Task<string?> Switch(StartupItem item, bool on, string mode = "auto")
     {
-        try { await Set(item.Kind, item.Target, on); return null; }
+        try { await Set(item.Kind, item.Target, on, mode); }
         catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException && !Native.IsAdmin)
         {
+            var errors = Path.GetTempFileName();
             try
             {
                 var arg = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(item.Target));
-                using var p = Process.Start(new ProcessStartInfo(Environment.ProcessPath!, $"--startup {item.Kind} {arg} {(on ? 1 : 0)}")
+                using var p = Process.Start(new ProcessStartInfo(Environment.ProcessPath!, $"--startup {item.Kind} {arg} {(on ? 1 : 0)} {mode} \"{errors}\"")
                     { UseShellExecute = true, Verb = "runas" })!;
-                await p.WaitForExitAsync();
-                return p.ExitCode == 0 ? null : "The administrator copy couldn't change it. Details are in the log.";
+                using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                await p.WaitForExitAsync(wait.Token);
+                if (p.ExitCode != 0) return System.IO.File.ReadAllText(errors) is { Length: > 0 } why ? why : "The administrator copy couldn't change it.";
             }
             catch (Win32Exception) { return "Needs an administrator: the prompt was declined."; }
+            catch (OperationCanceledException) { return "The administrator copy didn't finish within a minute."; }
+            finally { try { System.IO.File.Delete(errors); } catch (IOException) { } }
         }
         catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException) { return "Access denied."; }
         catch (Exception e) when (e is IOException or COMException or InvalidOperationException or Win32Exception) { return e.Message; }
+        try
+        {
+            if (await Task.Run(() => IsOn(item)) != on)
+                return $"Windows still reports it {(on ? "off" : "on")}. Something switched it back, or it's protected (some Windows services and tasks are).";
+        }
+        catch (Exception e) when (e is COMException or UnauthorizedAccessException or IOException) { Db.Warn("startup check: " + e.Message); }
+        return null;
+    }
+
+    /// The entry's state as Windows has it now.
+    public static bool IsOn(StartupItem item)
+    {
+        switch (item.Kind)
+        {
+            case StartupKind.Task:
+                dynamic task = Scheduler().GetFolder("\\").GetTask(item.Target);
+                return (bool)task.Enabled;
+            case StartupKind.Service:
+                using (var k = Root(RegistryHive.LocalMachine).OpenSubKey($@"SYSTEM\CurrentControlSet\Services\{item.Target}"))
+                    return k?.GetValue("Start") is int start && start != 4;
+            default:
+                var p = item.Target.Split('|', 3);
+                return IsOn(Hive(p[0]), p[1], p[2]);
+        }
     }
 
     /// Opens where the entry is registered: Registry Editor at the key, Explorer at the file, Task Scheduler or Services.

@@ -139,7 +139,7 @@ static class SelfTest
                     && Is(Startup.Exe("cmd.exe /c x"), cmd) && Is(Startup.Exe(@"C:\Gone\b.exe -x"), @"C:\Gone\b.exe") && Startup.Exe("") is null, "startup: program path from a command line");
                 Check(Startup.Approved_(null) && Startup.Approved_(Startup.ApprovedValue(true)) && !Startup.Approved_(Startup.ApprovedValue(false))
                     && Startup.Approved_([6, 0, 0, 0]) && !Startup.Approved_([7, 0, 0, 0]), "startup: StartupApproved on/off bytes");
-                var all = Startup.List([]);
+                var all = Startup.List();
                 Check(all.Any(i => i.Kind == StartupKind.Task) && all.Any(i => i.Kind == StartupKind.Service), "startup: lists logon tasks and services");
             }
             {
