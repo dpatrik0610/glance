@@ -1,8 +1,11 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Management;
 using System.Runtime.InteropServices;
+using System.Text;
 using Microsoft.Win32;
+using Microsoft.Win32.SafeHandles;
 
 namespace Glance.Services;
 
@@ -13,6 +16,8 @@ public enum StartupKind { Registry, Folder, Task, Service }
 public sealed record StartupItem(string Name, string Command, StartupKind Kind, string Where, string Source, string Target, bool Enabled, bool Windows)
 {
     public string? File { get; } = Startup.Exe(Command);
+    /// The service is running, or a process of this program is (in any session).
+    public bool Running { get; init; }
     public bool Missing => File is not null && Path.IsPathRooted(File) && !System.IO.File.Exists(File);
     public bool CanToggle => Target != "";
     /// Where, shortened for the caption: the CurrentVersion part of a key, just the name of a Startup folder file.
@@ -83,7 +88,12 @@ public static class Startup
         try { Tasks(list); }
         catch (Exception e) when (e is COMException or UnauthorizedAccessException or InvalidCastException) { Db.Warn("startup tasks: " + e.Message); }
         Services(list);
-        return list;
+        var services = RunningServices();
+        var programs = ProcessPaths();
+        return list.Select(i => i with
+        {
+            Running = i.Kind == StartupKind.Service ? services.Contains(i.Target) : i.File is { } f && programs.ContainsKey(f),
+        }).ToList();
     }
 
     // ---- StartupApproved: 12 bytes, an odd first byte means off (then a FILETIME of when). No value = on. ----
@@ -215,14 +225,78 @@ public static class Startup
         }
     }
 
-    /// The elevated half: `--startup <kind> <base64 target> 1|0 <mode> <error file>`. Exit code 0 = done; otherwise the reason
-    /// is in the error file. Set runs on the thread pool: awaited on this (UI) thread, its continuations would deadlock.
+    // ---- Stopping what's running ----
+
+    /// Stops a service (by name) or ends every process of a program (by path). Waits until it's gone.
+    static async Task Stop(StartupKind kind, string target)
+    {
+        if (kind == StartupKind.Service)
+        {
+            var r = await Shell.Run("sc.exe", "stop", target);
+            if (r.Code == 5) throw new UnauthorizedAccessException();
+            if (r.Code is not (0 or 1062)) throw new InvalidOperationException(r.Out.Trim() is { Length: > 0 } o ? o : $"sc.exe exited with {r.Code}"); // 1062: wasn't running
+            for (var end = DateTime.Now.AddSeconds(20); DateTime.Now < end; await Task.Delay(300))
+                if (!RunningServices(target).Contains(target)) return;
+            throw new InvalidOperationException("It was asked to stop but is still running after 20 seconds.");
+        }
+        var denied = false;
+        foreach (var id in ProcessPaths().GetValueOrDefault(target) ?? [])
+            try { using var p = Process.GetProcessById(id); p.Kill(); await p.WaitForExitAsync(); }
+            catch (Win32Exception) { denied = true; } // elevated, or another user's
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException) { } // already gone
+        if (denied) throw new UnauthorizedAccessException();
+    }
+
+    /// Running services' names; just `only`'s when given.
+    static HashSet<string> RunningServices(string? only = null)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var where = only is null ? "" : $" AND Name = '{only.Replace("\\", "\\\\").Replace("'", "\\'")}'";
+        try
+        {
+            using var search = new ManagementObjectSearcher($"SELECT Name FROM Win32_Service WHERE State = 'Running'{where}");
+            foreach (var o in search.Get()) using (o) set.Add((string)o["Name"]);
+        }
+        catch (ManagementException e) { Db.Warn("startup services: " + e.Message); }
+        return set;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)] static extern SafeProcessHandle OpenProcess(int access, bool inherit, int id);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern bool QueryFullProcessImageName(SafeProcessHandle process, int flags, StringBuilder name, ref int size);
+
+    /// Every running program's path with its process ids. Limited query rights: elevated processes have a path too.
+    static Dictionary<string, List<int>> ProcessPaths()
+    {
+        var map = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
+        var name = new StringBuilder(1024);
+        foreach (var p in Process.GetProcesses())
+            using (p)
+            using (var h = OpenProcess(0x1000, false, p.Id)) // PROCESS_QUERY_LIMITED_INFORMATION
+            {
+                var size = name.Capacity;
+                if (h.IsInvalid || !QueryFullProcessImageName(h, 0, name, ref size)) continue;
+                var path = name.ToString(0, size);
+                if (!map.TryGetValue(path, out var ids)) map[path] = ids = [];
+                ids.Add(p.Id);
+            }
+        return map;
+    }
+
+    // ---- Doing it, as an administrator when it takes one ----
+
+    /// on, off or stop. Stop's target is the service name or the program's path.
+    static Task Do(string verb, StartupKind kind, string target, string mode) =>
+        verb == "stop" ? Stop(kind, target) : Set(kind, target, verb == "on", mode);
+
+    /// The elevated half: `--startup <on|off|stop> <kind> <base64 target> <mode> <error file>`. Exit code 0 = done;
+    /// otherwise the reason is in the error file. The work runs on the thread pool: awaited on this (UI) thread, it would deadlock.
     public static int Run(string[] args)
     {
         try
         {
-            var target = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(args[1]));
-            Task.Run(() => Set(Enum.Parse<StartupKind>(args[0]), target, args[2] == "1", args[3])).GetAwaiter().GetResult();
+            var target = Encoding.UTF8.GetString(Convert.FromBase64String(args[2]));
+            Task.Run(() => Do(args[0], Enum.Parse<StartupKind>(args[1]), target, args[3])).GetAwaiter().GetResult();
             return 0;
         }
         catch (Exception e)
@@ -232,22 +306,21 @@ public static class Startup
         }
     }
 
-    /// Set, through an elevated copy of Glance (one UAC prompt) when this one isn't allowed, then reads the entry back:
-    /// the change must be there. Returns what went wrong, or null.
-    public static async Task<string?> Switch(StartupItem item, bool on, string mode = "auto")
+    /// Do, through an elevated copy of Glance (one UAC prompt) when this one isn't allowed. Returns what went wrong, or null.
+    static async Task<string?> Perform(string verb, StartupKind kind, string target, string mode = "auto")
     {
-        try { await Set(item.Kind, item.Target, on, mode); }
+        try { await Do(verb, kind, target, mode); return null; }
         catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException && !Native.IsAdmin)
         {
             var errors = Path.GetTempFileName();
             try
             {
-                var arg = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(item.Target));
-                using var p = Process.Start(new ProcessStartInfo(Environment.ProcessPath!, $"--startup {item.Kind} {arg} {(on ? 1 : 0)} {mode} \"{errors}\"")
+                var arg = Convert.ToBase64String(Encoding.UTF8.GetBytes(target));
+                using var p = Process.Start(new ProcessStartInfo(Environment.ProcessPath!, $"--startup {verb} {kind} {arg} {mode} \"{errors}\"")
                     { UseShellExecute = true, Verb = "runas" })!;
                 using var wait = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                 await p.WaitForExitAsync(wait.Token);
-                if (p.ExitCode != 0) return System.IO.File.ReadAllText(errors) is { Length: > 0 } why ? why : "The administrator copy couldn't change it.";
+                return p.ExitCode == 0 ? null : System.IO.File.ReadAllText(errors) is { Length: > 0 } why ? why : "The administrator copy couldn't do it.";
             }
             catch (Win32Exception) { return "Needs an administrator: the prompt was declined."; }
             catch (OperationCanceledException) { return "The administrator copy didn't finish within a minute."; }
@@ -255,6 +328,12 @@ public static class Startup
         }
         catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException) { return "Access denied."; }
         catch (Exception e) when (e is IOException or COMException or InvalidOperationException or Win32Exception) { return e.Message; }
+    }
+
+    /// Turns an entry on or off, then reads it back: the change must be there. Returns what went wrong, or null.
+    public static async Task<string?> Switch(StartupItem item, bool on, string mode = "auto")
+    {
+        if (await Perform(on ? "on" : "off", item.Kind, item.Target, mode) is { } error) return error;
         try
         {
             if (await Task.Run(() => IsOn(item)) != on)
@@ -263,6 +342,11 @@ public static class Startup
         catch (Exception e) when (e is COMException or UnauthorizedAccessException or IOException) { Db.Warn("startup check: " + e.Message); }
         return null;
     }
+
+    /// Stops the service, or ends the program's processes. Returns what went wrong, or null.
+    public static Task<string?> StopNow(StartupItem item) =>
+        item.Kind == StartupKind.Service ? Perform("stop", item.Kind, item.Target)
+        : item.File is { } f ? Perform("stop", item.Kind, f) : Task.FromResult<string?>("No program path to stop.");
 
     /// The entry's state as Windows has it now.
     public static bool IsOn(StartupItem item)

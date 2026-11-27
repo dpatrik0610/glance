@@ -140,7 +140,7 @@ static class SelfTest
                 Check(Startup.Approved_(null) && Startup.Approved_(Startup.ApprovedValue(true)) && !Startup.Approved_(Startup.ApprovedValue(false))
                     && Startup.Approved_([6, 0, 0, 0]) && !Startup.Approved_([7, 0, 0, 0]), "startup: StartupApproved on/off bytes");
                 var all = Startup.List();
-                Check(all.Any(i => i.Kind == StartupKind.Task) && all.Any(i => i.Kind == StartupKind.Service), "startup: lists logon tasks and services");
+                Check(all.Any(i => i.Kind == StartupKind.Task) && all.Any(i => i.Kind == StartupKind.Service && i.Running), "startup: lists logon tasks and services, and sees running ones");
             }
             {
                 // A page dropped when idle must let go of app-wide events, or they keep it (and its work) alive.

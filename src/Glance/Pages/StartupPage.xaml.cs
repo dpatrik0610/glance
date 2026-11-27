@@ -55,7 +55,8 @@ public partial class StartupPage : UserControl, IHeader
         var shown = items.Where(Shown).ToList();
         var off = shown.Count(i => !i.Enabled);
         var missing = shown.Count(i => i.Missing);
-        Count.Text = $"{shown.Count - off} on" + (off > 0 ? $" · {off} off" : "") + (missing > 0 ? $" · {missing} missing" : "")
+        var running = shown.Count(i => i.Running);
+        Count.Text = $"{shown.Count - off} on" + (off > 0 ? $" · {off} off" : "") + $" · {running} running" + (missing > 0 ? $" · {missing} missing" : "")
             + (WindowsBox.IsChecked == true ? "" : $" · {items.Count(i => i.Windows)} Windows entries hidden");
         Columns.Visibility = shown.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         Empty.Visibility = shown.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
@@ -100,6 +101,26 @@ public partial class StartupPage : UserControl, IHeader
         }
         var i = items.IndexOf(item);
         if (i >= 0) items[i] = item with { Enabled = on, Source = source }; // re-renders that row only
+        Show();
+    }
+
+    async void StopNow(object sender, RoutedEventArgs e)
+    {
+        var item = Of(sender);
+        var service = item.Kind == StartupKind.Service;
+        if (!Dialog.Confirm("Startup", $"Stop {item.Name}?", service
+            ? "Whatever uses it stops working until it starts again: when something asks for it, or at the next start if it's on."
+            : $"Every {Path.GetFileName(item.File)} process ends. Unsaved work in it is lost.", "Stop")) return;
+        var button = (Button)sender;
+        button.IsEnabled = false;
+        if (await Startup.StopNow(item) is { } error)
+        {
+            Dialog.Info("Startup", $"Couldn't stop {item.Name}", error);
+            button.IsEnabled = true;
+            return;
+        }
+        var i = items.IndexOf(item);
+        if (i >= 0) items[i] = item with { Running = false };
         Show();
     }
 
