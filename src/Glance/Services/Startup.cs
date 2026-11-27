@@ -406,8 +406,9 @@ public static class Startup
         for (var i = c.IndexOf(' '); ; i = c.IndexOf(' ', i + 1))
         {
             var head = i < 0 ? c : c[..i];
-            if (System.IO.File.Exists(head)) return head;
-            if (System.IO.File.Exists(head + ".exe")) return head + ".exe";
+            if (i < 0 && !Path.IsPathRooted(head)) break; // a bare name: never against the current folder (System32 at sign-in)
+            if (Path.IsPathRooted(head) && System.IO.File.Exists(head)) return head;
+            if (Path.IsPathRooted(head) && System.IO.File.Exists(head + ".exe")) return head + ".exe";
             if (i < 0) break;
         }
         var first = c.Split(' ')[0];
